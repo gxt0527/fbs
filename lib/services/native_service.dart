@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:developer' as developer;
 import 'package:flutter/services.dart';
 import '../models/notification_item.dart';
 
@@ -22,7 +23,8 @@ class NativeService {
   Stream<bool> get onShizukuPermissionResult => _shizukuPermissionController.stream;
 
   final _installedAppsPermissionController = StreamController<bool>.broadcast();
-  Stream<bool> get onInstalledAppsPermissionResult => _installedAppsPermissionController.stream;
+  Stream<bool> get onInstalledAppsPermissionResult =>
+      _installedAppsPermissionController.stream;
 
   final _postNotificationsPermissionController = StreamController<bool>.broadcast();
   Stream<bool> get onPostNotificationsPermissionResult =>
@@ -50,7 +52,7 @@ class NativeService {
         }
       },
       onError: (error) {
-        print('EventChannel error: $error');
+        _log('EventChannel error: $error');
       },
     );
 
@@ -87,6 +89,10 @@ class NativeService {
     _screenResumedController.close();
   }
 
+  static void _log(String message) {
+    developer.log(message, name: 'FBS.NativeService');
+  }
+
   // ========== 通知监听 ==========
 
   Future<bool> isNotificationListenerEnabled() async {
@@ -94,7 +100,7 @@ class NativeService {
       final result = await _methodChannel.invokeMethod<bool>('isNotificationListenerEnabled');
       return result ?? false;
     } catch (e) {
-      print('Error checking notification listener: $e');
+      _log('Error checking notification listener: $e');
       return false;
     }
   }
@@ -103,7 +109,7 @@ class NativeService {
     try {
       await _methodChannel.invokeMethod('openNotificationListenerSettings');
     } catch (e) {
-      print('Error opening notification settings: $e');
+      _log('Error opening notification settings: $e');
     }
   }
 
@@ -113,7 +119,7 @@ class NativeService {
     try {
       await _methodChannel.invokeMethod('startForegroundService');
     } catch (e) {
-      print('Error starting foreground service: $e');
+      _log('Error starting foreground service: $e');
     }
   }
 
@@ -121,7 +127,7 @@ class NativeService {
     try {
       await _methodChannel.invokeMethod('stopForegroundService');
     } catch (e) {
-      print('Error stopping foreground service: $e');
+      _log('Error stopping foreground service: $e');
     }
   }
 
@@ -132,7 +138,7 @@ class NativeService {
       final result = await _methodChannel.invokeMethod<bool>('isShizukuRunning');
       return result ?? false;
     } catch (e) {
-      print('Error checking Shizuku: $e');
+      _log('Error checking Shizuku: $e');
       return false;
     }
   }
@@ -142,7 +148,7 @@ class NativeService {
       final result = await _methodChannel.invokeMethod<bool>('hasShizukuPermission');
       return result ?? false;
     } catch (e) {
-      print('Error checking Shizuku permission: $e');
+      _log('Error checking Shizuku permission: $e');
       return false;
     }
   }
@@ -151,7 +157,7 @@ class NativeService {
     try {
       await _methodChannel.invokeMethod('requestShizukuPermission');
     } catch (e) {
-      print('Error requesting Shizuku permission: $e');
+      _log('Error requesting Shizuku permission: $e');
     }
   }
 
@@ -168,7 +174,7 @@ class NativeService {
         'name': m['name'] as String? ?? m['package'] as String? ?? '',
       }).toList();
     } catch (e) {
-      print('Error getting installed apps: $e');
+      _log('Error getting installed apps: $e');
       return [];
     }
   }
@@ -177,7 +183,7 @@ class NativeService {
     try {
       await _methodChannel.invokeMethod('requestAppListPermission');
     } catch (e) {
-      print('Error requesting app list permission: $e');
+      _log('Error requesting app list permission: $e');
     }
   }
 
@@ -188,7 +194,7 @@ class NativeService {
       final r = await _methodChannel.invokeMethod<bool>('isInstalledAppsPermissionSupported');
       return r ?? false;
     } catch (e) {
-      print('Error checking installed apps permission support: $e');
+      _log('Error checking installed apps permission support: $e');
       return false;
     }
   }
@@ -198,7 +204,7 @@ class NativeService {
       final r = await _methodChannel.invokeMethod<bool>('isInstalledAppsPermissionGranted');
       return r ?? false;
     } catch (e) {
-      print('Error checking installed apps permission: $e');
+      _log('Error checking installed apps permission: $e');
       return false;
     }
   }
@@ -207,7 +213,7 @@ class NativeService {
     try {
       await _methodChannel.invokeMethod('requestInstalledAppsPermission');
     } catch (e) {
-      print('Error requesting installed apps permission: $e');
+      _log('Error requesting installed apps permission: $e');
     }
   }
 
@@ -226,7 +232,7 @@ class NativeService {
     try {
       await _methodChannel.invokeMethod('requestPostNotifications');
     } catch (e) {
-      print('Error requesting post notifications: $e');
+      _log('Error requesting post notifications: $e');
     }
   }
 
@@ -237,7 +243,7 @@ class NativeService {
       final r = await _methodChannel.invokeMethod<bool>('openAutoStartSettings');
       return r ?? false;
     } catch (e) {
-      print('Error opening auto start settings: $e');
+      _log('Error opening auto start settings: $e');
       return false;
     }
   }
@@ -246,7 +252,7 @@ class NativeService {
     try {
       await _methodChannel.invokeMethod('openBatteryOptimizationSettings');
     } catch (e) {
-      print('Error opening battery optimization: $e');
+      _log('Error opening battery optimization: $e');
     }
   }
 
@@ -254,7 +260,7 @@ class NativeService {
     try {
       await _methodChannel.invokeMethod('openBackgroundPopSettings');
     } catch (e) {
-      print('Error opening background pop settings: $e');
+      _log('Error opening background pop settings: $e');
     }
   }
 
@@ -262,7 +268,7 @@ class NativeService {
     try {
       await _methodChannel.invokeMethod('openOverlaySettings');
     } catch (e) {
-      print('Error opening overlay settings: $e');
+      _log('Error opening overlay settings: $e');
     }
   }
 
@@ -270,7 +276,7 @@ class NativeService {
     try {
       await _methodChannel.invokeMethod('openAppDetailsSettings');
     } catch (e) {
-      print('Error opening app details: $e');
+      _log('Error opening app details: $e');
     }
   }
 
@@ -283,7 +289,7 @@ class NativeService {
         'content': content,
       });
     } catch (e) {
-      print('Error displaying on back screen: $e');
+      _log('Error displaying on back screen: $e');
     }
   }
 
@@ -291,7 +297,7 @@ class NativeService {
     try {
       await _methodChannel.invokeMethod('wakeUpScreen');
     } catch (e) {
-      print('Error waking up screen: $e');
+      _log('Error waking up screen: $e');
     }
   }
 
@@ -299,7 +305,7 @@ class NativeService {
     try {
       await _methodChannel.invokeMethod('setScreenTimeout', {'millis': millis});
     } catch (e) {
-      print('Error setting screen timeout: $e');
+      _log('Error setting screen timeout: $e');
     }
   }
 
@@ -307,7 +313,7 @@ class NativeService {
     try {
       await _methodChannel.invokeMethod('setBackScreenBrightness', {'brightness': brightness});
     } catch (e) {
-      print('Error setting brightness: $e');
+      _log('Error setting brightness: $e');
     }
   }
 
@@ -315,7 +321,7 @@ class NativeService {
     try {
       await _methodChannel.invokeMethod('sleepBackScreen');
     } catch (e) {
-      print('Error sleeping back screen: $e');
+      _log('Error sleeping back screen: $e');
     }
   }
 
@@ -325,7 +331,7 @@ class NativeService {
         'notificationId': notificationId,
       });
     } catch (e) {
-      print('Error removing pin: $e');
+      _log('Error removing pin: $e');
     }
   }
 
@@ -333,7 +339,7 @@ class NativeService {
     try {
       await _methodChannel.invokeMethod('clearAllPins');
     } catch (e) {
-      print('Error clearing all pins: $e');
+      _log('Error clearing all pins: $e');
     }
   }
 
@@ -342,7 +348,7 @@ class NativeService {
     try {
       await _methodChannel.invokeMethod('rebindNotificationListener');
     } catch (e) {
-      print('Error rebinding notification listener: $e');
+      _log('Error rebinding notification listener: $e');
     }
   }
 }

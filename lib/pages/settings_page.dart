@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import '../models/monitor_settings.dart';
 import '../services/native_service.dart';
@@ -9,7 +10,7 @@ class SettingsPage extends StatefulWidget {
   State<SettingsPage> createState() => _SettingsPageState();
 }
 
-class _SettingsPageState extends State<SettingsPage> {
+class _SettingsPageState extends State<SettingsPage> with WidgetsBindingObserver {
   final NativeService _nativeService = NativeService();
   bool _isNotificationListenerEnabled = false;
   bool _isShizukuRunning = false;
@@ -19,13 +20,46 @@ class _SettingsPageState extends State<SettingsPage> {
   List<Map<String, String>> _allApps = [];
   bool _isLoadingApps = true;
 
+  StreamSubscription<bool>? _installedAppsPermissionSub;
+  StreamSubscription<void>? _screenResumedSub;
+
   @override
   void initState() {
     super.initState();
-    _loadSettings();
+    WidgetsBinding.instance.addObserver(this);
+    _nativeService.initialize();
+
+    // 监听权限授予结果 — 用户在弹窗中授权后立即刷新
+    _installedAppsPermissionSub = _nativeService.onInstalledAppsPermissionResult
+        .listen((granted) {
+      if (mounted) _loadPermissionsAndApps();
+    });
+
+    // 监听从系统设置页面返回 — 用户手动修改权限后刷新
+    _screenResumedSub = _nativeService.onPermissionScreenResumed.listen((_) {
+      if (mounted) _loadPermissionsAndApps();
+    });
+
+    _loadPermissionsAndApps();
   }
 
-  Future<void> _loadSettings() async {
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _installedAppsPermissionSub?.cancel();
+    _screenResumedSub?.cancel();
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    // 从后台恢复（例如从系统设置页返回）时刷新权限状态
+    if (state == AppLifecycleState.resumed && mounted) {
+      _loadPermissionsAndApps();
+    }
+  }
+
+  Future<void> _loadPermissionsAndApps() async {
     final enabled = await _nativeService.isNotificationListenerEnabled();
     final shizukuRunning = await _nativeService.isShizukuRunning();
     final supported = await _nativeService.isInstalledAppsPermissionSupported();
@@ -38,9 +72,7 @@ class _SettingsPageState extends State<SettingsPage> {
       _isInstalledAppsPermissionGranted = granted;
       _settings = settings;
     });
-    if (!supported || granted) {
-      _loadInstalledApps();
-    }
+    _loadInstalledApps();
   }
 
   Future<void> _loadInstalledApps() async {
@@ -202,7 +234,7 @@ class _SettingsPageState extends State<SettingsPage> {
                     } else {
                       await _nativeService.openAppDetailsSettings();
                     }
-                    _loadSettings();
+                    // 自动刷新由 onPermissionScreenResumed stream 触发
                   },
                 ),
               ListTile(
@@ -232,7 +264,7 @@ class _SettingsPageState extends State<SettingsPage> {
                 trailing: const Icon(Icons.chevron_right),
                 onTap: () async {
                   await _nativeService.requestShizukuPermission();
-                  _loadSettings();
+                  _loadPermissionsAndApps();
                 },
               ),
               ListTile(

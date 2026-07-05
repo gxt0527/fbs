@@ -29,15 +29,22 @@ object PermissionHelper {
     /**
      * 是否支持动态申请"获取应用列表"权限
      * 仅 MIUI 13+ / 澎湃OS 支持
+     * 按官方文档：通过 getPermissionInfo 检查该权限是否由 com.lbe.security.miui 提供
+     * https://dev.mi.com/xiaomihyperos/documentation/detail?pId=1619
      */
     fun isInstalledAppsPermissionSupported(context: Context): Boolean {
-        // 检查提供方是否存在
-        val provider = context.packageManager.resolveContentProvider(
-            INSTALLED_APPS_PROVIDER, 0
-        )
-        val supported = provider != null
-        Log.d(TAG, "isInstalledAppsPermissionSupported: $supported (provider=$INSTALLED_APPS_PROVIDER)")
-        return supported
+        return try {
+            val pi = context.packageManager.getPermissionInfo(
+                "com.android.permission.GET_INSTALLED_APPS", 0
+            )
+            val supported = pi.packageName == INSTALLED_APPS_PROVIDER
+            Log.d(TAG, "isInstalledAppsPermissionSupported: $supported " +
+                    "(permissionInfo.packageName=${pi.packageName}, expected=$INSTALLED_APPS_PROVIDER)")
+            supported
+        } catch (e: PackageManager.NameNotFoundException) {
+            Log.d(TAG, "isInstalledAppsPermissionSupported: false (permission not found)")
+            false
+        }
     }
 
     /**

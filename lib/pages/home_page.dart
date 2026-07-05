@@ -190,7 +190,6 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
   void _forwardToBackScreenWithDedup(NotificationItem notification) {
     final key = notification.notificationKey;
     if (key.isNotEmpty && _recentlyForwardedKeys.contains(key)) {
-      print('FBS: dedup skip re-forward notificationKey=$key (cooldown)');
       return;
     }
 
@@ -206,11 +205,6 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
 
   void _onNotificationRemoved(Map<String, dynamic> info) {
     final id = info['notificationId'] as int? ?? 0;
-    final pkg = info['packageName'] as String? ?? '';
-    final key = info['notificationKey'] as String? ?? '';
-    final reason = info['reason'] as String? ?? 'UNKNOWN';
-    print('FBS: notification removed id=$id pkg=$pkg reason=$reason key=$key');
-
     if (!_autoForwardEnabled) return;
     if (id == 0) return;
 
