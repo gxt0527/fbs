@@ -163,6 +163,18 @@ class MainActivity : FlutterActivity() {
                     PermissionHelper.openOverlaySettings(this)
                     result.success(true)
                 }
+                "sendIslandTestNotification" -> {
+                    sendIslandTestNotification()
+                    result.success(true)
+                }
+                "getIslandDiagnostics" -> {
+                    val diag = com.example.fbs.service.SuperIslandHelper.getDiagnostics(this)
+                    result.success(diag)
+                }
+                "openFocusNotificationSettings" -> {
+                    com.example.fbs.service.SuperIslandHelper.openFocusNotificationSettings(this)
+                    result.success(true)
+                }
                 "openAppDetailsSettings" -> {
                     PermissionHelper.openAppDetailsSettings(this)
                     result.success(true)
@@ -193,6 +205,35 @@ class MainActivity : FlutterActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        // 首次启动时发送超级岛测试通知
+        val prefs = getSharedPreferences("fbs_island_test", MODE_PRIVATE)
+        if (!prefs.getBoolean("launched", false)) {
+            prefs.edit().putBoolean("launched", true).apply()
+            android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
+                sendIslandTestNotification()
+            }, 2000)
+        }
+    }
+
+    /**
+     * 发送超级岛测试通知，供 Flutter 调用和自动触发使用。
+     */
+    private fun sendIslandTestNotification() {
+        try {
+            val supported = com.example.fbs.service.SuperIslandHelper.isIslandSupported(this)
+            Log.d("MainActivity", "islandSupported=$supported")
+            if (supported) {
+                com.example.fbs.service.SuperIslandHelper.sendTestIslandNotification(this)
+                Log.d("MainActivity", "Super Island test notification sent")
+            } else {
+                // 即使不支持岛，也发普通通知测试权限是否正常
+                com.example.fbs.service.SuperIslandHelper.sendTestIslandNotification(this)
+                Log.d("MainActivity", "Island not supported, sent as普通通知")
+            }
+        } catch (e: Exception) {
+            Log.e("MainActivity", "Failed to send island test notification", e)
+        }
     }
 
     override fun onRequestPermissionsResult(

@@ -27,7 +27,7 @@ class NotificationStyle {
   int displayDurationMs;
 
   /// 避开摄像头时左侧保留的不可用区域 (dp/rpx)
-  static const double cameraAvoidanceOffset = 105;
+  static const double cameraAvoidanceOffset = 85;
 
   NotificationStyle({
     this.titleFontSize = 28,

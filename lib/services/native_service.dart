@@ -400,4 +400,32 @@ class NativeService {
       _log('Error rebinding notification listener: $e');
     }
   }
+
+  /// 发送小米超级岛测试通知
+  Future<void> sendIslandTestNotification() async {
+    try {
+      await _methodChannel.invokeMethod('sendIslandTestNotification');
+    } catch (e) {
+      _log('Error sending island test notification: $e');
+    }
+  }
+
+  /// 获取超级岛诊断信息
+  Future<String> getIslandDiagnostics() async {
+    try {
+      final result = await _methodChannel.invokeMethod<String>('getIslandDiagnostics');
+      return result ?? 'unknown';
+    } catch (e) {
+      return 'error: $e';
+    }
+  }
+
+  /// 打开焦点通知权限设置
+  Future<void> openFocusNotificationSettings() async {
+    try {
+      await _methodChannel.invokeMethod('openFocusNotificationSettings');
+    } catch (e) {
+      _log('Error opening focus settings: $e');
+    }
+  }
 }

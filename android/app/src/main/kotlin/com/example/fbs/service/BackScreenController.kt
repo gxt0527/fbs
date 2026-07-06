@@ -39,6 +39,14 @@ class BackScreenController(private val context: Context) {
         // 让 BackScreenNotificationActivity 不依赖 MainActivity 实例即可调用 Shizuku 重启系统背屏。
         @Volatile
         var instance: BackScreenController? = null
+
+        /**
+         * 缓存最近一次通过 Flutter 传入的样式参数。
+         * 系统 NotificationListener 转发通知时不带 styleExtras，
+         * 用此缓存确保摄像头避让等设置不丢失。
+         */
+        @Volatile
+        var latestStyleExtras: Map<String, String> = emptyMap()
     }
 
     // ── 通知追踪 ──
@@ -123,6 +131,12 @@ class BackScreenController(private val context: Context) {
         bigText: String,
         styleExtras: Map<String, String> = emptyMap(),
     ) {
+        // 缓存 Flutter 传入的样式（含摄像头避让参数），
+        // 系统 NotificationListener 路径不传 styleExtras 时使用缓存值
+        if (styleExtras.isNotEmpty()) {
+            latestStyleExtras = styleExtras
+        }
+
         val info = NotifInfo(
             key = key, title = title, content = content,
             packageName = packageName, appName = appName,
@@ -237,6 +251,14 @@ class BackScreenController(private val context: Context) {
      * 构建 am start 命令
      */
     private fun buildLaunchCommand(info: NotifInfo, styleExtras: Map<String, String>): String {
+        // 合并缓存样式：系统 NotificationListener 路径不传 styleExtras 时使用缓存值
+        val mergedExtras = if (styleExtras.isEmpty() && latestStyleExtras.isNotEmpty()) {
+            Log.d(TAG, "Using cached styleExtras (cameraAvoid=${latestStyleExtras["cameraAvoidanceEnabled"]})")
+            latestStyleExtras
+        } else {
+            styleExtras
+        }
+
         val sb = StringBuilder("am start")
         sb.append(" -n ${context.packageName}/.service.BackScreenNotificationActivity")
         sb.append(" -f 0x10000000") // FLAG_ACTIVITY_NEW_TASK
@@ -262,22 +284,24 @@ class BackScreenController(private val context: Context) {
             appendExtra(sb, "notificationCount", activeNotifications.size.toString())
         }
 
-        // 自定义样式
-        appendExtra(sb, "titleFontSize", styleExtras["titleFontSize"] ?: "28")
-        appendExtra(sb, "subtitleFontSize", styleExtras["subtitleFontSize"] ?: "20")
-        appendExtra(sb, "contentFontSize", styleExtras["contentFontSize"] ?: "16")
-        appendExtra(sb, "titleColor", styleExtras["titleColor"] ?: "#FFFFFF")
-        appendExtra(sb, "subtitleColor", styleExtras["subtitleColor"] ?: "#B0B0B0")
-        appendExtra(sb, "contentColor", styleExtras["contentColor"] ?: "#E0E0E0")
-        appendExtra(sb, "backgroundColor", styleExtras["backgroundColor"] ?: "#1A1A2E")
-        appendExtra(sb, "padding", styleExtras["padding"] ?: "24")
-        appendExtra(sb, "spacing", styleExtras["spacing"] ?: "12")
-        appendExtra(sb, "showAppIcon", styleExtras["showAppIcon"] ?: "true")
-        appendExtra(sb, "showTimestamp", styleExtras["showTimestamp"] ?: "true")
+        // 自定义样式（使用合并后的缓存）
+        appendExtra(sb, "titleFontSize", mergedExtras["titleFontSize"] ?: "28")
+        appendExtra(sb, "subtitleFontSize", mergedExtras["subtitleFontSize"] ?: "20")
+        appendExtra(sb, "contentFontSize", mergedExtras["contentFontSize"] ?: "16")
+        appendExtra(sb, "titleColor", mergedExtras["titleColor"] ?: "#FFFFFF")
+        appendExtra(sb, "subtitleColor", mergedExtras["subtitleColor"] ?: "#B0B0B0")
+        appendExtra(sb, "contentColor", mergedExtras["contentColor"] ?: "#E0E0E0")
+        appendExtra(sb, "backgroundColor", mergedExtras["backgroundColor"] ?: "#1A1A2E")
+        appendExtra(sb, "padding", mergedExtras["padding"] ?: "24")
+        appendExtra(sb, "spacing", mergedExtras["spacing"] ?: "12")
+        appendExtra(sb, "showAppIcon", mergedExtras["showAppIcon"] ?: "true")
+        appendExtra(sb, "showTimestamp", mergedExtras["showTimestamp"] ?: "true")
+        appendExtra(sb, "cameraAvoidanceEnabled", mergedExtras["cameraAvoidanceEnabled"] ?: "false")
+        appendExtra(sb, "horizontalOffset", mergedExtras["horizontalOffset"] ?: "0")
 
         // 非焦点通知超时
         if (!info.isFocus) {
-            appendExtra(sb, "displayDurationMs", styleExtras["displayDurationMs"] ?: "8000")
+            appendExtra(sb, "displayDurationMs", mergedExtras["displayDurationMs"] ?: "8000")
         }
 
         return sb.toString()

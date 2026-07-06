@@ -232,7 +232,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
     debugPrint('FBS_FWD: clicking forward for ${notification.packageName}');
     final title = notification.displayTitle;
     final content = notification.content.isNotEmpty ? notification.content : '(无内容)';
-    final subtitle = notification.packageName;
+    final subtitle = '';
 
     // V2: MRSS 风格 — 自定义渲染 Activity 直接投屏到 display 1
     await _nativeService.displayOnBackScreenV2(
@@ -304,6 +304,49 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
                 icon: const Icon(Icons.science),
                 onPressed: () => Navigator.pushNamed(context, '/test'),
                 tooltip: '接口测试',
+              ),
+              IconButton(
+                icon: const Icon(Icons.notifications_active),
+                onPressed: () async {
+                  final diag = await _nativeService.getIslandDiagnostics();
+                  if (!mounted) return;
+
+                  final hasFocus = diag.contains('focus=true');
+                  final isIsland = diag.contains('island=true');
+
+                  if (!isIsland) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('设备不支持超级岛: $diag')),
+                    );
+                    return;
+                  }
+
+                  if (!hasFocus) {
+                    final open = await showDialog<bool>(
+                      context: context,
+                      builder: (ctx) => AlertDialog(
+                        title: const Text('焦点通知权限未开启'),
+                        content: Text('需要开启焦点通知权限才能显示超级岛。\n\n诊断: $diag'),
+                        actions: [
+                          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('取消')),
+                          TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('去开启')),
+                        ],
+                      ),
+                    );
+                    if (open == true) {
+                      await _nativeService.openFocusNotificationSettings();
+                    }
+                    return;
+                  }
+
+                  await _nativeService.sendIslandTestNotification();
+                  if (mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('超级岛测试通知已发送')),
+                    );
+                  }
+                },
+                tooltip: '超级岛测试',
               ),
               IconButton(
                 icon: const Icon(Icons.settings),

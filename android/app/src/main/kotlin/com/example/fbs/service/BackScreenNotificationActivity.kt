@@ -6,6 +6,7 @@ import android.content.res.Configuration
 import android.graphics.*
 import android.os.*
 import android.util.Log
+import android.view.KeyEvent
 import android.view.View
 import android.view.WindowManager
 import java.text.SimpleDateFormat
@@ -117,6 +118,20 @@ class BackScreenNotificationActivity : Activity() {
     override fun onBackPressed() {
         Log.d(TAG, "Back pressed, restoring subscreen")
         finishAndRestore()
+    }
+
+    /**
+     * MIUI 在背屏 (display 1) 上的输入系统会拦截 BACK 键事件，
+     * 导致 onBackPressed 不被调用（日志: "Back key is intercepted by the app"）。
+     * 在 dispatchKeyEvent 层面拦截，绕过 MIUI 的拦截链。
+     */
+    override fun dispatchKeyEvent(event: KeyEvent): Boolean {
+        if (event.keyCode == KeyEvent.KEYCODE_BACK && event.action == KeyEvent.ACTION_DOWN) {
+            Log.d(TAG, "Back key intercepted by dispatchKeyEvent, restoring subscreen")
+            finishAndRestore()
+            return true
+        }
+        return super.dispatchKeyEvent(event)
     }
 
     override fun onWindowFocusChanged(hasFocus: Boolean) {
@@ -241,7 +256,7 @@ class BackScreenNotificationActivity : Activity() {
         val cameraAvoidanceEnabled = intent.getStringExtra("cameraAvoidanceEnabled")?.toBooleanStrictOrNull() ?: false
         // 与 NotificationStyle.cameraAvoidanceOffset 保持一致
         val horizontalOffset = if (cameraAvoidanceEnabled) {
-            intent.getStringExtra("horizontalOffset")?.toFloatOrNull() ?: 105f
+            intent.getStringExtra("horizontalOffset")?.toFloatOrNull() ?: 85f
         } else {
             0f
         }
@@ -257,6 +272,32 @@ class BackScreenNotificationActivity : Activity() {
         Log.d(TAG, "Parsed: key=$notificationKey sticky=$isSticky focus=$isFocus "
             + "count=$notificationCount title=[$title] content=[${content.take(30)}] "
             + "dur=${if (isSticky) "infinite" else "${displayDurationMs}ms"}")
+        // [临时调试] 验证摄像头避让参数是否到达 Activity
+        Log.d(TAG, "Camera: enabled=$cameraAvoidanceEnabled ho=$horizontalOffset "
+            + "raw='${intent.getStringExtra("cameraAvoidanceEnabled")}' "
+            + "rawHo='${intent.getStringExtra("horizontalOffset")}'")
+
+        // 加载应用桌面图标（高分辨率，避免锯齿）
+        val displayDensity = resources.displayMetrics.density
+        val appIcon: Bitmap? = try {
+            if (packageName.isNotEmpty()) {
+                val iconSize = (titleFontSize + 8f) * displayDensity  // 渲染时的实际像素大小
+                val pxSize = iconSize.toInt()
+                // 优先用启动图标（桌面图标），降级用应用图标
+                val iconDrawable = try {
+                    val launchIntent = packageManager.getLaunchIntentForPackage(packageName)
+                    if (launchIntent != null) packageManager.getActivityIcon(launchIntent)
+                    else packageManager.getApplicationIcon(packageName)
+                } catch (_: Exception) {
+                    packageManager.getApplicationIcon(packageName)
+                }
+                val bmp = Bitmap.createBitmap(pxSize, pxSize, Bitmap.Config.ARGB_8888)
+                val canvas = android.graphics.Canvas(bmp)
+                iconDrawable.setBounds(0, 0, pxSize, pxSize)
+                iconDrawable.draw(canvas)
+                bmp
+            } else null
+        } catch (_: Exception) { null }
 
         return RenderConfig(
             title = if (title.isNotEmpty()) title else appName,
@@ -285,6 +326,7 @@ class BackScreenNotificationActivity : Activity() {
             horizontalOffset = horizontalOffset,
             padding = padding,
             spacing = spacing,
+            appIcon = appIcon,
         )
     }
 
@@ -336,6 +378,7 @@ class BackScreenNotificationActivity : Activity() {
         val horizontalOffset: Float,
         val padding: Float,
         val spacing: Float,
+        val appIcon: Bitmap? = null,
     )
 
     // ═══════════════════════════════════════════
@@ -441,36 +484,44 @@ class BackScreenNotificationActivity : Activity() {
             val topOffset = maxOf(p, (h - contentHeight) / 2f)
             var y = topOffset
 
-            // 标题行（带应用图标圆角矩形）
+            // 标题行（带应用图标）
             if (config.showAppIcon) {
                 val iconSize = config.titleFontSize * density + 8f * density
                 val iconRadius = iconSize * 0.2f
                 val iconRect = RectF(leftPad, y, leftPad + iconSize, y + iconSize)
 
-                // 图标背景
-                iconBgPaint.color = (config.titleColor and 0x00FFFFFF) or 0x33000000.toInt()
-                canvas.drawRoundRect(iconRect, iconRadius, iconRadius, iconBgPaint)
+                if (config.appIcon != null) {
+                    // 绘制真实应用图标（圆角裁剪）
+                    val icon: Bitmap = config.appIcon!!
+                    canvas.save()
+                    val path = Path().apply {
+                        addRoundRect(iconRect, iconRadius, iconRadius, Path.Direction.CW)
+                    }
+                    canvas.clipPath(path)
+                    canvas.drawBitmap(icon, null, iconRect, null)
+                    canvas.restore()
+                } else {
+                    // 降级: 字母首字符占位
+                    iconBgPaint.color = (config.titleColor and 0x00FFFFFF) or 0x33000000.toInt()
+                    canvas.drawRoundRect(iconRect, iconRadius, iconRadius, iconBgPaint)
+                    val firstChar = if (config.appName.isNotEmpty()) config.appName.first().toString() else "?"
+                    iconTextPaint.textSize = iconSize * 0.45f
+                    canvas.drawText(firstChar, iconRect.centerX(), iconRect.centerY() + iconSize * 0.18f, iconTextPaint)
+                }
 
-                // 应用名首字符
-                val firstChar = if (config.appName.isNotEmpty()) config.appName.first().toString() else "?"
-                iconTextPaint.textSize = iconSize * 0.45f
-                val cx = iconRect.centerX()
-                val cy = iconRect.centerY()
-                canvas.drawText(firstChar, cx, cy + iconSize * 0.18f, iconTextPaint)
-
-                // 标题文字紧随图标右侧
-                val titleX = leftPad + iconSize + s * 0.6f
-                val titleBaseline = y + iconSize / 2f + config.titleFontSize * density / 2.8f
-                canvas.drawText(config.title, titleX, titleBaseline, titlePaint)
+                // 软件名称（appName）紧随图标右侧
+                val appNameX = leftPad + iconSize + s * 0.6f
+                val appNameBaseline = y + iconSize / 2f + config.titleFontSize * density / 2.8f
+                canvas.drawText(config.appName, appNameX, appNameBaseline, titlePaint)
                 y += iconSize + s
             } else {
-                canvas.drawText(config.title, leftPad, y + config.titleFontSize * density, titlePaint)
+                canvas.drawText(config.appName, leftPad, y + config.titleFontSize * density, titlePaint)
                 y += config.titleFontSize * density + s
             }
 
-            // 副标题
-            if (config.subtitle.isNotEmpty()) {
-                canvas.drawText(config.subtitle, leftPad, y + config.subtitleFontSize * density, subtitlePaint)
+            // 标题（notification title）作为副标题行
+            if (config.title.isNotEmpty()) {
+                canvas.drawText(config.title, leftPad, y + config.subtitleFontSize * density, subtitlePaint)
                 y += config.subtitleFontSize * density + s
             }
 
@@ -514,15 +565,15 @@ class BackScreenNotificationActivity : Activity() {
         private fun measureContentHeight(w: Float, p: Float, s: Float, leftPad: Float): Float {
             var h = p // 顶部 padding
 
-            // 标题行
+            // 标题行（图标 + appName）
             if (config.showAppIcon) {
                 h += config.titleFontSize * density + 8f * density + s
             } else {
                 h += config.titleFontSize * density + s
             }
 
-            // 副标题
-            if (config.subtitle.isNotEmpty()) {
+            // 标题作为副标题行
+            if (config.title.isNotEmpty()) {
                 h += config.subtitleFontSize * density + s
             }
 
