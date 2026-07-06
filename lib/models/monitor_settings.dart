@@ -9,31 +9,30 @@ class MonitorSettings {
 
   MonitorSettings({
     this.monitorAll = false,
-    this.onlyFocusNotifications = true,
-    this.monitorOngoingNotifications = true,
+    this.onlyFocusNotifications = false,
+    this.monitorOngoingNotifications = false,
     Set<String>? enabledApps,
     Set<String>? discoveredApps,
   })  : enabledApps = enabledApps ?? {},
         discoveredApps = discoveredApps ?? {};
 
   /// 判断是否应该监听该通知
-  /// 优先级: monitorAll > 焦点通知 > 实时动态 > 白名单
+  /// 必须显式开启的应用才监听
   bool shouldMonitor(String packageName, bool isFocusNotification,
       {bool isOngoing = false}) {
+    // monitorAll 优先
     if (monitorAll) return true;
 
-    if (onlyFocusNotifications && !isFocusNotification) {
-      if (monitorOngoingNotifications && isOngoing) {
-        return true;
-      }
-      return false;
-    }
+    // 已开启的应用白名单
+    if (enabledApps.contains(packageName)) return true;
 
-    if (enabledApps.isNotEmpty && !enabledApps.contains(packageName)) {
-      return false;
-    }
+    // 焦点通知单独开关
+    if (onlyFocusNotifications && isFocusNotification) return true;
 
-    return true;
+    // 实时动态单独开关
+    if (monitorOngoingNotifications && isOngoing) return true;
+
+    return false;
   }
 
   Future<void> save() async {
@@ -49,9 +48,9 @@ class MonitorSettings {
     final prefs = await SharedPreferences.getInstance();
     return MonitorSettings(
       monitorAll: prefs.getBool('monitor_all') ?? false,
-      onlyFocusNotifications: prefs.getBool('only_focus_notifications') ?? true,
+      onlyFocusNotifications: prefs.getBool('only_focus_notifications') ?? false,
       monitorOngoingNotifications:
-          prefs.getBool('monitor_ongoing_notifications') ?? true,
+          prefs.getBool('monitor_ongoing_notifications') ?? false,
       enabledApps: prefs.getStringList('enabled_apps')?.toSet() ?? {},
       discoveredApps: prefs.getStringList('discovered_apps')?.toSet() ?? {},
     );

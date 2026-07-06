@@ -163,16 +163,22 @@ class NativeService {
 
   // ========== 应用列表 ==========
 
-  Future<List<Map<String, String>>> getInstalledApps({bool useShizuku = true}) async {
+  Future<List<Map<String, String>>> getInstalledApps({bool useShizuku = false}) async {
     try {
-      final result = await _methodChannel.invokeMethod<List<dynamic>>('getInstalledApps', {
+      final result = await _methodChannel.invokeMethod('getInstalledApps', {
         'useShizuku': useShizuku,
       });
       if (result == null) return [];
-      return result.cast<Map<String, dynamic>>().map((m) => {
-        'package': m['package'] as String? ?? '',
-        'name': m['name'] as String? ?? m['package'] as String? ?? '',
-      }).toList();
+      if (result is List) {
+        return result.whereType<Map>().map((m) {
+          return {
+            'package': (m['package'] ?? '').toString(),
+            'name': (m['name'] ?? m['package'] ?? '').toString(),
+          };
+        }).toList();
+      }
+      _log('getInstalledApps: unexpected type ${result.runtimeType}');
+      return [];
     } catch (e) {
       _log('Error getting installed apps: $e');
       return [];
@@ -293,6 +299,31 @@ class NativeService {
     }
   }
 
+  /// V2: MRSS 风格 — 自定义渲染 Activity 投屏到 display 1
+  Future<void> displayOnBackScreenV2({
+    required String title,
+    required String subtitle,
+    required String content,
+    required String appName,
+    required String packageName,
+    required Map<String, String> styleExtras,
+  }) async {
+    _log('FBS_V2: invoking displayOnBackScreenV2 for $packageName');
+    try {
+      await _methodChannel.invokeMethod('displayOnBackScreenV2', {
+        'title': title,
+        'subtitle': subtitle,
+        'content': content,
+        'appName': appName,
+        'packageName': packageName,
+        'styleExtras': styleExtras,
+      });
+      _log('FBS_V2: method channel returned OK');
+    } catch (e) {
+      _log('FBS_V2: ERROR $e');
+    }
+  }
+
   Future<void> wakeUpScreen() async {
     try {
       await _methodChannel.invokeMethod('wakeUpScreen');
@@ -322,6 +353,24 @@ class NativeService {
       await _methodChannel.invokeMethod('sleepBackScreen');
     } catch (e) {
       _log('Error sleeping back screen: $e');
+    }
+  }
+
+  // ========== 接口测试 ==========
+
+  /// 运行所有背屏接口测试，返回测试结果列表
+  Future<List<Map<String, dynamic>>> runAllTests() async {
+    try {
+      final result = await _methodChannel.invokeMethod('runAllTests');
+      if (result is List) {
+        return result.cast<Map<Object?, Object?>>().map((m) {
+          return m.map((k, v) => MapEntry(k.toString(), v));
+        }).toList();
+      }
+      return [];
+    } catch (e) {
+      _log('Error running tests: $e');
+      return [];
     }
   }
 

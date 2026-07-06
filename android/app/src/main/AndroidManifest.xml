@@ -8,6 +8,7 @@
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.QUERY_ALL_PACKAGES" />
     <uses-permission android:name="moe.shizuku.manager.permission.API_V23" />
+    <uses-permission android:name="android.permission.INTERACT_ACROSS_USERS_FULL" />
     <!-- 澎湃OS / MIUI 13+ 应用列表运行时权限 -->
     <uses-permission android:name="com.android.permission.GET_INSTALLED_APPS" />
 
@@ -43,6 +44,16 @@
                 <action android:name="android.service.notification.NotificationListenerService" />
             </intent-filter>
         </service>
+
+        <!-- 背屏通知渲染 Activity，由 Shizuku 通过 am start 在 display 1 启动 -->
+        <activity
+            android:name=".service.BackScreenNotificationActivity"
+            android:exported="true"
+            android:theme="@style/BackScreenTheme"
+            android:configChanges="orientation|screenSize|screenLayout|density|smallestScreenSize"
+            android:resizeableActivity="true"
+            android:excludeFromRecents="true"
+            android:turnScreenOn="true" />
 
         <service
             android:name=".service.FBSForegroundService"

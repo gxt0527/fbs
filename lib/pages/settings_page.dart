@@ -91,6 +91,22 @@ class _SettingsPageState extends State<SettingsPage> with WidgetsBindingObserver
     setState(() {});
   }
 
+  void _toggleAllApps() {
+    if (_allApps.isEmpty) return;
+    final allEnabled = _allApps.every(
+        (a) => _settings.enabledApps.contains(a['package']));
+    setState(() {
+      if (allEnabled) {
+        _settings.enabledApps.clear();
+      } else {
+        for (final a in _allApps) {
+          _settings.enabledApps.add(a['package']!);
+        }
+      }
+    });
+    _saveAndRefresh();
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -155,11 +171,34 @@ class _SettingsPageState extends State<SettingsPage> with WidgetsBindingObserver
                           width: 14, height: 14,
                           child: CircularProgressIndicator(strokeWidth: 2),
                         )
-                      else
+                      else ...[
                         Text(
                           '${_allApps.length} 个应用',
                           style: const TextStyle(fontSize: 12, color: Colors.grey),
                         ),
+                        if (_allApps.isNotEmpty) ...[
+                          const SizedBox(width: 8),
+                          TextButton.icon(
+                            onPressed: _toggleAllApps,
+                            icon: Icon(
+                              _allApps.every((a) => _settings.enabledApps.contains(a['package']))
+                                  ? Icons.deselect
+                                  : Icons.select_all,
+                              size: 16,
+                            ),
+                            label: Text(
+                              _allApps.every((a) => _settings.enabledApps.contains(a['package']))
+                                  ? '全不选'
+                                  : '全选',
+                              style: const TextStyle(fontSize: 12),
+                            ),
+                            style: TextButton.styleFrom(
+                              visualDensity: VisualDensity.compact,
+                              padding: const EdgeInsets.symmetric(horizontal: 8),
+                            ),
+                          ),
+                        ],
+                      ],
                     ],
                   ),
                 ),

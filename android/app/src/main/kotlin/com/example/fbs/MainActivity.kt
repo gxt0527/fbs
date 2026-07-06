@@ -29,10 +29,12 @@ class MainActivity : FlutterActivity() {
 
         backScreenController = BackScreenController(this)
         backScreenController.initialize()
+        FBSNotificationListenerService.backScreenController = backScreenController
 
         flutterMethodChannel = MethodChannel(flutterEngine.dartExecutor.binaryMessenger, METHOD_CHANNEL)
 
         flutterMethodChannel?.setMethodCallHandler { call, result ->
+            Log.d("MainActivity", ">>> methodCallHandler: ${call.method}")
             when (call.method) {
                 "isNotificationListenerEnabled" -> {
                     result.success(isNotificationListenerEnabled())
@@ -71,14 +73,8 @@ class MainActivity : FlutterActivity() {
                     result.success(true)
                 }
                 "getInstalledApps" -> {
-                    val useShizuku = call.argument<Boolean>("useShizuku") ?: false
-                    if (useShizuku && backScreenController.isShizukuRunning() && backScreenController.hasPermission()) {
-                        backScreenController.getInstalledAppsViaShizuku { apps ->
-                            runOnUiThread { result.success(apps) }
-                        }
-                    } else {
-                        result.success(getInstalledApps())
-                    }
+                    // Shizuku 仅用于背屏操作，应用列表走官方 GET_INSTALLED_APPS 通道
+                    result.success(getInstalledApps())
                 }
                 "requestAppListPermission" -> {
                     PermissionHelper.openAppDetailsSettings(this)
@@ -88,6 +84,27 @@ class MainActivity : FlutterActivity() {
                     val title = call.argument<String>("title") ?: ""
                     val content = call.argument<String>("content") ?: ""
                     backScreenController.displayOnBackScreen(title, content)
+                    result.success(true)
+                }
+                // V2: MRSS 风格 — 自定义渲染 Activity 投屏到 display 1
+                "displayOnBackScreenV2" -> {
+                    val title = call.argument<String>("title") ?: ""
+                    val subtitle = call.argument<String>("subtitle") ?: ""
+                    val content = call.argument<String>("content") ?: ""
+                    val appName = call.argument<String>("appName") ?: ""
+                    val packageName = call.argument<String>("packageName") ?: ""
+                    @Suppress("UNCHECKED_CAST")
+                    val styleExtras = (call.argument<Map<String, Any>>("styleExtras")
+                        ?: emptyMap<String, Any>())
+                        .mapValues { it.value.toString() }
+                    backScreenController.displayNotificationOnBackScreenV2(
+                        title = title,
+                        subtitle = subtitle,
+                        content = content,
+                        appName = appName,
+                        packageName = packageName,
+                        styleExtras = styleExtras,
+                    )
                     result.success(true)
                 }
                 "removePinByNotificationId" -> {
@@ -116,6 +133,13 @@ class MainActivity : FlutterActivity() {
                 "sleepBackScreen" -> {
                     backScreenController.sleepBackScreen()
                     result.success(true)
+                }
+                // === 接口测试 ===
+                "runAllTests" -> {
+                    Thread {
+                        val results = backScreenController.runAllTests()
+                        runOnUiThread { result.success(results) }
+                    }.apply { isDaemon = true }.start()
                 }
                 // === 澎湃OS 权限引导相关方法 ===
                 "isInstalledAppsPermissionSupported" -> {
@@ -223,31 +247,77 @@ class MainActivity : FlutterActivity() {
     private fun getInstalledApps(): List<Map<String, String>> {
         val apps = mutableListOf<Map<String, String>>()
         try {
+            // HyperOS 上 getInstalledApplications(MATCH_ALL) 可能与 GET_INSTALLED_APPS
+            // 运行时权限存在兼容性问题，先用没有标志位的调用。QUERY_ALL_PACKAGES 已声明，
+            // flag=0 即可返回所有已安装的非系统独占应用。
             val installedApps = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
                 packageManager.getInstalledApplications(
-                    PackageManager.ApplicationInfoFlags.of(PackageManager.MATCH_ALL.toLong()))
+                    PackageManager.ApplicationInfoFlags.of(0L))
             } else {
                 @Suppress("DEPRECATION")
-                packageManager.getInstalledApplications(PackageManager.GET_ACTIVITIES or PackageManager.MATCH_ALL)
+                packageManager.getInstalledApplications(0)
             }
 
+            Log.d("MainActivity", "getInstalledApps: raw count = ${installedApps.size}")
+
+            var skippedSelf = 0
+            var skippedSystem = 0
             for (ai in installedApps) {
-                if (ai.packageName == packageName) continue
+                if (ai.packageName == packageName) {
+                    skippedSelf++
+                    continue
+                }
+                val isSystem = try {
+                    (ai.flags and android.content.pm.ApplicationInfo.FLAG_SYSTEM) != 0
+                } catch (e: Exception) { false }
+                if (isSystem) {
+                    skippedSystem++
+                    Log.d("MainActivity", "getInstalledApps: skip system ${ai.packageName}")
+                    continue
+                }
+                try {
+                    val name = packageManager.getApplicationLabel(ai).toString()
+                    val entry = mapOf("package" to ai.packageName, "name" to name)
+                    apps.add(entry)
+                    Log.d("MainActivity", "getInstalledApps: + ${ai.packageName} / $name")
+                } catch (_: Exception) {
+                    Log.d("MainActivity", "getInstalledApps: failed label for ${ai.packageName}")
+                }
+            }
+            apps.sortBy { it["name"] }
+            Log.d("MainActivity",
+                "getInstalledApps: total=${installedApps.size} self=$skippedSelf " +
+                "system=$skippedSystem user=${apps.size}")
+        } catch (e: Exception) {
+            Log.e("MainActivity", "Error getting installed apps", e)
+            // 兜底：尝试用 getInstalledPackages
+            tryFallbackInstalledPackages(apps)
+        }
+        return apps
+    }
+
+    @Suppress("DEPRECATION")
+    private fun tryFallbackInstalledPackages(apps: MutableList<Map<String, String>>) {
+        try {
+            val pkgs = packageManager.getInstalledPackages(0)
+            Log.d("MainActivity", "fallback getInstalledPackages: ${pkgs.size} pkgs")
+            for (pi in pkgs) {
+                if (pi.packageName == packageName) continue
+                val ai = pi.applicationInfo ?: continue
                 val isSystem = try {
                     (ai.flags and android.content.pm.ApplicationInfo.FLAG_SYSTEM) != 0
                 } catch (e: Exception) { false }
                 if (isSystem) continue
                 try {
-                    val name = packageManager.getApplicationLabel(ai).toString()
-                    apps.add(mapOf("package" to ai.packageName, "name" to name))
-                } catch (_: Exception) { }
+                    val name = ai.loadLabel(packageManager).toString()
+                    apps.add(mapOf("package" to pi.packageName, "name" to name))
+                } catch (_: Exception) {}
             }
             apps.sortBy { it["name"] }
-            Log.d("MainActivity", "getInstalledApps: ${apps.size} apps")
+            Log.d("MainActivity", "fallback getInstalledPackages: ${apps.size} user apps")
         } catch (e: Exception) {
-            Log.e("MainActivity", "Error getting installed apps", e)
+            Log.e("MainActivity", "fallback also failed", e)
         }
-        return apps
     }
 
     override fun onDestroy() {

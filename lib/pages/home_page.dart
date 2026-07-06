@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import '../models/monitor_settings.dart';
 import '../models/notification_item.dart';
+import '../models/notification_style.dart';
 import '../services/native_service.dart';
 import '../widgets/notification_card.dart';
 import '../widgets/status_indicator.dart';
+import 'notification_style_page.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -26,6 +28,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
   bool _isInstalledAppsPermissionGranted = false;
   bool _isPostNotificationsGranted = false;
   MonitorSettings _settings = MonitorSettings();
+  NotificationStyle _notificationStyle = NotificationStyle();
 
   /// 去重：记录最近已转发过的 notificationKey，冷却期内不再重复转发
   final Set<String> _recentlyForwardedKeys = {};
@@ -58,6 +61,15 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
     if (mounted) {
       setState(() {
         _settings = settings;
+      });
+    }
+  }
+
+  Future<void> _loadStyle() async {
+    final style = await NotificationStyle.load();
+    if (mounted) {
+      setState(() {
+        _notificationStyle = style;
       });
     }
   }
@@ -106,6 +118,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
     });
 
     await _loadSettings();
+    await _loadStyle();
     await _checkPermissions();
     await _checkShizukuStatus();
     await _checkAppListPermission();
@@ -166,6 +179,9 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
   }
 
   void _onNotificationReceived(NotificationItem notification) {
+    // 调试日志：确认通知是否到达 Flutter
+    debugPrint('FBS_RECV: pkg=${notification.packageName} title=${notification.title} monitorAll=${_settings.monitorAll}');
+
     if (!_settings.shouldMonitor(notification.packageName, notification.isFocusNotification,
         isOngoing: notification.isOngoing)) {
       return;
@@ -204,21 +220,42 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
   }
 
   void _onNotificationRemoved(Map<String, dynamic> info) {
-    final id = info['notificationId'] as int? ?? 0;
-    if (!_autoForwardEnabled) return;
-    if (id == 0) return;
+    final key = info['notificationKey'] as String? ?? '';
+    if (key.isEmpty) return;
 
-    _nativeService.removePinByNotificationId(id);
+    setState(() {
+      _notifications.removeWhere((n) => n.notificationKey == key);
+    });
   }
 
   void _forwardToBackScreen(NotificationItem notification) async {
+    debugPrint('FBS_FWD: clicking forward for ${notification.packageName}');
     final title = notification.displayTitle;
     final content = notification.content.isNotEmpty ? notification.content : '(无内容)';
-    await _nativeService.displayOnBackScreen(title, content);
+    final subtitle = notification.packageName;
 
-    if (_hasShizukuPermission) {
-      await _nativeService.wakeUpScreen();
-      await _nativeService.setScreenTimeout(90000);
+    // V2: MRSS 风格 — 自定义渲染 Activity 直接投屏到 display 1
+    await _nativeService.displayOnBackScreenV2(
+      title: title,
+      subtitle: subtitle,
+      content: content,
+      appName: notification.appName,
+      packageName: notification.packageName,
+      styleExtras: _notificationStyle.toIntentExtras(),
+    );
+  }
+
+  void _openStylePage() async {
+    final updated = await Navigator.push<NotificationStyle>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => NotificationStylePage(initialStyle: _notificationStyle),
+      ),
+    );
+    if (updated != null && mounted) {
+      setState(() {
+        _notificationStyle = updated;
+      });
     }
   }
 
@@ -253,10 +290,20 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
             title: const Text('FBS 背屏通知'),
             actions: [
               IconButton(
+                icon: const Icon(Icons.palette),
+                onPressed: () => _openStylePage(),
+                tooltip: '通知样式',
+              ),
+              IconButton(
                 icon: const Icon(Icons.security),
                 onPressed: () =>
                     Navigator.pushNamed(context, '/permission_guide'),
                 tooltip: '权限引导',
+              ),
+              IconButton(
+                icon: const Icon(Icons.science),
+                onPressed: () => Navigator.pushNamed(context, '/test'),
+                tooltip: '接口测试',
               ),
               IconButton(
                 icon: const Icon(Icons.settings),

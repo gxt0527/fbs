@@ -4,14 +4,27 @@ import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
-import android.os.Build
-import android.os.IBinder
-import android.os.PowerManager
 import android.util.Log
 import rikka.shizuku.Shizuku
 import java.io.BufferedReader
 import java.io.InputStreamReader
+import java.util.concurrent.ConcurrentHashMap
 
+/**
+ * 背屏控制器 — 统一管理通知到背屏的转发。
+ *
+ * 可用接口（经测试）:
+ * 1. am start NotificationActivity + service call activity_task 50 → 自定义 UI 到 display 1
+ * 2. PinReceiveActivity (ACTION_SEND) → 文本投屏
+ * 3. input keyevent WAKEUP → 唤醒屏幕
+ * 4. settings → 屏幕超时控制
+ * 5. force-stop subscreencenter → 防止官方背屏抢占
+ *
+ * 不可用接口:
+ * - SUB_SCREEN_ON/OFF 广播（受保护广播）
+ * - SubScreenAppProvider（需要系统权限）
+ * - statusbar.notification（需要 STATUS_BAR_SERVICE 权限）
+ */
 class BackScreenController(private val context: Context) {
 
     companion object {
@@ -19,19 +32,35 @@ class BackScreenController(private val context: Context) {
         private const val SUBSCREEN_PACKAGE = "com.xiaomi.subscreencenter"
         private const val REQUEST_CODE_SHIZUKU = 1001
 
-        // 全局去重：同一时间窗口内不重复触发背屏显示
         private var lastForwardTime = 0L
-        private val GLOBAL_COOLDOWN_MS = 3000L
-
-        // 官方背屏应用真实的广播/Intent action
-        private const val ACTION_SUB_SCREEN_ON = "miui.intent.action.SUB_SCREEN_ON"
-        private const val ACTION_SUB_SCREEN_OFF = "miui.intent.action.SUB_SCREEN_OFF"
-        private const val NOTIF_WIDGET_PATH =
-            "/data/system/theme_magic/users/0/subscreencenter/notification/notification_widget.json"
+        private val GLOBAL_COOLDOWN_MS = 800L
     }
 
+    // ── 通知追踪 ──
+    // 所有待显示的通知: key → NotifInfo
+    private val activeNotifications = ConcurrentHashMap<String, NotifInfo>()
+    // 焦点通知的 key 集合（不受超时限制）
+    private val focusNotificationKeys = mutableSetOf<String>()
+    // 当前显示的 notificationKey
+    private var currentDisplayKey: String? = null
+
+    data class NotifInfo(
+        val key: String,
+        val title: String,
+        val content: String,
+        val packageName: String,
+        val appName: String,
+        val isFocus: Boolean,
+        val isOngoing: Boolean,
+        val category: String,
+        val subText: String,
+        val bigText: String,
+        val timestamp: Long,
+    )
+
+    // ── Shizuku ──
+
     private var permissionCallback: ((Boolean) -> Unit)? = null
-    private var wakeLock: PowerManager.WakeLock? = null
 
     private val binderReceivedListener = Shizuku.OnBinderReceivedListener {
         Log.d(TAG, "Shizuku binder received!")
@@ -42,266 +71,317 @@ class BackScreenController(private val context: Context) {
     }
 
     private val permissionResultListener =
-        Shizuku.OnRequestPermissionResultListener { requestCode, grantResult ->
+        Shizuku.OnRequestPermissionResultListener { _, grantResult ->
             val granted = grantResult == PackageManager.PERMISSION_GRANTED
-            Log.d(TAG, "Shizuku permission result: requestCode=$requestCode, granted=$granted")
             permissionCallback?.invoke(granted)
             permissionCallback = null
         }
 
     fun initialize() {
-        Log.d(TAG, "BackScreenController initialized with Shizuku SDK")
         Shizuku.addBinderReceivedListenerSticky(binderReceivedListener)
         Shizuku.addBinderDeadListener(binderDeadListener)
         Shizuku.addRequestPermissionResultListener(permissionResultListener)
     }
 
-    fun isShizukuRunning(): Boolean {
-        return try {
-            Shizuku.pingBinder()
-        } catch (e: Exception) {
-            Log.e(TAG, "Error checking Shizuku", e)
-            false
-        }
-    }
-
-    fun hasPermission(): Boolean {
-        return try {
-            if (!Shizuku.pingBinder()) return false
-            Shizuku.checkSelfPermission() == PackageManager.PERMISSION_GRANTED
-        } catch (e: Exception) {
-            Log.e(TAG, "Error checking permission", e)
-            false
-        }
-    }
+    fun isShizukuRunning() = try { Shizuku.pingBinder() } catch (_: Exception) { false }
+    fun hasPermission() = try {
+        isShizukuRunning() && Shizuku.checkSelfPermission() == PackageManager.PERMISSION_GRANTED
+    } catch (_: Exception) { false }
 
     fun requestPermission(callback: (Boolean) -> Unit) {
         permissionCallback = callback
         try {
-            if (!Shizuku.pingBinder()) {
-                Log.e(TAG, "Shizuku binder not available")
-                callback(false)
-                permissionCallback = null
-                return
-            }
-            if (Shizuku.isPreV11()) {
-                Log.e(TAG, "Shizuku version too old")
-                callback(false)
-                permissionCallback = null
-                return
-            }
-            if (Shizuku.checkSelfPermission() == PackageManager.PERMISSION_GRANTED) {
-                Log.d(TAG, "Permission already granted")
-                callback(true)
-                permissionCallback = null
-                return
-            }
+            if (!Shizuku.pingBinder() || Shizuku.isPreV11()) { callback(false); permissionCallback = null; return }
+            if (Shizuku.checkSelfPermission() == PackageManager.PERMISSION_GRANTED) { callback(true); permissionCallback = null; return }
             Shizuku.requestPermission(REQUEST_CODE_SHIZUKU)
-        } catch (e: Exception) {
-            Log.e(TAG, "Error requesting permission", e)
-            callback(false)
-            permissionCallback = null
-        }
+        } catch (e: Exception) { callback(false); permissionCallback = null }
     }
 
-    fun displayOnBackScreen(title: String, content: String) {
-        // 全局冷却：3 秒内不重复触发背屏显示
+    // ═══════════════════════════════════════════
+    //  核心: 通知新增 / 更新
+    // ═══════════════════════════════════════════
+
+    /**
+     * 通知到达 — 记录并推送到背屏
+     * @param styleExtras 自定义样式参数 (颜色/字体/大小等)
+     */
+    fun onNotificationAdded(
+        key: String,
+        title: String,
+        content: String,
+        packageName: String,
+        appName: String,
+        isFocus: Boolean,
+        isOngoing: Boolean,
+        category: String,
+        subText: String,
+        bigText: String,
+        styleExtras: Map<String, String> = emptyMap(),
+    ) {
+        val info = NotifInfo(
+            key = key, title = title, content = content,
+            packageName = packageName, appName = appName,
+            isFocus = isFocus, isOngoing = isOngoing,
+            category = category, subText = subText, bigText = bigText,
+            timestamp = System.currentTimeMillis(),
+        )
+
+        val isUpdate = activeNotifications.containsKey(key)
+        activeNotifications[key] = info
+
+        if (isFocus) {
+            focusNotificationKeys.add(key)
+        }
+
+        Log.d(TAG, "onNotification${if (isUpdate) "Updated" else "Added"}: key=$key focus=$isFocus count=${activeNotifications.size}")
+
+        if (isFocus || activeNotifications.size == 1) {
+            // 焦点通知: 始终显示最新
+            // 首条通知: 立即显示
+            pushToBackScreen(info, styleExtras, isUpdate)
+        }
+        // 多条普通通知: 只推最新 + 折叠计数，不逐条推送
+        // pushToBackScreen 方法内部会处理折叠逻辑
+    }
+
+    /**
+     * 通知被清除 — 同步移除背屏
+     */
+    fun onNotificationRemoved(key: String) {
+        val wasFocus = focusNotificationKeys.remove(key)
+        val info = activeNotifications.remove(key)
+
+        Log.d(TAG, "onNotificationRemoved: key=$key wasFocus=$wasFocus remaining=${activeNotifications.size}")
+
+        if (activeNotifications.isEmpty()) {
+            // 全部清除 → 杀背屏 Activity
+            dismissBackScreen()
+        } else if (wasFocus && currentDisplayKey == key) {
+            // 当前显示的焦点通知被清除 → 显示下一条
+            val latest = getLatestNotification()
+            if (latest != null) {
+                pushToBackScreen(latest, emptyMap(), false)
+            }
+        } else if (activeNotifications.size == 1) {
+            // 只剩一条 → 显示那条（可能是焦点）
+            val last = activeNotifications.values.first()
+            pushToBackScreen(last, emptyMap(), false)
+        }
+        // 多条普通通知: 折叠计数会自动调整 (notificationCount)
+    }
+
+    // ═══════════════════════════════════════════
+    //  推送到背屏
+    // ═══════════════════════════════════════════
+
+    private fun pushToBackScreen(
+        info: NotifInfo,
+        styleExtras: Map<String, String>,
+        isUpdate: Boolean,
+    ) {
         val now = System.currentTimeMillis()
         if (now - lastForwardTime < GLOBAL_COOLDOWN_MS) {
-            Log.d(TAG, "Global cooldown active, skip (${now - lastForwardTime}ms since last)")
+            Log.d(TAG, "Cooldown, delay push for ${info.key}")
+            // 延迟再推
+            Thread {
+                Thread.sleep(GLOBAL_COOLDOWN_MS)
+                doPush(info, styleExtras, isUpdate)
+            }.apply { isDaemon = true }.start()
             return
         }
         lastForwardTime = now
-
-        // 方法1: PinReceiveActivity (ACTION_SEND) — 不需要 Shizuku
-        if (tryPinReceive(title, content)) return
-
-        // 方法2: Shizuku shell 写 notification_widget.json + 唤醒背屏
-        if (tryShizukuNotificationWidget(title, content)) return
-
-        Log.e(TAG, "All methods failed to display on back screen")
+        doPush(info, styleExtras, isUpdate)
     }
 
-    private fun tryPinReceive(title: String, content: String): Boolean {
-        return try {
-            val displayText = if (title.isNotEmpty() && content.isNotEmpty()) {
-                "$title\n$content"
-            } else if (title.isNotEmpty()) title
-            else content
-
-            if (displayText.isEmpty()) {
-                Log.d(TAG, "PinReceive: empty text, skipped")
-                return false
-            }
-
-            val intent = Intent().apply {
-                component = ComponentName(
-                    SUBSCREEN_PACKAGE,
-                    "$SUBSCREEN_PACKAGE.pin.PinReceiveActivity"
-                )
-                action = Intent.ACTION_SEND
-                type = "text/plain"
-                putExtra(Intent.EXTRA_TEXT, displayText)
-                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-            }
-            context.startActivity(intent)
-            Log.d(TAG, "PinReceive sent: $displayText")
-            true
-        } catch (e: Exception) {
-            Log.d(TAG, "PinReceive failed: ${e.message}")
-            false
-        }
-    }
-
-    private fun tryShizukuNotificationWidget(title: String, content: String): Boolean {
+    private fun doPush(info: NotifInfo, styleExtras: Map<String, String>, isUpdate: Boolean) {
         if (!isShizukuRunning() || !hasPermission()) {
-            Log.d(TAG, "Shizuku not available, skip widget method")
-            return false
-        }
-
-        return try {
-            val json = buildNotificationWidgetJson(title, content)
-            val escapedJson = json.replace("'", "'\\''")
-            val writeCmd = "mkdir -p /data/system/theme_magic/users/0/subscreencenter/notification && echo '$escapedJson' > $NOTIF_WIDGET_PATH && chmod 644 $NOTIF_WIDGET_PATH"
-            val writeResult = execShizukuShell(writeCmd)
-            Log.d(TAG, "Widget write result: $writeResult")
-
-            val broadcastCmd = "am broadcast -a $ACTION_SUB_SCREEN_ON -n $SUBSCREEN_PACKAGE/.SubScreenLauncher --user 0"
-            val broadcastResult = execShizukuShell(broadcastCmd)
-            Log.d(TAG, "Broadcast result: $broadcastResult")
-
-            wakeUpScreen()
-            true
-        } catch (e: Exception) {
-            Log.e(TAG, "Shizuku widget method failed", e)
-            false
-        }
-    }
-
-    private fun buildNotificationWidgetJson(title: String, content: String): String {
-        val timestamp = System.currentTimeMillis()
-        val notifId = (timestamp % 100000).toInt()
-
-        return """
-[
-  {
-    "notificationId": $notifId,
-    "packageName": "com.example.fbs",
-    "appName": "FBS",
-    "title": "${escapeJson(title)}",
-    "content": "${escapeJson(content)}",
-    "timestamp": $timestamp,
-    "postTime": $timestamp,
-    "isClearable": true,
-    "userId": 0
-  }
-]
-        """.trimIndent()
-    }
-
-    private fun escapeJson(s: String): String {
-        return s.replace("\\", "\\\\")
-            .replace("\"", "\\\"")
-            .replace("\n", "\\n")
-            .replace("\r", "\\r")
-            .replace("\t", "\\t")
-    }
-
-    fun wakeUpScreen() {
-        if (!isShizukuRunning() || !hasPermission()) {
-            Log.d(TAG, "Shizuku not available for screen wake")
+            Log.e(TAG, "Shizuku unavailable, skip push")
             return
         }
 
+        currentDisplayKey = info.key
+
         try {
-            val cmd1 = "input keyevent 26 && input keyevent 26"
-            execShizukuShell(cmd1)
-            val cmd2 = "dumpsys deviceidle step; dumpsys deviceidle disable"
-            execShizukuShell(cmd2)
-            Log.d(TAG, "Screen wake commands executed")
+            // 1. 唤醒
+            execShizukuShell("input keyevent KEYCODE_WAKEUP")
+
+            // 2. 构建启动命令（先 display 0，再 move 到 display 1）
+            val launchCmd = buildLaunchCommand(info, styleExtras)
+            val launchResult = execShizukuShell(launchCmd)
+            Log.d(TAG, "Launch: $launchResult")
+            Thread.sleep(300)
+
+            // 3. 移屏 + 杀官方背屏
+            val taskId = getOurTaskId()
+            if (taskId > 0) {
+                execShizukuShell("service call activity_task 50 i32 $taskId i32 1; am force-stop $SUBSCREEN_PACKAGE")
+                Log.d(TAG, "Moved task $taskId → display 1, killed subscreencenter")
+            } else {
+                Log.w(TAG, "No taskId found for BackScreenNotificationActivity")
+            }
+
+            // 4. 确保亮屏不灭
+            execShizukuShell("settings put system screen_off_timeout 90000")
+
         } catch (e: Exception) {
-            Log.e(TAG, "Screen wake failed", e)
+            Log.e(TAG, "Push failed", e)
         }
+    }
+
+    /**
+     * 构建 am start 命令
+     */
+    private fun buildLaunchCommand(info: NotifInfo, styleExtras: Map<String, String>): String {
+        val sb = StringBuilder("am start")
+        sb.append(" -n ${context.packageName}/.service.BackScreenNotificationActivity")
+        sb.append(" -f 0x10000000") // FLAG_ACTIVITY_NEW_TASK
+        if (activeNotifications.containsKey(info.key)) {
+            sb.append(" -f 0x20000000") // FLAG_ACTIVITY_SINGLE_TOP → 触发 onNewIntent
+        }
+        sb.append(" --user 0")
+
+        // 通知字段
+        appendExtra(sb, "title", info.title)
+        appendExtra(sb, "subtitle", info.subText)
+        appendExtra(sb, "content", info.content)
+        appendExtra(sb, "appName", info.appName)
+        appendExtra(sb, "packageName", info.packageName)
+        appendExtra(sb, "category", info.category)
+        appendExtra(sb, "notificationKey", info.key)
+        appendExtra(sb, "isFocus", info.isFocus.toString())
+        appendExtra(sb, "isSticky", info.isFocus.toString()) // 焦点通知 = 粘性
+        appendExtra(sb, "notificationCount", activeNotifications.size.toString())
+
+        // 计数大于 1 时，内容展示折叠信息
+        if (activeNotifications.size > 1 && !info.isFocus) {
+            appendExtra(sb, "notificationCount", activeNotifications.size.toString())
+        }
+
+        // 自定义样式
+        appendExtra(sb, "titleFontSize", styleExtras["titleFontSize"] ?: "28")
+        appendExtra(sb, "subtitleFontSize", styleExtras["subtitleFontSize"] ?: "20")
+        appendExtra(sb, "contentFontSize", styleExtras["contentFontSize"] ?: "16")
+        appendExtra(sb, "titleColor", styleExtras["titleColor"] ?: "#FFFFFF")
+        appendExtra(sb, "subtitleColor", styleExtras["subtitleColor"] ?: "#B0B0B0")
+        appendExtra(sb, "contentColor", styleExtras["contentColor"] ?: "#E0E0E0")
+        appendExtra(sb, "backgroundColor", styleExtras["backgroundColor"] ?: "#1A1A2E")
+        appendExtra(sb, "padding", styleExtras["padding"] ?: "24")
+        appendExtra(sb, "spacing", styleExtras["spacing"] ?: "12")
+        appendExtra(sb, "showAppIcon", styleExtras["showAppIcon"] ?: "true")
+        appendExtra(sb, "showTimestamp", styleExtras["showTimestamp"] ?: "true")
+
+        // 非焦点通知超时
+        if (!info.isFocus) {
+            appendExtra(sb, "displayDurationMs", styleExtras["displayDurationMs"] ?: "8000")
+        }
+
+        return sb.toString()
+    }
+
+    private fun appendExtra(sb: StringBuilder, key: String, value: String) {
+        val escaped = value.replace("\\", "\\\\")
+            .replace("\"", "\\\"")
+            .replace("\$", "\\\$")
+            .replace("'", "\\'")
+        sb.append(" --es $key \"$escaped\"")
+    }
+
+    // ═══════════════════════════════════════════
+    //  背屏管理
+    // ═══════════════════════════════════════════
+
+    fun dismissBackScreen() {
+        if (!isShizukuRunning() || !hasPermission()) return
+        currentDisplayKey = null
+        try {
+            execShizukuShell(
+                "am broadcast -a android.intent.action.CLOSE_SYSTEM_DIALOGS --user 0; " +
+                "am force-stop ${context.packageName}"
+            )
+            // 重启 FBS 本身（被杀后自动恢复监听）
+            Thread.sleep(500)
+            execShizukuShell("am start -n ${context.packageName}/.MainActivity --user 0")
+            Log.d(TAG, "Back screen dismissed, FBS restarted")
+        } catch (e: Exception) {
+            Log.e(TAG, "Dismiss failed", e)
+        }
+    }
+
+    /**
+     * 获取最新通知（优先焦点通知）
+     */
+    private fun getLatestNotification(): NotifInfo? {
+        if (activeNotifications.isEmpty()) return null
+        // 优先焦点
+        val focus = activeNotifications.values.firstOrNull { it.key in focusNotificationKeys }
+        if (focus != null) return focus
+        // 最新普通通知
+        return activeNotifications.values.maxByOrNull { it.timestamp }
+    }
+
+    // ═══════════════════════════════════════════
+    //  兼容旧接口
+    // ═══════════════════════════════════════════
+
+    fun displayOnBackScreen(title: String, content: String) {
+        onNotificationAdded(
+            key = "manual_${System.currentTimeMillis()}",
+            title = title, content = content,
+            packageName = context.packageName, appName = "FBS",
+            isFocus = false, isOngoing = false,
+            category = "", subText = "", bigText = "",
+        )
+    }
+
+    fun displayNotificationOnBackScreenV2(
+        title: String, subtitle: String, content: String,
+        appName: String, packageName: String,
+        styleExtras: Map<String, String>,
+    ) {
+        onNotificationAdded(
+            key = "v2_${System.currentTimeMillis()}",
+            title = title, content = content,
+            packageName = packageName, appName = appName,
+            isFocus = true, isOngoing = false,
+            category = "", subText = subtitle, bigText = "",
+            styleExtras = styleExtras,
+        )
+    }
+
+    // ═══════════════════════════════════════════
+    //  辅助方法
+    // ═══════════════════════════════════════════
+
+    private fun getOurTaskId(): Int {
+        try {
+            val result = execShizukuShell("am stack list")
+            var latestId = -1
+            for (line in result.lines()) {
+                if (line.contains("BackScreenNotificationActivity") && line.contains("taskId=")) {
+                    val id = Regex("taskId=(\\d+)").find(line)?.groupValues?.get(1)?.toIntOrNull() ?: continue
+                    if (id > latestId) latestId = id
+                }
+            }
+            return latestId
+        } catch (e: Exception) {
+            Log.e(TAG, "getTaskId error", e)
+        }
+        return -1
+    }
+
+    fun wakeUpScreen() {
+        if (!isShizukuRunning() || !hasPermission()) return
+        execShizukuShell("input keyevent KEYCODE_WAKEUP; dumpsys deviceidle disable")
     }
 
     fun setScreenTimeout(millis: Int = 90000) {
         if (!isShizukuRunning() || !hasPermission()) return
-        try {
-            val cmd = "settings put system screen_off_timeout $millis"
-            execShizukuShell(cmd)
-            Log.d(TAG, "Screen timeout set to ${millis}ms")
-        } catch (e: Exception) {
-            Log.e(TAG, "Set screen timeout failed", e)
-        }
+        execShizukuShell("settings put system screen_off_timeout $millis")
     }
 
     fun setBackScreenBrightness(brightness: Int = 128) {
         if (!isShizukuRunning() || !hasPermission()) return
-        try {
-            val cmd = "settings put system screen_brightness $brightness"
-            execShizukuShell(cmd)
-            Log.d(TAG, "Brightness set to $brightness")
-        } catch (e: Exception) {
-            Log.e(TAG, "Set brightness failed", e)
-        }
-    }
-
-    fun sleepBackScreen() {
-        if (!isShizukuRunning() || !hasPermission()) return
-        try {
-            val cmd = "am broadcast -a $ACTION_SUB_SCREEN_OFF --user 0"
-            execShizukuShell(cmd)
-            Log.d(TAG, "Back screen sleep broadcast sent")
-        } catch (e: Exception) {
-            Log.e(TAG, "Sleep back screen failed", e)
-        }
-    }
-
-    fun removePinByNotificationId(notificationId: Int) {
-        if (!isShizukuRunning() || !hasPermission()) {
-            Log.d(TAG, "Shizuku not available, skip remove")
-            return
-        }
-        try {
-            val cmd = "cat $NOTIF_WIDGET_PATH 2>/dev/null"
-            val currentJson = execShizukuShell(cmd)
-
-            if (currentJson.startsWith("ERROR") || currentJson.isEmpty()) {
-                Log.d(TAG, "No widget file to remove")
-                return
-            }
-
-            val removeCmd = """$NOTIF_WIDGET_PATH" | python3 -c "
-import json,sys
-data=json.load(sys.stdin)
-data=[x for x in data if x.get('notificationId')!=$notificationId]
-print(json.dumps(data))
-" > $NOTIF_WIDGET_PATH"""
-            execShizukuShell("python3 -c \"\nimport json\nwith open('$NOTIF_WIDGET_PATH') as f:\n  data=json.load(f)\ndata=[x for x in data if x.get('notificationId')!=$notificationId]\nwith open('$NOTIF_WIDGET_PATH','w') as f:\n  json.dump(data,f)\n\"")
-
-            val broadcastCmd = "am broadcast -a $ACTION_SUB_SCREEN_ON -n $SUBSCREEN_PACKAGE/.SubScreenLauncher --user 0"
-            execShizukuShell(broadcastCmd)
-
-            // Check if empty
-            val remaining = execShizukuShell("cat $NOTIF_WIDGET_PATH 2>/dev/null")
-            if (remaining == "[]" || remaining.contains("[]")) {
-                execShizukuShell("am broadcast -a $ACTION_SUB_SCREEN_OFF --user 0")
-            }
-            Log.d(TAG, "Removed pin $notificationId")
-        } catch (e: Exception) {
-            Log.e(TAG, "Remove pin failed", e)
-        }
-    }
-
-    fun clearAllPinsAndBackToIdle() {
-        if (!isShizukuRunning() || !hasPermission()) return
-        try {
-            execShizukuShell("echo '[]' > $NOTIF_WIDGET_PATH")
-            execShizukuShell("am broadcast -a $ACTION_SUB_SCREEN_OFF --user 0")
-            Log.d(TAG, "All pins cleared")
-        } catch (e: Exception) {
-            Log.e(TAG, "Clear pins failed", e)
-        }
+        execShizukuShell("settings put system screen_brightness $brightness")
     }
 
     private fun execShizukuShell(command: String): String {
@@ -315,22 +395,19 @@ print(json.dumps(data))
             ) as Process
 
             val output = StringBuilder()
-            BufferedReader(InputStreamReader(process.inputStream)).use { reader ->
-                reader.lineSequence().forEach { line ->
-                    output.appendLine(line)
-                }
+            BufferedReader(InputStreamReader(process.inputStream)).use { r ->
+                r.lineSequence().forEach { output.appendLine(it) }
             }
-            BufferedReader(InputStreamReader(process.errorStream)).use { reader ->
-                reader.lineSequence().forEach { line ->
-                    output.appendLine("[stderr] $line")
-                }
+            BufferedReader(InputStreamReader(process.errorStream)).use { r ->
+                r.lineSequence().forEach { output.appendLine("[e] $it") }
             }
             process.waitFor()
             val result = output.toString().trim()
-            Log.d(TAG, "Shell[$command] -> ${result.take(200)}")
+            if (result.length > 200) Log.d(TAG, "Shell: ${result.take(200)}...")
+            else Log.d(TAG, "Shell: $result")
             result
         } catch (e: Exception) {
-            Log.e(TAG, "Shell exec failed: $command", e)
+            Log.e(TAG, "Shell failed: $command — ${e.message}")
             "ERROR: ${e.message}"
         }
     }
@@ -338,36 +415,30 @@ print(json.dumps(data))
     fun getInstalledAppsViaShizuku(callback: (List<Map<String, String>>) -> Unit) {
         Thread {
             try {
-                val newProcess = Shizuku::class.java
-                    .getDeclaredMethod("newProcess", Array<String>::class.java, Array<String>::class.java, String::class.java)
+                val newProcess = Shizuku::class.java.getDeclaredMethod(
+                    "newProcess", Array<String>::class.java, Array<String>::class.java, String::class.java
+                )
                 newProcess.isAccessible = true
                 val process = newProcess.invoke(null,
-                    arrayOf("sh", "-c", "pm list packages --user 0"),
-                    null, null
+                    arrayOf("sh", "-c", "pm list packages --user 0"), null, null
                 ) as Process
-
                 val packages = mutableListOf<String>()
-                BufferedReader(InputStreamReader(process.inputStream)).use { reader ->
-                    reader.lineSequence().forEach { line ->
-                        if (line.startsWith("package:")) {
-                            packages.add(line.removePrefix("package:").trim())
-                        }
-                    }
+                BufferedReader(InputStreamReader(process.inputStream)).use { r ->
+                    r.lineSequence().filter { it.startsWith("package:") }
+                        .forEach { packages.add(it.removePrefix("package:").trim()) }
                 }
                 process.waitFor()
-
+                var failed = 0
                 val apps = packages.mapNotNull { pkg ->
                     try {
                         val ai = context.packageManager.getApplicationInfo(pkg, 0)
                         val name = context.packageManager.getApplicationLabel(ai).toString()
                         mapOf("package" to pkg, "name" to name)
-                    } catch (_: Exception) { null }
+                    } catch (_: Exception) { failed++; null }
                 }.sortedBy { it["name"] }
-
-                Log.d(TAG, "Shizuku got ${apps.size} apps")
                 callback(apps)
             } catch (e: Exception) {
-                Log.e(TAG, "Shizuku getInstalledApps failed", e)
+                Log.e(TAG, "getInstalledApps failed", e)
                 callback(emptyList())
             }
         }.apply { isDaemon = true }.start()
@@ -377,7 +448,5 @@ print(json.dumps(data))
         Shizuku.removeBinderReceivedListener(binderReceivedListener)
         Shizuku.removeBinderDeadListener(binderDeadListener)
         Shizuku.removeRequestPermissionResultListener(permissionResultListener)
-        wakeLock?.let { if (it.isHeld) it.release() }
-        Log.d(TAG, "BackScreenController destroyed")
     }
 }
