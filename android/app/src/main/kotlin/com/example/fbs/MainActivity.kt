@@ -179,6 +179,13 @@ class MainActivity : FlutterActivity() {
                     PermissionHelper.openAppDetailsSettings(this)
                     result.success(true)
                 }
+                "updateMonitorSettings" -> {
+                    val monitorAll = call.argument<Boolean>("monitorAll") ?: true
+                    @Suppress("UNCHECKED_CAST")
+                    val enabledApps = call.argument<List<String>>("enabledApps") ?: emptyList()
+                    FBSNotificationListenerService.updateMonitorSettings(monitorAll, enabledApps)
+                    result.success(true)
+                }
                 "isMiuiOrHyperOS" -> {
                     result.success(PermissionHelper.isMiuiOrHyperOS())
                 }
@@ -276,9 +283,6 @@ class MainActivity : FlutterActivity() {
     private fun getInstalledApps(): List<Map<String, String>> {
         val apps = mutableListOf<Map<String, String>>()
         try {
-            // HyperOS 上 getInstalledApplications(MATCH_ALL) 可能与 GET_INSTALLED_APPS
-            // 运行时权限存在兼容性问题，先用没有标志位的调用。QUERY_ALL_PACKAGES 已声明，
-            // flag=0 即可返回所有已安装的非系统独占应用。
             val installedApps = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
                 packageManager.getInstalledApplications(
                     PackageManager.ApplicationInfoFlags.of(0L))
@@ -290,36 +294,30 @@ class MainActivity : FlutterActivity() {
             Log.d("MainActivity", "getInstalledApps: raw count = ${installedApps.size}")
 
             var skippedSelf = 0
-            var skippedSystem = 0
             for (ai in installedApps) {
                 if (ai.packageName == packageName) {
                     skippedSelf++
                     continue
                 }
-                val isSystem = try {
-                    (ai.flags and android.content.pm.ApplicationInfo.FLAG_SYSTEM) != 0
-                } catch (e: Exception) { false }
-                if (isSystem) {
-                    skippedSystem++
-                    Log.d("MainActivity", "getInstalledApps: skip system ${ai.packageName}")
-                    continue
-                }
                 try {
                     val name = packageManager.getApplicationLabel(ai).toString()
-                    val entry = mapOf("package" to ai.packageName, "name" to name)
+                    val isSystem = try {
+                        (ai.flags and android.content.pm.ApplicationInfo.FLAG_SYSTEM) != 0
+                    } catch (_: Exception) { false }
+                    val entry = mapOf(
+                        "package" to ai.packageName,
+                        "name" to name,
+                        "isSystem" to isSystem.toString(),
+                    )
                     apps.add(entry)
-                    Log.d("MainActivity", "getInstalledApps: + ${ai.packageName} / $name")
-                } catch (_: Exception) {
-                    Log.d("MainActivity", "getInstalledApps: failed label for ${ai.packageName}")
-                }
+                } catch (_: Exception) {}
             }
-            apps.sortBy { it["name"] }
+            // 系统应用排后面，用户应用排前面
+            apps.sortWith(compareBy<Map<String, String>> { it["isSystem"] == "true" }.thenBy { it["name"] })
             Log.d("MainActivity",
-                "getInstalledApps: total=${installedApps.size} self=$skippedSelf " +
-                "system=$skippedSystem user=${apps.size}")
+                "getInstalledApps: total=${installedApps.size} self=$skippedSelf user=${apps.size}")
         } catch (e: Exception) {
             Log.e("MainActivity", "Error getting installed apps", e)
-            // 兜底：尝试用 getInstalledPackages
             tryFallbackInstalledPackages(apps)
         }
         return apps
@@ -333,17 +331,20 @@ class MainActivity : FlutterActivity() {
             for (pi in pkgs) {
                 if (pi.packageName == packageName) continue
                 val ai = pi.applicationInfo ?: continue
-                val isSystem = try {
-                    (ai.flags and android.content.pm.ApplicationInfo.FLAG_SYSTEM) != 0
-                } catch (e: Exception) { false }
-                if (isSystem) continue
                 try {
                     val name = ai.loadLabel(packageManager).toString()
-                    apps.add(mapOf("package" to pi.packageName, "name" to name))
+                    val isSystem = try {
+                        (ai.flags and android.content.pm.ApplicationInfo.FLAG_SYSTEM) != 0
+                    } catch (_: Exception) { false }
+                    apps.add(mapOf(
+                        "package" to pi.packageName,
+                        "name" to name,
+                        "isSystem" to isSystem.toString(),
+                    ))
                 } catch (_: Exception) {}
             }
-            apps.sortBy { it["name"] }
-            Log.d("MainActivity", "fallback getInstalledPackages: ${apps.size} user apps")
+            apps.sortWith(compareBy<Map<String, String>> { it["isSystem"] == "true" }.thenBy { it["name"] })
+            Log.d("MainActivity", "fallback getInstalledPackages: ${apps.size} apps")
         } catch (e: Exception) {
             Log.e("MainActivity", "fallback also failed", e)
         }

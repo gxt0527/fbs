@@ -1,7 +1,6 @@
 package com.example.fbs.service
 
 import android.app.Notification
-import android.app.NotificationManager
 import android.content.Intent
 import android.os.Build
 import android.os.Bundle
@@ -19,7 +18,30 @@ class FBSNotificationListenerService : NotificationListenerService() {
             private set
         var backScreenController: BackScreenController? = null
 
+        /** 监听过滤 — 由 Flutter 设置页同步过来 */
+        @Volatile
+        var monitorAll = false
+        @Volatile
+        var enabledApps = setOf<String>()
+
         fun setEventSink(sink: EventChannel.EventSink?) { eventSink = sink }
+
+        /** Flutter 设置页调用：同步监听配置到 native 层 */
+        fun updateMonitorSettings(monitorAll: Boolean, enabledApps: List<String>) {
+            this.monitorAll = monitorAll
+            this.enabledApps = enabledApps.toSet()
+            Log.d("FBSNotificationListener", "Monitor settings updated: monitorAll=$monitorAll enabled=${enabledApps.size} apps")
+        }
+
+        /** 判断该包名是否应被监听
+         *  @param isRegular 是否为普通消息（非焦点/非实时动态）
+         *  应用列表始终过滤；monitorAll 控制是否包含普通消息 */
+        fun shouldMonitorPackage(packageName: String, isRegular: Boolean): Boolean {
+            if (!enabledApps.contains(packageName)) return false
+            if (monitorAll) return true
+            // 关闭全部监听时，普通消息不放行
+            return !isRegular
+        }
 
         fun sendToFlutter(
             title: String, content: String, packageName: String,
@@ -84,6 +106,13 @@ class FBSNotificationListenerService : NotificationListenerService() {
             "focus=$isFocus ongoing=$isOngoing cat=$category " +
             "title=[${title.take(30)}] content=[${content.take(50)}]")
 
+        // → 背屏控制器 (应用列表始终过滤，全部监听控制消息类型)
+        val isRegular = !isFocus && !isOngoing
+        if (!shouldMonitorPackage(sbn.packageName, isRegular)) {
+            Log.d(TAG, "Skip: ${sbn.packageName} regular=$isRegular")
+            return
+        }
+
         // → Flutter (UI 显示用)
         sendToFlutter(
             title = title, content = content, packageName = sbn.packageName,
@@ -91,7 +120,7 @@ class FBSNotificationListenerService : NotificationListenerService() {
             isOngoing = isOngoing, key = sbnKey, subText = subText, bigText = bigText,
         )
 
-        // → 背屏控制器 (自动转发)
+        // → 背屏控制器
         backScreenController?.onNotificationAdded(
             key = sbnKey, title = title, content = content,
             packageName = sbn.packageName, appName = appName,
@@ -106,8 +135,9 @@ class FBSNotificationListenerService : NotificationListenerService() {
     override fun onNotificationRemoved(sbn: StatusBarNotification?) {
         super.onNotificationRemoved(sbn)
         if (sbn == null) return
-        Log.d(TAG, "NOTIF removed: key=${sbn.key} pkg=${sbn.packageName}")
-        backScreenController?.onNotificationRemoved(sbn.key)
+        val key = sbn.key
+        Log.d(TAG, "NOTIF removed: key=$key pkg=${sbn.packageName}")
+        backScreenController?.onNotificationRemoved(key)
     }
 
     // ═══════════════════════════════════════════

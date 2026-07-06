@@ -62,6 +62,11 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
       setState(() {
         _settings = settings;
       });
+      // 同步设置到 native 层
+      _nativeService.updateMonitorSettings(
+        monitorAll: settings.monitorAll,
+        enabledApps: settings.enabledApps.toList(),
+      );
     }
   }
 

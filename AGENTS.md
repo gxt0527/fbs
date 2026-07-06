@@ -1,7 +1,7 @@
 # FBS 开发环境 — 完整搭建清单
 
 > 项目: FBS (Flutter Back Screen) — 通知转发工具
-> 最后验证: 2026-07-05, `flutter run` 在 Xiaomi 2509FPN0BC (popsicle) 上编译运行成功
+> 最后验证: 2026-07-06, `flutter build apk --debug` 编译成功，通知监听+应用列表过滤功能正常
 
 ---
 
@@ -228,3 +228,40 @@ adb devices                # 显示已连接设备
 flutter pub get            # 成功无报错
 flutter run                # 编译部署成功
 ```
+
+---
+
+## 9. 开发日志
+
+### 2026-07-06 通知监听应用列表过滤
+
+**需求：**
+- 在设置页控制哪些应用的通知需要监听转发
+- 应用列表包含用户应用和系统应用，分两组可折叠显示
+- "全部消息"开关控制消息类型：开启=所有类型，关闭=仅焦点/实时动态
+- 应用列表开关始终生效
+
+**改动文件：**
+- `FBSNotificationListenerService.kt` — 添加 native 层 `shouldMonitorPackage(packageName, isRegular)` 过滤
+- `MainActivity.kt` — `getInstalledApps()` 包含系统应用，返回 `isSystem` 字段
+- `MonitorSettings` — `shouldMonitor()` 应用列表优先过滤
+- `native_service.dart` — 传递 `isSystem` 字段，新增 `updateMonitorSettings()` 方法
+- `settings_page.dart` — 新增"监听应用列表"入口（二级菜单）
+- `monitor_apps_page.dart` — 新建：可折叠的应用列表页面，支持搜索、全选
+
+**过滤逻辑：**
+```
+enabledApps.contains(pkg) == false → 跳过（应用列表始终生效）
+monitorAll == true → 已选应用的所有类型消息都转发
+monitorAll == false → 仅焦点/实时动态通知转发
+```
+
+### 2026-07-06 之前的工作
+
+详见 git commit 历史。主要功能：
+- 背屏通知渲染 Activity（display 1）
+- Shizuku 权限管理
+- 通知样式自定义（颜色/字号/摄像头避让）
+- 通知栏同步清除
+- 超级岛测试通知
+- 返回手势修复（dispatchKeyEvent）

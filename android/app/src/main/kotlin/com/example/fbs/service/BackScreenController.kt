@@ -397,15 +397,25 @@ class BackScreenController(private val context: Context) {
     }
 
     fun dismissBackScreen() {
-        if (!isShizukuRunning() || !hasPermission()) return
         currentDisplayKey = null
         try {
-            Log.d(TAG, "Dismissing back screen via intent")
-            // 发送 dismiss 指令给 BackScreenNotificationActivity（SINGLE_TOP → onNewIntent）
-            // Activity 收到后会 finish 并自动启动官方背屏
-            val dismissCmd = BackScreenNotificationActivity.buildDismissIntent(context)
-            execShizukuShell(dismissCmd)
-            Log.d(TAG, "Back screen dismissed, subcreen will be restored by Activity")
+            Log.d(TAG, "Dismissing back screen")
+
+            // 方案1: 通过 Shizuku am start 发送 dismiss Intent（SINGLE_TOP → onNewIntent → finish）
+            if (isShizukuRunning() && hasPermission()) {
+                val dismissCmd = BackScreenNotificationActivity.buildDismissIntent(context)
+                execShizukuShell(dismissCmd)
+                Log.d(TAG, "Back screen dismissed via Shizuku")
+                return
+            }
+
+            // 方案2: Shizuku 不可用，直接 startActivity 发送 dismiss Intent
+            Log.w(TAG, "Shizuku unavailable, fallback to startActivity dismiss")
+            val intent = Intent(context, BackScreenNotificationActivity::class.java)
+            intent.putExtra("dismiss", "true")
+            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP)
+            context.startActivity(intent)
+            Log.d(TAG, "Back screen dismissed via startActivity")
         } catch (e: Exception) {
             Log.e(TAG, "Dismiss failed", e)
         }

@@ -174,6 +174,7 @@ class NativeService {
           return {
             'package': (m['package'] ?? '').toString(),
             'name': (m['name'] ?? m['package'] ?? '').toString(),
+            'isSystem': (m['isSystem'] ?? 'false').toString(),
           };
         }).toList();
       }
@@ -426,6 +427,21 @@ class NativeService {
       await _methodChannel.invokeMethod('openFocusNotificationSettings');
     } catch (e) {
       _log('Error opening focus settings: $e');
+    }
+  }
+
+  /// 同步监听设置到 native 层（哪些应用需要监听）
+  Future<void> updateMonitorSettings({
+    required bool monitorAll,
+    required List<String> enabledApps,
+  }) async {
+    try {
+      await _methodChannel.invokeMethod('updateMonitorSettings', {
+        'monitorAll': monitorAll,
+        'enabledApps': enabledApps,
+      });
+    } catch (e) {
+      _log('Error updating monitor settings: $e');
     }
   }
 }

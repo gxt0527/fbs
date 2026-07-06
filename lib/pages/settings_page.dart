@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import '../models/monitor_settings.dart';
 import '../services/native_service.dart';
+import 'monitor_apps_page.dart';
 
 class SettingsPage extends StatefulWidget {
   const SettingsPage({super.key});
@@ -17,8 +18,6 @@ class _SettingsPageState extends State<SettingsPage> with WidgetsBindingObserver
   bool _isInstalledAppsPermissionSupported = false;
   bool _isInstalledAppsPermissionGranted = false;
   MonitorSettings _settings = MonitorSettings();
-  List<Map<String, String>> _allApps = [];
-  bool _isLoadingApps = true;
 
   StreamSubscription<bool>? _installedAppsPermissionSub;
   StreamSubscription<void>? _screenResumedSub;
@@ -72,39 +71,20 @@ class _SettingsPageState extends State<SettingsPage> with WidgetsBindingObserver
       _isInstalledAppsPermissionGranted = granted;
       _settings = settings;
     });
-    _loadInstalledApps();
-  }
-
-  Future<void> _loadInstalledApps() async {
-    setState(() => _isLoadingApps = true);
-    final apps = await _nativeService.getInstalledApps();
-    if (mounted) {
-      setState(() {
-        _allApps = apps;
-        _isLoadingApps = false;
-      });
-    }
+    _nativeService.updateMonitorSettings(
+      monitorAll: settings.monitorAll,
+      enabledApps: settings.enabledApps.toList(),
+    );
   }
 
   Future<void> _saveAndRefresh() async {
     await _settings.save();
     setState(() {});
-  }
-
-  void _toggleAllApps() {
-    if (_allApps.isEmpty) return;
-    final allEnabled = _allApps.every(
-        (a) => _settings.enabledApps.contains(a['package']));
-    setState(() {
-      if (allEnabled) {
-        _settings.enabledApps.clear();
-      } else {
-        for (final a in _allApps) {
-          _settings.enabledApps.add(a['package']!);
-        }
-      }
-    });
-    _saveAndRefresh();
+    // 同步设置到 native 层
+    _nativeService.updateMonitorSettings(
+      monitorAll: _settings.monitorAll,
+      enabledApps: _settings.enabledApps.toList(),
+    );
   }
 
   @override
@@ -119,8 +99,11 @@ class _SettingsPageState extends State<SettingsPage> with WidgetsBindingObserver
             '监听设置',
             [
               SwitchListTile(
-                title: const Text('全部监听'),
-                subtitle: const Text('关闭后可自定义监听应用和焦点通知过滤'),
+                title: const Text('全部消息'),
+                subtitle: const Text(
+                  '开启: 已选应用的所有消息（含普通消息）\n关闭: 仅焦点和实时动态通知',
+                  style: TextStyle(fontSize: 12),
+                ),
                 value: _settings.monitorAll,
                 onChanged: (value) {
                   setState(() => _settings.monitorAll = value);
@@ -128,116 +111,30 @@ class _SettingsPageState extends State<SettingsPage> with WidgetsBindingObserver
                 },
                 contentPadding: const EdgeInsets.symmetric(horizontal: 16),
               ),
-              if (!_settings.monitorAll) ...[
-                SwitchListTile(
-                  title: const Text('仅监听 HyperOS 焦点通知'),
-                  subtitle: const Text(
-                    '只显示被系统标记为焦点通知的通知（来电、闹钟、提醒等）',
-                    style: TextStyle(fontSize: 12),
-                  ),
-                  value: _settings.onlyFocusNotifications,
-                  onChanged: (value) {
-                    setState(() => _settings.onlyFocusNotifications = value);
-                    _saveAndRefresh();
-                  },
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+              const Divider(),
+              ListTile(
+                leading: const Icon(Icons.apps),
+                title: const Text('监听应用列表'),
+                subtitle: Text(
+                  _settings.enabledApps.isEmpty
+                      ? '未选择任何应用'
+                      : '已选择 ${_settings.enabledApps.length} 个应用',
+                  style: const TextStyle(fontSize: 12),
                 ),
-                if (_settings.onlyFocusNotifications)
-                  SwitchListTile(
-                    title: const Text('同时监听实时动态通知'),
-                    subtitle: const Text(
-                      '音乐播放、外卖配送、赛事比分等持续更新的通知',
-                      style: TextStyle(fontSize: 12),
-                    ),
-                    value: _settings.monitorOngoingNotifications,
-                    onChanged: (value) {
-                      setState(() => _settings.monitorOngoingNotifications = value);
-                      _saveAndRefresh();
-                    },
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 16),
-                  ),
-                const Divider(),
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
-                  child: Row(
-                    children: [
-                      const Text(
-                        '已安装应用',
-                        style: TextStyle(fontWeight: FontWeight.w500, fontSize: 13),
-                      ),
-                      const Spacer(),
-                      if (_isLoadingApps)
-                        const SizedBox(
-                          width: 14, height: 14,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      else ...[
-                        Text(
-                          '${_allApps.length} 个应用',
-                          style: const TextStyle(fontSize: 12, color: Colors.grey),
-                        ),
-                        if (_allApps.isNotEmpty) ...[
-                          const SizedBox(width: 8),
-                          TextButton.icon(
-                            onPressed: _toggleAllApps,
-                            icon: Icon(
-                              _allApps.every((a) => _settings.enabledApps.contains(a['package']))
-                                  ? Icons.deselect
-                                  : Icons.select_all,
-                              size: 16,
-                            ),
-                            label: Text(
-                              _allApps.every((a) => _settings.enabledApps.contains(a['package']))
-                                  ? '全不选'
-                                  : '全选',
-                              style: const TextStyle(fontSize: 12),
-                            ),
-                            style: TextButton.styleFrom(
-                              visualDensity: VisualDensity.compact,
-                              padding: const EdgeInsets.symmetric(horizontal: 8),
-                            ),
-                          ),
-                        ],
-                      ],
-                    ],
-                  ),
-                ),
-                if (_isLoadingApps)
-                  const Padding(
-                    padding: EdgeInsets.all(24),
-                    child: Center(child: Text('正在加载应用列表...', style: TextStyle(color: Colors.grey))),
-                  )
-                else if (_allApps.isEmpty)
-                  Padding(
-                    padding: const EdgeInsets.all(24),
-                    child: Column(
-                      children: [
-                        Text(
-                          _isInstalledAppsPermissionSupported &&
-                                  !_isInstalledAppsPermissionGranted
-                              ? '澎湃OS 需先授予"应用列表"权限才能读取应用信息'
-                              : '无法获取应用列表，请在系统设置中授予权限',
-                          style: const TextStyle(color: Colors.grey),
-                        ),
-                        const SizedBox(height: 12),
-                        FilledButton.tonalIcon(
-                          onPressed: () async {
-                            if (_isInstalledAppsPermissionSupported &&
-                                !_isInstalledAppsPermissionGranted) {
-                              await _nativeService.requestInstalledAppsPermission();
-                            } else {
-                              await _nativeService.requestAppListPermission();
-                            }
-                          },
-                          icon: const Icon(Icons.settings, size: 18),
-                          label: const Text('前往设置开启'),
-                        ),
-                      ],
-                    ),
-                  )
-                else
-                  ..._buildAppTiles(),
-              ],
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () async {
+                  await Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const MonitorAppsPage()),
+                  );
+                  // 返回时刷新设置
+                  final settings = await MonitorSettings.load();
+                  if (mounted) {
+                    setState(() => _settings = settings);
+                  }
+                },
+                contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+              ),
             ],
           ),
           _buildSection(
@@ -328,52 +225,6 @@ class _SettingsPageState extends State<SettingsPage> with WidgetsBindingObserver
         ],
       ),
     );
-  }
-
-  List<Widget> _buildAppTiles() {
-    final enabled = _settings.enabledApps;
-    final sorted = List<Map<String, String>>.from(_allApps)
-      ..sort((a, b) {
-        final aOn = enabled.contains(a['package']);
-        final bOn = enabled.contains(b['package']);
-        if (aOn != bOn) return aOn ? -1 : 1;
-        return (a['name'] ?? '').compareTo(b['name'] ?? '');
-      });
-
-    return sorted.map((app) {
-      final pkg = app['package']!;
-      final name = app['name']!;
-      final isOn = enabled.contains(pkg);
-      return ListTile(
-        dense: true,
-        leading: CircleAvatar(
-          radius: 16,
-          backgroundColor: isOn
-              ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.15)
-              : Colors.grey.withValues(alpha: 0.1),
-          child: Text(
-            name.isNotEmpty ? name[0].toUpperCase() : '?',
-            style: TextStyle(
-              fontSize: 13,
-              fontWeight: FontWeight.bold,
-              color: isOn ? Theme.of(context).colorScheme.primary : Colors.grey,
-            ),
-          ),
-        ),
-        title: Text(name, style: const TextStyle(fontSize: 14)),
-        subtitle: Text(pkg, style: const TextStyle(fontSize: 11)),
-        trailing: Switch(
-          value: isOn,
-          onChanged: (v) {
-            setState(() {
-              if (v) { enabled.add(pkg); } else { enabled.remove(pkg); }
-            });
-            _saveAndRefresh();
-          },
-        ),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16),
-      );
-    }).toList();
   }
 
   Widget _buildSection(String title, List<Widget> children) {
