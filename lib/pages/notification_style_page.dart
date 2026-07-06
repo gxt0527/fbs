@@ -131,6 +131,18 @@ class _NotificationStylePageState extends State<NotificationStylePage> {
             onChanged: (v) => setState(() => _style.showTimestamp = v),
             contentPadding: EdgeInsets.zero,
           ),
+          SwitchListTile(
+            title: const Text('避开摄像头', style: TextStyle(fontSize: 15)),
+            subtitle: Text(
+              _style.cameraAvoidanceEnabled
+                  ? '内容区域右移 212px，背景保持全屏'
+                  : '内容全屏显示',
+              style: TextStyle(fontSize: 12, color: Theme.of(context).colorScheme.onSurfaceVariant),
+            ),
+            value: _style.cameraAvoidanceEnabled,
+            onChanged: (v) => setState(() => _style.cameraAvoidanceEnabled = v),
+            contentPadding: EdgeInsets.zero,
+          ),
           const SizedBox(height: 8),
           _buildSlider(
             label: '显示时长 (秒)',
@@ -203,14 +215,56 @@ class _NotificationStylePageState extends State<NotificationStylePage> {
 
   Widget _buildPreviewCanvas() {
     final bgColor = _style.backgroundColor;
+    final leftOffset =
+        _style.cameraAvoidanceEnabled ? NotificationStyle.cameraAvoidanceOffset : 0.0;
 
     return Container(
       color: bgColor,
-      padding: EdgeInsets.all(_style.padding),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisSize: MainAxisSize.min,
+      child: Stack(
         children: [
+          // 背景全屏
+          Positioned.fill(
+            child: Container(color: bgColor),
+          ),
+          // 摄像头避开区域 — 左侧阴影遮罩
+          if (_style.cameraAvoidanceEnabled)
+            Positioned(
+              left: 0, top: 0, bottom: 0,
+              width: NotificationStyle.cameraAvoidanceOffset,
+              child: Container(
+                decoration: BoxDecoration(
+                  color: Colors.black.withValues(alpha: 0.08),
+                  border: Border(
+                    right: BorderSide(
+                      color: Colors.white.withValues(alpha: 0.12),
+                      width: 1,
+                    ),
+                  ),
+                ),
+                child: const Center(
+                  child: RotatedBox(
+                    quarterTurns: 1,
+                    child: Text(
+                      '摄像头区域',
+                      style: TextStyle(
+                        color: Colors.white38,
+                        fontSize: 10,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          // 内容区域（右移 leftOffset）
+          Positioned(
+            left: _style.padding + leftOffset,
+            right: _style.padding,
+            top: _style.padding,
+            bottom: _style.padding,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
           // ── 应用图标行 ──
           if (_style.showAppIcon)
             Padding(
@@ -300,10 +354,13 @@ class _NotificationStylePageState extends State<NotificationStylePage> {
                 ),
               ),
             ),
-        ],
-      ),
-    );
-  }
+          ], // Column children end
+        ),
+      ), // Positioned end
+    ], // Stack children end
+  ),
+); // Stack + Container end
+}
 
   String _formatTime(DateTime dt) {
     return '${dt.hour.toString().padLeft(2, '0')}:'

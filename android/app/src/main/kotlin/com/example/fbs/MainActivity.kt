@@ -52,7 +52,14 @@ class MainActivity : FlutterActivity() {
                     result.success(true)
                 }
                 "rebindNotificationListener" -> {
-                    FBSNotificationListenerService.requestRebind(this)
+                    // API 34+ requestRebind is deprecated; toggle the component
+                    val cn = ComponentName(this, FBSNotificationListenerService::class.java)
+                    packageManager.setComponentEnabledSetting(cn,
+                        PackageManager.COMPONENT_ENABLED_STATE_DISABLED,
+                        PackageManager.DONT_KILL_APP)
+                    packageManager.setComponentEnabledSetting(cn,
+                        PackageManager.COMPONENT_ENABLED_STATE_ENABLED,
+                        PackageManager.DONT_KILL_APP)
                     result.success(true)
                 }
                 "isShizukuRunning" -> {
@@ -107,15 +114,6 @@ class MainActivity : FlutterActivity() {
                     )
                     result.success(true)
                 }
-                "removePinByNotificationId" -> {
-                    val id = call.argument<Int>("notificationId") ?: 0
-                    backScreenController.removePinByNotificationId(id)
-                    result.success(true)
-                }
-                "clearAllPins" -> {
-                    backScreenController.clearAllPinsAndBackToIdle()
-                    result.success(true)
-                }
                 "wakeUpScreen" -> {
                     backScreenController.wakeUpScreen()
                     result.success(true)
@@ -129,17 +127,6 @@ class MainActivity : FlutterActivity() {
                     val brightness = call.argument<Int>("brightness") ?: 128
                     backScreenController.setBackScreenBrightness(brightness)
                     result.success(true)
-                }
-                "sleepBackScreen" -> {
-                    backScreenController.sleepBackScreen()
-                    result.success(true)
-                }
-                // === 接口测试 ===
-                "runAllTests" -> {
-                    Thread {
-                        val results = backScreenController.runAllTests()
-                        runOnUiThread { result.success(results) }
-                    }.apply { isDaemon = true }.start()
                 }
                 // === 澎湃OS 权限引导相关方法 ===
                 "isInstalledAppsPermissionSupported" -> {

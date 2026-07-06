@@ -294,14 +294,12 @@ class BackScreenController(private val context: Context) {
         if (!isShizukuRunning() || !hasPermission()) return
         currentDisplayKey = null
         try {
-            execShizukuShell(
-                "am broadcast -a android.intent.action.CLOSE_SYSTEM_DIALOGS --user 0; " +
-                "am force-stop ${context.packageName}"
-            )
-            // 重启 FBS 本身（被杀后自动恢复监听）
-            Thread.sleep(500)
-            execShizukuShell("am start -n ${context.packageName}/.MainActivity --user 0")
-            Log.d(TAG, "Back screen dismissed, FBS restarted")
+            Log.d(TAG, "Dismissing back screen via intent")
+            // 发送 dismiss 指令给 BackScreenNotificationActivity（SINGLE_TOP → onNewIntent）
+            // Activity 收到后会 finish 并自动启动官方背屏
+            val dismissCmd = BackScreenNotificationActivity.buildDismissIntent(context)
+            execShizukuShell(dismissCmd)
+            Log.d(TAG, "Back screen dismissed, subcreen will be restored by Activity")
         } catch (e: Exception) {
             Log.e(TAG, "Dismiss failed", e)
         }

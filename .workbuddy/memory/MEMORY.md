@@ -81,6 +81,20 @@
 - **无 Shizuku**: 仅 PinReceiveActivity (ACTION_SEND)
 - **有 Shizuku**: PinReceive + notification_widget.json + 屏幕唤醒 + 90秒超时
 
+## 背屏渲染注意事项（2026-07-06 修复）
+
+### 修复文件
+- `android/app/.../BackScreenNotificationActivity.kt`
+
+### 渲染规则
+- **字号单位**：Flutter 以 **sp** 发送，Kotlin 端自动乘以 `displayMetrics.density` 转 px
+- **沉浸模式**：`setupImmersiveMode()` 在 `onCreate`/`onConfigurationChanged`/`onWindowFocusChanged` 时调用，使用 `SYSTEM_UI_FLAG_IMMERSIVE_STICKY`
+- **垂直居中**：`measureContentHeight()` 预计算 → `maxOf(p, (h - contentHeight) / 2f)` 确定起始 y
+- **颜色格式**：Flutter `toARGB32().toRadixString(16)` 输出 8 位 ARGB hex，`parseColorExtra` 支持 6 位和 8 位
+- **行间距**：正文 `contentPaint.textSize * 1.45f`，`fitTextLines` 中一致
+- **折叠计数**：`showFoldCount = notificationCount > 1`
+- Paint 对象在 `init` 块中创建，`updateConfig` 中重设颜色/字号
+
 ## 通知监听注意事项
 
 ### 实时动态通知
@@ -101,6 +115,7 @@ HyperOS「实时动态」通知内容可能在：
 - `android/app/src/main/AndroidManifest.xml`
 - `android/app/build.gradle.kts`
 - `android/app/src/main/kotlin/com/example/fbs/service/BackScreenController.kt`
+- `android/app/src/main/kotlin/com/example/fbs/service/BackScreenNotificationActivity.kt`
 - `android/app/src/main/kotlin/com/example/fbs/service/FBSNotificationListenerService.kt`
 - `android/app/src/main/kotlin/com/example/fbs/service/PermissionHelper.kt`
 - `android/app/src/main/kotlin/com/example/fbs/MainActivity.kt`

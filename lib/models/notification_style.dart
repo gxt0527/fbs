@@ -19,11 +19,15 @@ class NotificationStyle {
   // ── 显示选项 ──
   bool showAppIcon;
   bool showTimestamp;
+  bool cameraAvoidanceEnabled;
 
   // ── 布局 ──
   double padding;
   double spacing;
   int displayDurationMs;
+
+  /// 避开摄像头时左侧保留的不可用区域 (dp/rpx)
+  static const double cameraAvoidanceOffset = 105;
 
   NotificationStyle({
     this.titleFontSize = 28,
@@ -35,6 +39,7 @@ class NotificationStyle {
     this.backgroundColor = const Color(0xFF1A1A2E),
     this.showAppIcon = true,
     this.showTimestamp = true,
+    this.cameraAvoidanceEnabled = false,
     this.padding = 24,
     this.spacing = 12,
     this.displayDurationMs = 10000,
@@ -53,6 +58,7 @@ class NotificationStyle {
   static const _keyBackgroundColor = 'style_backgroundColor';
   static const _keyShowAppIcon = 'style_showAppIcon';
   static const _keyShowTimestamp = 'style_showTimestamp';
+  static const _keyCameraAvoidance = 'style_cameraAvoidance';
   static const _keyPadding = 'style_padding';
   static const _keySpacing = 'style_spacing';
   static const _keyDisplayDurationMs = 'style_displayDurationMs';
@@ -67,6 +73,7 @@ class NotificationStyle {
         _keyBackgroundColor: backgroundColor.toARGB32(),
         _keyShowAppIcon: showAppIcon,
         _keyShowTimestamp: showTimestamp,
+        _keyCameraAvoidance: cameraAvoidanceEnabled,
         _keyPadding: padding,
         _keySpacing: spacing,
         _keyDisplayDurationMs: displayDurationMs,
@@ -83,6 +90,7 @@ class NotificationStyle {
       backgroundColor: Color(map[_keyBackgroundColor] as int? ?? 0xFF1A1A2E),
       showAppIcon: map[_keyShowAppIcon] as bool? ?? true,
       showTimestamp: map[_keyShowTimestamp] as bool? ?? true,
+      cameraAvoidanceEnabled: map[_keyCameraAvoidance] as bool? ?? false,
       padding: (map[_keyPadding] as num?)?.toDouble() ?? 24,
       spacing: (map[_keySpacing] as num?)?.toDouble() ?? 12,
       displayDurationMs: map[_keyDisplayDurationMs] as int? ?? 10000,
@@ -123,7 +131,7 @@ class NotificationStyle {
     ]) {
       map[key] = prefs.getInt(key);
     }
-    for (final key in [_keyShowAppIcon, _keyShowTimestamp]) {
+    for (final key in [_keyShowAppIcon, _keyShowTimestamp, _keyCameraAvoidance]) {
       map[key] = prefs.getBool(key);
     }
     map[_keyDisplayDurationMs] = prefs.getInt(_keyDisplayDurationMs);
@@ -142,6 +150,8 @@ class NotificationStyle {
       'backgroundColor': backgroundColor.toARGB32().toRadixString(16),
       'showAppIcon': showAppIcon.toString(),
       'showTimestamp': showTimestamp.toString(),
+      'cameraAvoidanceEnabled': cameraAvoidanceEnabled.toString(),
+      'horizontalOffset': cameraAvoidanceOffset.toStringAsFixed(0),
       'padding': padding.toStringAsFixed(0),
       'spacing': spacing.toStringAsFixed(0),
       'displayDurationMs': displayDurationMs.toString(),
@@ -158,6 +168,7 @@ class NotificationStyle {
     Color? backgroundColor,
     bool? showAppIcon,
     bool? showTimestamp,
+    bool? cameraAvoidanceEnabled,
     double? padding,
     double? spacing,
     int? displayDurationMs,
@@ -172,6 +183,7 @@ class NotificationStyle {
       backgroundColor: backgroundColor ?? this.backgroundColor,
       showAppIcon: showAppIcon ?? this.showAppIcon,
       showTimestamp: showTimestamp ?? this.showTimestamp,
+      cameraAvoidanceEnabled: cameraAvoidanceEnabled ?? this.cameraAvoidanceEnabled,
       padding: padding ?? this.padding,
       spacing: spacing ?? this.spacing,
       displayDurationMs: displayDurationMs ?? this.displayDurationMs,
