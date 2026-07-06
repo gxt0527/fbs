@@ -116,7 +116,6 @@ class BackScreenNotificationActivity : Activity() {
 
     override fun onBackPressed() {
         Log.d(TAG, "Back pressed, restoring subscreen")
-        super.onBackPressed()
         finishAndRestore()
     }
 
@@ -142,7 +141,36 @@ class BackScreenNotificationActivity : Activity() {
     private fun finishAndRestore() {
         dismissHandler.removeCallbacksAndMessages(null)
         finish()
+        // 异步触发系统背屏恢复，避免在 Activity 仍在 finalizing 阶段影响结果
+        // 通过 BackScreenController 用 Shizuku 在 display 1 上启动 subscreencenter
+        // 不指定 display 会落到主屏 (display 0)，所以必须走 Shizuku shell
         restoreSubscreen()
+    }
+
+    /** 恢复系统背屏 — 优先 Shizuku 在 display 1 启动，不可用时退化为本地 startActivity */
+    private fun restoreSubscreen() {
+        val controller = BackScreenController.instance
+        if (controller != null) {
+            Thread {
+                try { controller.restoreSystemBackScreenOnSubscreen() }
+                catch (e: Exception) { Log.e(TAG, "Shizuku restore subscreen failed", e) }
+            }.apply { isDaemon = true }.start()
+            Log.d(TAG, "Restore subscreen dispatched to BackScreenController")
+            return
+        }
+        // controller 不可用（MainActivity 未初始化），退化为本地 startActivity
+        try {
+            val intent = packageManager.getLaunchIntentForPackage(SUBSCREEN_PACKAGE)
+            if (intent != null) {
+                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                startActivity(intent)
+                Log.d(TAG, "Restored subscreen (fallback): $SUBSCREEN_PACKAGE")
+            } else {
+                Log.w(TAG, "Cannot find subscreen package: $SUBSCREEN_PACKAGE")
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Restore subscreen fallback failed", e)
+        }
     }
 
     /** 重���系统背屏（官方 subscreencenter） */

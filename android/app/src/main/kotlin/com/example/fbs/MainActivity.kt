@@ -29,6 +29,7 @@ class MainActivity : FlutterActivity() {
 
         backScreenController = BackScreenController(this)
         backScreenController.initialize()
+        BackScreenController.instance = backScreenController
         FBSNotificationListenerService.backScreenController = backScreenController
 
         flutterMethodChannel = MethodChannel(flutterEngine.dartExecutor.binaryMessenger, METHOD_CHANNEL)
@@ -310,5 +311,8 @@ class MainActivity : FlutterActivity() {
     override fun onDestroy() {
         super.onDestroy()
         backScreenController.destroy()
+        if (BackScreenController.instance === backScreenController) {
+            BackScreenController.instance = null
+        }
     }
 }

@@ -34,6 +34,12 @@ class BackScreenController(private val context: Context) {
 
         private var lastForwardTime = 0L
         private val GLOBAL_COOLDOWN_MS = 800L
+
+        // MainActivity 创建 controller 时注册这个静态引用，
+        // 让 BackScreenNotificationActivity 不依赖 MainActivity 实例即可调用 Shizuku 重启系统背屏。
+        @Volatile
+        var instance: BackScreenController? = null
+            private set
     }
 
     // ── 通知追踪 ──
@@ -289,6 +295,75 @@ class BackScreenController(private val context: Context) {
     // ═══════════════════════════════════════════
     //  背屏管理
     // ═══════════════════════════════════════════
+
+    /**
+     * 在 display 1 上启动官方背屏应用 (subscreencenter)。
+     * 不指定 display 时 startActivity 会落到 display 0 (主屏)，
+     * 因此这里通过 Shizuku shell 调用 am start --display 1 强制推到背屏。
+     * 保留 fallback: Shizuku 不可用时退化到普通 startActivity（至少能拉起包）。
+     */
+    fun restoreSystemBackScreenOnSubscreen() {
+        if (!isShizukuRunning() || !hasPermission()) {
+            Log.w(TAG, "Shizuku unavailable, restore via startActivity fallback")
+            try {
+                val intent = context.packageManager.getLaunchIntentForPackage(SUBSCREEN_PACKAGE)
+                if (intent != null) {
+                    intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                    context.startActivity(intent)
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Restore subscreen fallback failed", e)
+            }
+            return
+        }
+        try {
+            val launchIntent = context.packageManager.getLaunchIntentForPackage(SUBSCREEN_PACKAGE)
+            if (launchIntent == null) {
+                Log.w(TAG, "Cannot find subscreen launch intent")
+                return
+            }
+            // 方式1: 拿到主 Activity 名称，用 am start --display 1 直接推到背屏
+            val componentName = launchIntent.component
+            if (componentName != null) {
+                val flatShort = componentName.flattenToShortString()
+                execShizukuShell("am start --display 1 --user 0 -n $flatShort")
+                Log.d(TAG, "Restored subscreen on display 1 via am start --display 1")
+                return
+            }
+            // 方式2: 没有 component 的话，先 force-stop 再用 launcher Intent 启动，
+            // 然后立刻 move task 到 display 1
+            execShizukuShell("am force-stop $SUBSCREEN_PACKAGE")
+            context.startActivity(launchIntent.apply {
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            })
+            Thread {
+                Thread.sleep(400)
+                val taskId = findTaskIdForPackage(SUBSCREEN_PACKAGE)
+                if (taskId > 0) {
+                    execShizukuShell(
+                        "service call activity_task 50 i32 $taskId i32 1 2>/dev/null"
+                    )
+                    Log.d(TAG, "Moved subscreen task $taskId → display 1")
+                }
+            }.apply { isDaemon = true }.start()
+        } catch (e: Exception) {
+            Log.e(TAG, "restoreSystemBackScreenOnSubscreen failed", e)
+        }
+    }
+
+    /** 在 am stack list 输出里查找给 packageName 的 task id */
+    private fun findTaskIdForPackage(pkg: String): Int {
+        return try {
+            val result = execShizukuShell("am stack list")
+            for (line in result.lines()) {
+                if (line.contains(pkg) && line.contains("taskId=")) {
+                    return Regex("taskId=(\\d+)")
+                        .find(line)?.groupValues?.get(1)?.toIntOrNull() ?: continue
+                }
+            }
+            -1
+        } catch (_: Exception) { -1 }
+    }
 
     fun dismissBackScreen() {
         if (!isShizukuRunning() || !hasPermission()) return
