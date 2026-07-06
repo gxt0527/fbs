@@ -256,6 +256,10 @@ monitorAll == true → 已选应用的所有类型消息都转发
 monitorAll == false → 仅焦点/实时动态通知转发
 ```
 
+**验证结果（2026-07-06）：**
+- `monitorAll=false enabled=0 apps` → `Skip: com.xiaomi.finddevice regular=true` 过滤正常
+- 应用列表加载：485 个应用（用户 484 + 系统 1）
+
 ### 2026-07-06 之前的工作
 
 详见 git commit 历史。主要功能：
