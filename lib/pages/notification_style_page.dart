@@ -135,7 +135,7 @@ class _NotificationStylePageState extends State<NotificationStylePage> {
             title: const Text('避开摄像头', style: TextStyle(fontSize: 15)),
             subtitle: Text(
               _style.cameraAvoidanceEnabled
-                  ? '内容区域右移 212px，背景保持全屏'
+                  ? '内容区域右移 ${NotificationStyle.cameraAvoidanceOffset.toStringAsFixed(0)}dp，背景保持全屏'
                   : '内容全屏显示',
               style: TextStyle(fontSize: 12, color: Theme.of(context).colorScheme.onSurfaceVariant),
             ),

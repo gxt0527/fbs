@@ -1,4 +1,4 @@
-package com.example.fbs.service
+﻿package com.example.fbs.service
 
 import android.app.Activity
 import android.content.Intent
@@ -173,21 +173,6 @@ class BackScreenNotificationActivity : Activity() {
         }
     }
 
-    /** 重���系统背屏（官方 subscreencenter） */
-    private fun restoreSubscreen() {
-        try {
-            val intent = packageManager.getLaunchIntentForPackage(SUBSCREEN_PACKAGE)
-            if (intent != null) {
-                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                startActivity(intent)
-                Log.d(TAG, "Restored subscreen: $SUBSCREEN_PACKAGE")
-            } else {
-                Log.w(TAG, "Cannot find subscreen package: $SUBSCREEN_PACKAGE")
-            }
-        } catch (e: Exception) {
-            Log.e(TAG, "Restore subscreen failed", e)
-        }
-    }
 
     // ═══════════════════════════════════════════
     // 内部方法
@@ -254,8 +239,9 @@ class BackScreenNotificationActivity : Activity() {
         val showAppIcon = intent.getStringExtra("showAppIcon")?.toBooleanStrictOrNull() ?: true
         val showTimestamp = intent.getStringExtra("showTimestamp")?.toBooleanStrictOrNull() ?: true
         val cameraAvoidanceEnabled = intent.getStringExtra("cameraAvoidanceEnabled")?.toBooleanStrictOrNull() ?: false
+        // 与 NotificationStyle.cameraAvoidanceOffset 保持一致
         val horizontalOffset = if (cameraAvoidanceEnabled) {
-            intent.getStringExtra("horizontalOffset")?.toFloatOrNull() ?: 212f
+            intent.getStringExtra("horizontalOffset")?.toFloatOrNull() ?: 105f
         } else {
             0f
         }
