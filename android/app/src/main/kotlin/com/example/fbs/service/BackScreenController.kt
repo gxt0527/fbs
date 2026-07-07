@@ -4,7 +4,12 @@ import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.hardware.display.DisplayManager
+import android.os.PowerManager
 import android.util.Log
+import android.view.Display
+import org.json.JSONArray
+import org.json.JSONObject
 import rikka.shizuku.Shizuku
 import java.io.BufferedReader
 import java.io.InputStreamReader
@@ -33,7 +38,7 @@ class BackScreenController(private val context: Context) {
         private const val REQUEST_CODE_SHIZUKU = 1001
 
         private var lastForwardTime = 0L
-        private val GLOBAL_COOLDOWN_MS = 800L
+        private val GLOBAL_COOLDOWN_MS = 1500L
 
         // MainActivity 创建 controller 时注册这个静态引用，
         // 让 BackScreenNotificationActivity 不依赖 MainActivity 实例即可调用 Shizuku 重启系统背屏。
@@ -56,6 +61,15 @@ class BackScreenController(private val context: Context) {
     private val focusNotificationKeys = mutableSetOf<String>()
     // 当前显示的 notificationKey
     private var currentDisplayKey: String? = null
+
+    /**
+     * 防竟态：记录已被系统移除但 Flutter 异步回调尚未到达的 key。
+     * onNotificationRemoved 由系统通知监听直接调用（同步），
+     * 而 onNotificationAdded 经过 Flutter EventChannel → Dart → MethodChannel（异步）。
+     * 若通知在此异步间隙被移除，Flutter 到达时会错误地将已删除的通知重新添加。
+     * 此集合在 remove 时加入，冷却期后自动清除。
+     */
+    private val recentlyRemovedKeys = ConcurrentHashMap.newKeySet<String>()
 
     data class NotifInfo(
         val key: String,
@@ -131,6 +145,12 @@ class BackScreenController(private val context: Context) {
         bigText: String,
         styleExtras: Map<String, String> = emptyMap(),
     ) {
+        // 防竟态: Flutter 异步回调到达时通知可能已被系统移除
+        // 发生在: 系统通知快速到达→移除，Flutter EventChannel→MethodChannel 延迟数百 ms
+        if (recentlyRemovedKeys.contains(key)) {
+            Log.d(TAG, "Rejecting add for recently removed key: $key (Flutter async race)")
+            return
+        }
         // 缓存 Flutter 传入的样式（含摄像头避让参数），
         // 系统 NotificationListener 路径不传 styleExtras 时使用缓存值
         if (styleExtras.isNotEmpty()) {
@@ -155,11 +175,8 @@ class BackScreenController(private val context: Context) {
         Log.d(TAG, "onNotification${if (isUpdate) "Updated" else "Added"}: key=$key focus=$isFocus count=${activeNotifications.size}")
 
         if (isFocus || activeNotifications.size == 1) {
-            // 焦点通知: 始终显示最新
-            // 首条通知: 立即显示
             pushToBackScreen(info, styleExtras, isUpdate)
         }
-        // 多条普通通知: 只推最新 + 折叠计数，不逐条推送
         // pushToBackScreen 方法内部会处理折叠逻辑
     }
 
@@ -169,6 +186,13 @@ class BackScreenController(private val context: Context) {
     fun onNotificationRemoved(key: String) {
         val wasFocus = focusNotificationKeys.remove(key)
         val info = activeNotifications.remove(key)
+
+        // 防竟态: 记录已移除 key，阻止 Flutter 异步回调重新添加
+        recentlyRemovedKeys.add(key)
+        Thread {
+            Thread.sleep(GLOBAL_COOLDOWN_MS + 1000)
+            recentlyRemovedKeys.remove(key)
+        }.apply { isDaemon = true }.start()
 
         Log.d(TAG, "onNotificationRemoved: key=$key wasFocus=$wasFocus remaining=${activeNotifications.size}")
 
@@ -201,9 +225,15 @@ class BackScreenController(private val context: Context) {
         val now = System.currentTimeMillis()
         if (now - lastForwardTime < GLOBAL_COOLDOWN_MS) {
             Log.d(TAG, "Cooldown, delay push for ${info.key}")
-            // 延迟再推
+            // 延迟再推，但推送前检查通知是否已被清除（防止前屏清除后背屏残留）
+            val delayKey = info.key
             Thread {
                 Thread.sleep(GLOBAL_COOLDOWN_MS)
+                // 竟态保护：如果通知在冷却期间已被移除，跳过推送
+                if (!activeNotifications.containsKey(delayKey)) {
+                    Log.d(TAG, "Delayed push cancelled: $delayKey already removed")
+                    return@Thread
+                }
                 doPush(info, styleExtras, isUpdate)
             }.apply { isDaemon = true }.start()
             return
@@ -221,26 +251,38 @@ class BackScreenController(private val context: Context) {
         currentDisplayKey = info.key
 
         try {
-            // 1. 唤醒
-            execShizukuShell("input keyevent KEYCODE_WAKEUP")
+            // 检测背屏 display 1 的当前状态：
+            val dm = context.getSystemService(Context.DISPLAY_SERVICE) as DisplayManager
+            val backDisplay = dm.getDisplay(1)
+            val backDisplayState = backDisplay?.state ?: Display.STATE_UNKNOWN
+            val screenAlreadyOn = backDisplayState == Display.STATE_ON
+            // DOZE (3) = 低功耗 AOD 渲染, DOZE_SUSPEND (4) = 更深层挂起
+            val isDozing = backDisplayState == Display.STATE_DOZE || backDisplayState == Display.STATE_DOZE_SUSPEND
+            // needsWake 传给 Activity，用于决定是否加 FLAG_KEEP_SCREEN_ON
+            val needsWake = backDisplayState == Display.STATE_OFF || backDisplayState == Display.STATE_UNKNOWN
+            Log.d(TAG, "Back display state=$backDisplayState (ON=$screenAlreadyOn isDozing=$isDozing needsWake=$needsWake)")
 
-            // 2. 构建启动命令（先 display 0，再 move 到 display 1）
-            val launchCmd = buildLaunchCommand(info, styleExtras)
-            val launchResult = execShizukuShell(launchCmd)
+            // 构建启动命令
+            val launchCmd = buildLaunchCommand(info, styleExtras, needsWake, isDozing)
+
+            // 始终先唤醒背屏（DOZE/OFF → ON），确保 Activity 能在 display 1 渲染
+            // 已亮屏时 KEYCODE_WAKEUP 是 no-op；使用 -d 1 指定只操作背屏，避免误触正面屏幕
+            val combined = "input -d 1 keyevent KEYCODE_WAKEUP && $launchCmd"
+            val launchResult = execShizukuShell(combined)
             Log.d(TAG, "Launch: $launchResult")
             Thread.sleep(300)
 
-            // 3. 移屏 + 杀官方背屏
+            // 移屏到 display 1（不杀 subscreencenter，让它自然退到后台）
             val taskId = getOurTaskId()
             if (taskId > 0) {
-                execShizukuShell("service call activity_task 50 i32 $taskId i32 1; am force-stop $SUBSCREEN_PACKAGE")
-                Log.d(TAG, "Moved task $taskId → display 1, killed subscreencenter")
+                execShizukuShell("service call activity_task 50 i32 $taskId i32 1")
+                Log.d(TAG, "Moved task $taskId → display 1")
+                // 不再 force-stop subscreencenter — 让它留在后台
+                // 我们 Activity 在前台时它被覆盖，finish 后它自然恢复
+                // 好处: 不需要 restore 步骤，避免 SECONDARY_HOME 选择对话框
             } else {
                 Log.w(TAG, "No taskId found for BackScreenNotificationActivity")
             }
-
-            // 4. 确保亮屏不灭
-            execShizukuShell("settings put system screen_off_timeout 90000")
 
         } catch (e: Exception) {
             Log.e(TAG, "Push failed", e)
@@ -250,7 +292,7 @@ class BackScreenController(private val context: Context) {
     /**
      * 构建 am start 命令
      */
-    private fun buildLaunchCommand(info: NotifInfo, styleExtras: Map<String, String>): String {
+    private fun buildLaunchCommand(info: NotifInfo, styleExtras: Map<String, String>, needsWake: Boolean, isDozing: Boolean): String {
         // 合并缓存样式：系统 NotificationListener 路径不传 styleExtras 时使用缓存值
         val mergedExtras = if (styleExtras.isEmpty() && latestStyleExtras.isNotEmpty()) {
             Log.d(TAG, "Using cached styleExtras (cameraAvoid=${latestStyleExtras["cameraAvoidanceEnabled"]})")
@@ -261,10 +303,14 @@ class BackScreenController(private val context: Context) {
 
         val sb = StringBuilder("am start")
         sb.append(" -n ${context.packageName}/.service.BackScreenNotificationActivity")
-        sb.append(" -f 0x10000000") // FLAG_ACTIVITY_NEW_TASK
+        // FLAG_ACTIVITY_NEW_TASK(0x10000000) + FLAG_ACTIVITY_NO_ANIMATION(0x00200000)
+        // NO_ANIMATION 防止 Activity 在 display 0 短暂显示时的视觉闪烁
+        var flags = 0x10200000
         if (activeNotifications.containsKey(info.key)) {
-            sb.append(" -f 0x20000000") // FLAG_ACTIVITY_SINGLE_TOP → 触发 onNewIntent
+            // 追加 FLAG_ACTIVITY_SINGLE_TOP(0x20000000) → 触发 onNewIntent
+            flags = flags or 0x20000000
         }
+        sb.append(" -f $flags")
         sb.append(" --user 0")
 
         // 通知字段
@@ -299,12 +345,46 @@ class BackScreenController(private val context: Context) {
         appendExtra(sb, "cameraAvoidanceEnabled", mergedExtras["cameraAvoidanceEnabled"] ?: "false")
         appendExtra(sb, "horizontalOffset", mergedExtras["horizontalOffset"] ?: "0")
 
-        // 非焦点通知超时
-        if (!info.isFocus) {
-            appendExtra(sb, "displayDurationMs", mergedExtras["displayDurationMs"] ?: "8000")
-        }
+        // 不设置自动消失 — 所有通知保持显示直到被系统清除
+        // 由 BackScreenController.onNotificationRemoved 控制消失逻辑
+
+        // 传递屏幕初始状态，Activity 据此决定是否加 FLAG_KEEP_SCREEN_ON
+        // needsWake: 背屏完全关闭时 true → 加 FLAG_KEEP_SCREEN_ON
+        // isDozing: 背屏 AOD 时 true → 不加 FLAG_KEEP_SCREEN_ON
+        appendExtra(sb, "needsWake", needsWake.toString())
+        appendExtra(sb, "isDozing", isDozing.toString())
+
+        // 传递全部活跃通知列表（JSON），供 Activity 多通知切换
+        val notificationsJson = buildNotificationsJson(info.key)
+        appendExtra(sb, "notificationsJson", notificationsJson)
 
         return sb.toString()
+    }
+
+    /**
+     * 将全部活跃通知序列化为 JSON 数组，按时间戳倒序排列。
+     * Activity 解析后支持上下滑动切换查看。
+     */
+    private fun buildNotificationsJson(currentKey: String): String {
+        val arr = JSONArray()
+        val sorted = activeNotifications.values.sortedByDescending { it.timestamp }
+        for (n in sorted) {
+            val obj = JSONObject().apply {
+                put("key", n.key)
+                put("title", n.title)
+                put("content", n.content)
+                put("appName", n.appName)
+                put("packageName", n.packageName)
+                put("category", n.category)
+                put("isFocus", n.isFocus)
+                put("isSticky", n.isFocus)
+                put("subText", n.subText)
+                put("timestamp", n.timestamp)
+            }
+            arr.put(obj)
+        }
+        Log.d(TAG, "notificationsJson: ${arr.length()} items, current=$currentKey")
+        return arr.toString()
     }
 
     private fun appendExtra(sb: StringBuilder, key: String, value: String) {
@@ -348,23 +428,14 @@ class BackScreenController(private val context: Context) {
             execShizukuShell("am force-stop $SUBSCREEN_PACKAGE")
             Thread.sleep(200)
 
-            // Step 2: 启动 subscreencenter（会在 display 0 出现）
-            val launchIntent = context.packageManager.getLaunchIntentForPackage(SUBSCREEN_PACKAGE)
-            if (launchIntent == null) {
-                Log.w(TAG, "Cannot find subscreen launch intent")
-                return
-            }
-            val componentName = launchIntent.component
-            if (componentName != null) {
-                execShizukuShell(
-                    "am start --user 0 -n ${componentName.flattenToShortString()}"
-                )
-            } else {
-                execShizukuShell(
-                    "monkey -p $SUBSCREEN_PACKAGE -c android.intent.category.LAUNCHER 1"
-                )
-            }
-            Log.d(TAG, "Started subscreencenter on display 0")
+            // Step 2: 启动 subscreencenter
+            // subscreencenter 是 SECONDARY_HOME，没有 CATEGORY_LAUNCHER，
+            // 无法通过 getLaunchIntentForPackage 获取。
+            // 使用 am start -a MAIN -c SECONDARY_HOME 启动
+            execShizukuShell(
+                "am start --user 0 -a android.intent.action.MAIN -c android.intent.category.SECONDARY_HOME"
+            )
+            Log.d(TAG, "Started subscreencenter on display 0 via SECONDARY_HOME")
 
             // Step 3: 等待启动完成后，找到其 taskId 并移到 display 1
             Thread.sleep(500)
@@ -451,9 +522,11 @@ class BackScreenController(private val context: Context) {
         title: String, subtitle: String, content: String,
         appName: String, packageName: String,
         styleExtras: Map<String, String>,
+        notificationKey: String = "",
     ) {
+        val key = notificationKey.ifEmpty { "v2_${System.currentTimeMillis()}" }
         onNotificationAdded(
-            key = "v2_${System.currentTimeMillis()}",
+            key = key,
             title = title, content = content,
             packageName = packageName, appName = appName,
             isFocus = true, isOngoing = false,
@@ -465,6 +538,18 @@ class BackScreenController(private val context: Context) {
     // ═══════════════════════════════════════════
     //  辅助方法
     // ═══════════════════════════════════════════
+
+    /**
+     * 检查背屏 (display 1) 是否处于 AOD 状态。
+     * 在 AOD 期间不推送通知，避免 Activity 把 display 从 DOZE 拉到 ON 破坏 AOD 渲染。
+     */
+    private fun isDozing(): Boolean {
+        return try {
+            val dm = context.getSystemService(Context.DISPLAY_SERVICE) as DisplayManager
+            val backDisplay = dm.getDisplay(1) ?: return false
+            backDisplay.state == Display.STATE_DOZE || backDisplay.state == Display.STATE_DOZE_SUSPEND
+        } catch (_: Exception) { false }
+    }
 
     private fun getOurTaskId(): Int {
         try {
@@ -496,6 +581,26 @@ class BackScreenController(private val context: Context) {
     fun setBackScreenBrightness(brightness: Int = 128) {
         if (!isShizukuRunning() || !hasPermission()) return
         execShizukuShell("settings put system screen_brightness $brightness")
+    }
+
+    /**
+     * 将背屏 (display 1) 送回 AOD。在背屏 Activity 关闭后调用。
+     * 先 power-off 让 display 1 熄灭，再 power-reset 让它回到系统认为"应有"的状态。
+     * 如果 AOD 已启用，系统会重新渲染 AOD 时钟；只作用于 display 1，不影响正面屏幕。
+     */
+    fun putBackScreenToSleep() {
+        if (!isShizukuRunning() || !hasPermission()) {
+            Log.w(TAG, "Cannot sleep back screen: Shizuku unavailable")
+            return
+        }
+        try {
+            // 单条 power-reset 无法让 Activity 唤醒后的 display 1 回到 AOD，
+            // 需要先把背屏熄灭，再 reset 才能触发 AOD 重新渲染。
+            execShizukuShell("cmd display power-off 1; sleep 0.5; cmd display power-reset 1")
+            Log.d(TAG, "Back screen (display 1) power-off then reset to AOD")
+        } catch (e: Exception) {
+            Log.e(TAG, "putBackScreenToSleep failed", e)
+        }
     }
 
     private fun execShizukuShell(command: String): String {

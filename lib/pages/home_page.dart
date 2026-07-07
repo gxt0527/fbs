@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import '../models/monitor_settings.dart';
 import '../models/notification_item.dart';
@@ -34,6 +35,11 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
   final Set<String> _recentlyForwardedKeys = {};
   static const Duration _forwardCooldown = Duration(seconds: 5);
 
+  /// 全局节流：防止密集通知导致背屏反复刷新
+  Timer? _throttleTimer;
+  NotificationItem? _pendingForwardNotification;
+  static const Duration _throttleWindow = Duration(milliseconds: 300);
+
   @override
   void initState() {
     super.initState();
@@ -44,6 +50,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    _throttleTimer?.cancel();
     super.dispose();
   }
 
@@ -184,7 +191,6 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
   }
 
   void _onNotificationReceived(NotificationItem notification) {
-    // 调试日志：确认通知是否到达 Flutter
     debugPrint('FBS_RECV: pkg=${notification.packageName} title=${notification.title} monitorAll=${_settings.monitorAll}');
 
     if (!_settings.shouldMonitor(notification.packageName, notification.isFocusNotification,
@@ -207,7 +213,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
     }
   }
 
-  /// 带去重的转发：同一 notificationKey 在冷却期内跳过重复转发
+  /// 带去重 + 全局节流的转发：同一 notificationKey 在冷却期内跳过；密集通知只转发最新一条
   void _forwardToBackScreenWithDedup(NotificationItem notification) {
     final key = notification.notificationKey;
     if (key.isNotEmpty && _recentlyForwardedKeys.contains(key)) {
@@ -221,7 +227,16 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
       });
     }
 
-    _forwardToBackScreen(notification);
+    // 全局节流：300ms 窗口内只转发最新一条
+    _pendingForwardNotification = notification;
+    _throttleTimer?.cancel();
+    _throttleTimer = Timer(_throttleWindow, () {
+      final pending = _pendingForwardNotification;
+      _pendingForwardNotification = null;
+      if (pending != null) {
+        _forwardToBackScreen(pending);
+      }
+    });
   }
 
   void _onNotificationRemoved(Map<String, dynamic> info) {
@@ -247,6 +262,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
       appName: notification.appName,
       packageName: notification.packageName,
       styleExtras: _notificationStyle.toIntentExtras(),
+      notificationKey: notification.notificationKey,
     );
   }
 

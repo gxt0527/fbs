@@ -308,6 +308,7 @@ class NativeService {
     required String appName,
     required String packageName,
     required Map<String, String> styleExtras,
+    String notificationKey = '',
   }) async {
     _log('FBS_V2: invoking displayOnBackScreenV2 for $packageName');
     try {
@@ -318,6 +319,7 @@ class NativeService {
         'appName': appName,
         'packageName': packageName,
         'styleExtras': styleExtras,
+        'notificationKey': notificationKey,
       });
       _log('FBS_V2: method channel returned OK');
     } catch (e) {

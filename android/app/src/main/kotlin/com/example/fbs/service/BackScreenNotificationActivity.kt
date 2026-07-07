@@ -1,16 +1,18 @@
 ﻿package com.example.fbs.service
 
+import android.animation.ValueAnimator
+import android.animation.AnimatorListenerAdapter
 import android.app.Activity
 import android.content.Intent
 import android.content.res.Configuration
 import android.graphics.*
 import android.os.*
 import android.util.Log
-import android.view.KeyEvent
-import android.view.View
-import android.view.WindowManager
+import android.view.*
+import android.view.animation.DecelerateInterpolator
 import java.text.SimpleDateFormat
 import java.util.*
+import org.json.JSONArray
 
 /**
  * 背屏通知渲染 Activity — 运行在 display 1
@@ -28,6 +30,8 @@ class BackScreenNotificationActivity : Activity() {
     companion object {
         private const val TAG = "BackScreenNotif"
         private const val SUBSCREEN_PACKAGE = "com.xiaomi.subscreencenter"
+        /** 移屏延迟 — 等待 Shizuku 将 Activity 从 display 0 移到 display 1 */
+        private const val DISPLAY_MOVE_DELAY_MS = 500L
 
         /** 构建关闭背屏的 Intent 字符串，供 Shizuku 的 am start 使用 */
         fun buildDismissIntent(context: android.content.Context): String {
@@ -38,15 +42,27 @@ class BackScreenNotificationActivity : Activity() {
 
     private var renderView: NotificationRenderView? = null
     private var dismissHandler = Handler(Looper.getMainLooper())
-    private var displayDurationMs = 10000L
     private var isSticky = false
     private var currentConfig: RenderConfig? = null
+    private var iconLoadThread: Thread? = null
+    private var isActivated = false
+    private var needsWake = true
+    private var isDozing = false
+    private var wasInAod = false  // 记录启动时是否处于 AOD，关闭时据此决定是否恢复 subscreencenter
+
+    // multi-notification navigation
+    private var notificationsList = mutableListOf<RenderConfig>()
+    private var currentIndex = 0
+    private var lastNotifCount = 0
+
+    private val aodTransitionRunnable = Runnable { enterAodMode() }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
         try {
-            Log.d(TAG, "onCreate display=${display?.displayId}")
+            val displayId = display?.displayId ?: 0
+            Log.d(TAG, "onCreate display=$displayId")
 
             // 检查 dismiss 指令（防止 auto-dismiss 后重建）
             if (intent.getStringExtra("dismiss")?.toBooleanStrictOrNull() == true) {
@@ -56,22 +72,105 @@ class BackScreenNotificationActivity : Activity() {
             }
 
             setupWindowFlags()
-            currentConfig = parseIntent(intent)
-            renderView = NotificationRenderView(this, currentConfig!!)
-            renderView?.setBackgroundColor(currentConfig!!.backgroundColor)
+            needsWake = intent.getStringExtra("needsWake")?.toBooleanStrictOrNull() ?: true
+            isDozing = intent.getStringExtra("isDozing")?.toBooleanStrictOrNull() ?: false
+            wasInAod = isDozing  // 记录启动时的 AOD 状态，关闭时据此决定是否恢复 subscreencenter
+            Log.d(TAG, "needsWake=$needsWake isDozing=$isDozing wasInAod=$wasInAod")
+
+            // Parse notification list from JSON
+            val jsonStr = intent.getStringExtra("notificationsJson") ?: ""
+            notificationsList = parseNotificationsJson(jsonStr)
+            if (notificationsList.isEmpty()) {
+                // fallback: parse single notification from intent extras
+                currentConfig = parseIntent(intent)
+                notificationsList.add(currentConfig!!)
+            }
+            currentIndex = intent.getStringExtra("notificationKey")?.let { key ->
+                notificationsList.indexOfFirst { it.notificationKey == key }
+                    .coerceAtLeast(0)
+            } ?: 0
+            currentConfig = notificationsList[currentIndex]
+            lastNotifCount = notificationsList.size
+            Log.d(TAG, "notificationsList: ${notificationsList.size} items, currentIndex=$currentIndex")
+
+            renderView = NotificationRenderView(this, notificationsList, currentIndex)
             setContentView(renderView)
             renderView?.isClickable = false
             renderView?.isFocusable = false
+            renderView?.onNavigateCallback = { newIndex -> onNavigateTo(newIndex) }
 
-            if (!isSticky) {
-                scheduleAutoDismiss()
+            // 在 display 0 上 view 完全不可见，移到 display 1 后才显示
+            if (displayId != 1) {
+                renderView?.visibility = View.GONE
             }
+
+            // Load app icon for current notification
+            loadAppIconAsync(currentConfig!!)
+
+            // 不设自动消失 — 背屏通知随系统通知生命周期
+            // 系统清除通知时 onNotificationRemoved → dismissBackScreen() → 关闭本 Activity
+
+            // 根据当前 display 决定是否激活渲染
+            if (displayId == 1) {
+                activateOnDisplay1()
+            } else {
+                // display 0 — 透明等待，不渲染内容，不接收触摸
+                Log.d(TAG, "Launched on display 0, waiting to move to display 1")
+                holdOnDisplay0()
+            }
+
+            // 5 秒后降低亮度到 AOD 水平，保持通知内容但模拟 AOD 状态
+            scheduleAodTransition()
 
             Log.d(TAG, "onCreate done, sticky=$isSticky key=${currentConfig?.notificationKey}")
         } catch (e: Exception) {
             Log.e(TAG, "onCreate failed", e)
             finish()
         }
+    }
+
+    /**
+     * display 0 阶段: 禁用触摸输入，等待 500ms 后检查是否已移到 display 1
+     * 此期间 Activity 透明 + 无触摸 = 不会影响正面屏幕
+     */
+    private fun holdOnDisplay0() {
+        // 禁止所有触摸事件传递到此 Activity
+        window.setFlags(
+            WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE,
+            WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE
+        )
+        // 延迟后检查是否已移到 display 1
+        dismissHandler.postDelayed({
+            checkAndActivate()
+        }, DISPLAY_MOVE_DELAY_MS)
+    }
+
+    /** 检测 display ID，若已在 display 1 则激活渲染和触摸 */
+    private fun checkAndActivate() {
+        val displayId = display?.displayId ?: 0
+        if (displayId == 1) {
+            activateOnDisplay1()
+        } else {
+            // 仍在 display 0，再等一轮（可能移屏较慢）
+            Log.w(TAG, "Still on display 0 after ${DISPLAY_MOVE_DELAY_MS}ms, retrying")
+            dismissHandler.postDelayed({ checkAndActivate() }, DISPLAY_MOVE_DELAY_MS)
+        }
+    }
+
+    /** 激活: 设置不透明背景 + 启用触摸输入 + 显示渲染内容 */
+    private fun activateOnDisplay1() {
+        if (isActivated) return
+        isActivated = true
+        Log.d(TAG, "Activated on display 1")
+
+        // 恢复窗口为不透明
+        window.setBackgroundDrawableResource(android.R.color.black)
+        // 启用触摸
+        window.clearFlags(WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE)
+        // 显示渲染内容（之前 GONE）
+        renderView?.visibility = View.VISIBLE
+        // 刷新渲染
+        renderView?.invalidate()
     }
 
     /**
@@ -82,7 +181,8 @@ class BackScreenNotificationActivity : Activity() {
     @Suppress("DEPRECATION")
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
-        Log.d(TAG, "onNewIntent")
+        val displayId = display?.displayId ?: 0
+        Log.d(TAG, "onNewIntent display=$displayId")
 
         // 检查 dismiss 指令
         if (intent.getStringExtra("dismiss")?.toBooleanStrictOrNull() == true) {
@@ -92,15 +192,34 @@ class BackScreenNotificationActivity : Activity() {
         }
 
         try {
-            currentConfig = parseIntent(intent)
-            renderView?.updateConfig(currentConfig!!)
-            renderView?.invalidate()
+            // Update screen state
+            needsWake = intent.getStringExtra("needsWake")?.toBooleanStrictOrNull() ?: needsWake
+            isDozing = intent.getStringExtra("isDozing")?.toBooleanStrictOrNull() ?: isDozing
+            // wasInAod 不更新 — 只在 onCreate 设置一次，保持初始 AOD 状态
+            // 后续 update/dismiss 都应使用最初的状态来决定是否需要 KEYCODE_SLEEP
 
-            // 重置 timer（如果是非粘性模式）
-            dismissHandler.removeCallbacksAndMessages(null)
-            if (!isSticky) {
-                scheduleAutoDismiss()
+            // Parse updated notifications list
+            val jsonStr = intent.getStringExtra("notificationsJson") ?: ""
+            val newList = parseNotificationsJson(jsonStr)
+            if (newList.isNotEmpty()) {
+                notificationsList = newList
             }
+            lastNotifCount = notificationsList.size
+
+            // If still on display 0, skip render update
+            if (displayId != 1) {
+                Log.d(TAG, "onNewIntent on display $displayId, skipping render update")
+                return
+            }
+
+            // On display 1: update to show the latest notification (index 0)
+            currentIndex = 0
+            currentConfig = notificationsList[currentIndex]
+            renderView?.updateList(notificationsList, currentIndex)
+            loadAppIconAsync(currentConfig!!)
+
+            // 通知更新后重新计时：再亮屏 5 秒，然后进入 AOD 亮度
+            scheduleAodTransition()
         } catch (e: Exception) {
             Log.e(TAG, "onNewIntent failed", e)
         }
@@ -144,6 +263,7 @@ class BackScreenNotificationActivity : Activity() {
 
     override fun onDestroy() {
         dismissHandler.removeCallbacksAndMessages(null)
+        iconLoadThread?.interrupt()
         Log.d(TAG, "onDestroy, key=${currentConfig?.notificationKey}")
         super.onDestroy()
     }
@@ -152,14 +272,27 @@ class BackScreenNotificationActivity : Activity() {
     // 背屏关闭 & 恢复
     // ═══════════════════════════════════════════
 
-    /** 关闭本 Activity 并恢复系统背屏 */
+    /** 关闭本 Activity。subscreencenter 未被杀死，自动回到前台。AOD 时发 KEYCODE_SLEEP 回 DOZE。 */
     private fun finishAndRestore() {
         dismissHandler.removeCallbacksAndMessages(null)
         finish()
-        // 异步触发系统背屏恢复，避免在 Activity 仍在 finalizing 阶段影响结果
-        // 通过 BackScreenController 用 Shizuku 在 display 1 上启动 subscreencenter
-        // 不指定 display 会落到主屏 (display 0)，所以必须走 Shizuku shell
-        restoreSubscreen()
+        if (wasInAod) {
+            // AOD 模式: finish 后等 500ms 确保 Activity 完全销毁 + subscreencenter 恢复前景，
+            // 再发送 KEYCODE_SLEEP 让 display 1 从 ON 回到 DOZE/AOD
+            Thread {
+                try {
+                    Thread.sleep(500)
+                    BackScreenController.instance?.putBackScreenToSleep()
+                } catch (e: Exception) {
+                    Log.e(TAG, "AOD sleep failed", e)
+                }
+            }.apply { isDaemon = true }.start()
+            Log.d(TAG, "AOD mode: dispatched KEYCODE_SLEEP (500ms delay) to restore AOD")
+            return
+        }
+        // 非 AOD: subscreencenter 未被杀死，Activity finish 后它自动恢复前台
+        // 无需手动 restore，避免 SECONDARY_HOME 选择对话框
+        Log.d(TAG, "Activity finished, subscreencenter will resume naturally")
     }
 
     /** 恢复系统背屏 — 优先 Shizuku 在 display 1 启动，不可用时退化为本地 startActivity */
@@ -195,11 +328,12 @@ class BackScreenNotificationActivity : Activity() {
 
     private fun setupWindowFlags() {
         try {
-            window.addFlags(
-                WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON
-                    or WindowManager.LayoutParams.FLAG_FULLSCREEN
-                    or WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED
-            )
+            var flags = WindowManager.LayoutParams.FLAG_FULLSCREEN or
+                WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED
+            // 来通知后先保持亮屏 5 秒，方便用户看清内容
+            // 之后 enterAodMode() 会清除 KEEP_SCREEN_ON 并降低亮度到 AOD 水平
+            flags = flags or WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON
+            window.addFlags(flags)
             val lp = window.attributes
             lp.screenBrightness = -1.0f // 跟随系统亮度
             window.attributes = lp
@@ -208,6 +342,25 @@ class BackScreenNotificationActivity : Activity() {
             setupImmersiveMode()
         } catch (e: Exception) {
             Log.w(TAG, "Window flags error: ${e.message}")
+        }
+    }
+
+    private fun scheduleAodTransition() {
+        dismissHandler.removeCallbacks(aodTransitionRunnable)
+        dismissHandler.postDelayed(aodTransitionRunnable, 5000)
+        Log.d(TAG, "Scheduled AOD transition in 5000ms")
+    }
+
+    private fun enterAodMode() {
+        try {
+            // 5 秒后把亮度降到 AOD 水平，保持通知内容但不再主动保持屏幕常亮
+            val lp = window.attributes
+            lp.screenBrightness = 0.01f
+            window.attributes = lp
+            window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+            Log.d(TAG, "Entered AOD brightness mode")
+        } catch (e: Exception) {
+            Log.e(TAG, "enterAodMode failed", e)
         }
     }
 
@@ -263,41 +416,16 @@ class BackScreenNotificationActivity : Activity() {
         val padding = intent.getStringExtra("padding")?.toFloatOrNull() ?: 24f
         val spacing = intent.getStringExtra("spacing")?.toFloatOrNull() ?: 12f
 
-        displayDurationMs = if (isSticky) {
-            Long.MAX_VALUE // 焦点通知不自动消失
-        } else {
-            intent.getStringExtra("displayDurationMs")?.toLongOrNull() ?: 10000L
-        }
-
         Log.d(TAG, "Parsed: key=$notificationKey sticky=$isSticky focus=$isFocus "
-            + "count=$notificationCount title=[$title] content=[${content.take(30)}] "
-            + "dur=${if (isSticky) "infinite" else "${displayDurationMs}ms"}")
+            + "count=$notificationCount title=[$title] content=[${content.take(30)}]")
         // [临时调试] 验证摄像头避让参数是否到达 Activity
         Log.d(TAG, "Camera: enabled=$cameraAvoidanceEnabled ho=$horizontalOffset "
             + "raw='${intent.getStringExtra("cameraAvoidanceEnabled")}' "
             + "rawHo='${intent.getStringExtra("horizontalOffset")}'")
 
-        // 加载应用桌面图标（高分辨率，避免锯齿）
-        val displayDensity = resources.displayMetrics.density
-        val appIcon: Bitmap? = try {
-            if (packageName.isNotEmpty()) {
-                val iconSize = (titleFontSize + 8f) * displayDensity  // 渲染时的实际像素大小
-                val pxSize = iconSize.toInt()
-                // 优先用启动图标（桌面图标），降级用应用图标
-                val iconDrawable = try {
-                    val launchIntent = packageManager.getLaunchIntentForPackage(packageName)
-                    if (launchIntent != null) packageManager.getActivityIcon(launchIntent)
-                    else packageManager.getApplicationIcon(packageName)
-                } catch (_: Exception) {
-                    packageManager.getApplicationIcon(packageName)
-                }
-                val bmp = Bitmap.createBitmap(pxSize, pxSize, Bitmap.Config.ARGB_8888)
-                val canvas = android.graphics.Canvas(bmp)
-                iconDrawable.setBounds(0, 0, pxSize, pxSize)
-                iconDrawable.draw(canvas)
-                bmp
-            } else null
-        } catch (_: Exception) { null }
+        // 加载应用桌面图标 — 异步加载，避免阻塞主线程
+        // 先用 null 占位，异步加载完成后 invalidate
+        val appIcon: Bitmap? = null
 
         return RenderConfig(
             title = if (title.isNotEmpty()) title else appName,
@@ -330,12 +458,127 @@ class BackScreenNotificationActivity : Activity() {
         )
     }
 
-    private fun scheduleAutoDismiss() {
-        if (displayDurationMs <= 0 || displayDurationMs == Long.MAX_VALUE) return
-        dismissHandler.postDelayed({
-            Log.d(TAG, "Auto-dismiss after ${displayDurationMs}ms")
-            finishAndRestore()
-        }, displayDurationMs)
+    private fun loadAppIconAsync(config: RenderConfig) {
+        iconLoadThread?.interrupt()
+        if (config.packageName.isEmpty()) return
+
+        iconLoadThread = Thread {
+            try {
+                val density = resources.displayMetrics.density
+                val iconSize = (config.titleFontSize + 8f) * density
+                val pxSize = iconSize.toInt()
+                val iconDrawable = try {
+                    val launchIntent = packageManager.getLaunchIntentForPackage(config.packageName)
+                    if (launchIntent != null) packageManager.getActivityIcon(launchIntent)
+                    else packageManager.getApplicationIcon(config.packageName)
+                } catch (_: Exception) {
+                    try { packageManager.getApplicationIcon(config.packageName) } catch (_: Exception) { null }
+                }
+                if (iconDrawable == null || Thread.currentThread().isInterrupted) return@Thread
+                val bmp = Bitmap.createBitmap(pxSize, pxSize, Bitmap.Config.ARGB_8888)
+                val canvas = android.graphics.Canvas(bmp)
+                iconDrawable.setBounds(0, 0, pxSize, pxSize)
+                iconDrawable.draw(canvas)
+                if (Thread.currentThread().isInterrupted) return@Thread
+                runOnUiThread {
+                    // Update the config in the list with loaded icon
+                    if (currentIndex < notificationsList.size) {
+                        val updated = notificationsList[currentIndex].copy(appIcon = bmp)
+                        notificationsList[currentIndex] = updated
+                        currentConfig = updated
+                        renderView?.updateConfig(updated)
+                        renderView?.invalidate()
+                    }
+                }
+            } catch (_: Exception) {}
+        }.apply { isDaemon = true; start() }
+    }
+
+    /**
+     * Parse notifications JSON array into a list of RenderConfig.
+     * Uses shared style from the first item or from current intent extras.
+     */
+    private fun parseNotificationsJson(json: String): MutableList<RenderConfig> {
+        if (json.isBlank()) return mutableListOf()
+        return try {
+            val arr = JSONArray(json)
+            val result = mutableListOf<RenderConfig>()
+            for (i in 0 until arr.length()) {
+                val obj = arr.getJSONObject(i)
+                val config = RenderConfig(
+                    title = obj.optString("title", ""),
+                    subtitle = obj.optString("subText", ""),
+                    content = obj.optString("content", ""),
+                    appName = obj.optString("appName", ""),
+                    packageName = obj.optString("packageName", ""),
+                    category = obj.optString("category", ""),
+                    notificationKey = obj.optString("key", ""),
+                    isSticky = obj.optBoolean("isSticky", false),
+                    isFocus = obj.optBoolean("isFocus", false),
+                    notificationCount = arr.length(),
+                    titleFontSize = 28f,
+                    subtitleFontSize = 20f,
+                    contentFontSize = 16f,
+                    countFontSize = 14f,
+                    titleColor = Color.WHITE,
+                    subtitleColor = Color.parseColor("#B0B0B0"),
+                    contentColor = Color.parseColor("#E0E0E0"),
+                    countColor = Color.parseColor("#888888"),
+                    backgroundColor = Color.parseColor("#1A1A2E"),
+                    showAppIcon = true,
+                    showTimestamp = true,
+                    showFoldCount = arr.length() > 1,
+                    cameraAvoidanceEnabled = false,
+                    horizontalOffset = 0f,
+                    padding = 24f,
+                    spacing = 12f,
+                    appIcon = null,
+                )
+                result.add(config)
+            }
+            // Apply style from current intent to all items
+            if (result.isNotEmpty()) {
+                val styled = applyStyleFromIntent(result)
+                styled
+            } else {
+                result
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "parseNotificationsJson failed: ${e.message}")
+            mutableListOf()
+        }
+    }
+
+    /** Apply style extras (colors, sizes, etc.) from current intent to all notification configs */
+    private fun applyStyleFromIntent(configs: MutableList<RenderConfig>): MutableList<RenderConfig> {
+        return configs.map { c ->
+            c.copy(
+                titleFontSize = intent.getStringExtra("titleFontSize")?.toFloatOrNull() ?: c.titleFontSize,
+                subtitleFontSize = intent.getStringExtra("subtitleFontSize")?.toFloatOrNull() ?: c.subtitleFontSize,
+                contentFontSize = intent.getStringExtra("contentFontSize")?.toFloatOrNull() ?: c.contentFontSize,
+                titleColor = parseColorExtra("titleColor", c.titleColor),
+                subtitleColor = parseColorExtra("subtitleColor", c.subtitleColor),
+                contentColor = parseColorExtra("contentColor", c.contentColor),
+                backgroundColor = parseColorExtra("backgroundColor", c.backgroundColor),
+                showAppIcon = intent.getStringExtra("showAppIcon")?.toBooleanStrictOrNull() ?: c.showAppIcon,
+                showTimestamp = intent.getStringExtra("showTimestamp")?.toBooleanStrictOrNull() ?: c.showTimestamp,
+                cameraAvoidanceEnabled = intent.getStringExtra("cameraAvoidanceEnabled")?.toBooleanStrictOrNull() ?: c.cameraAvoidanceEnabled,
+                horizontalOffset = if (intent.getStringExtra("cameraAvoidanceEnabled")?.toBooleanStrictOrNull() == true) {
+                    intent.getStringExtra("horizontalOffset")?.toFloatOrNull() ?: 85f
+                } else 0f,
+                padding = intent.getStringExtra("padding")?.toFloatOrNull() ?: c.padding,
+                spacing = intent.getStringExtra("spacing")?.toFloatOrNull() ?: c.spacing,
+            )
+        }.toMutableList()
+    }
+
+    /** Called by RenderView when user swipes to navigate between notifications */
+    private fun onNavigateTo(newIndex: Int) {
+        if (newIndex < 0 || newIndex >= notificationsList.size) return
+        currentIndex = newIndex
+        currentConfig = notificationsList[currentIndex]
+        Log.d(TAG, "Navigate to index=$currentIndex key=${currentConfig?.notificationKey}")
+        loadAppIconAsync(currentConfig!!)
     }
 
     private fun parseColorExtra(key: String, default: Int): Int {
@@ -382,18 +625,21 @@ class BackScreenNotificationActivity : Activity() {
     )
 
     // ═══════════════════════════════════════════
-    // 自定义渲染 View — 支持动态更新
+    // Custom RenderView — multi-notification navigation with swipe + arrows
     // ═══════════════════════════════════════════
 
     class NotificationRenderView(
         context: android.content.Context,
-        private var config: RenderConfig,
+        private val notifications: MutableList<RenderConfig>,
+        private var currentIndex: Int,
     ) : View(context) {
 
-        /** 屏幕密度因子，用于将 sp 值转换为 px */
-        private val density: Float
+        var onNavigateCallback: ((Int) -> Unit)? = null
 
-        // 预创建的 Paint 对象在 updateConfig 中重设颜色/字号
+        private val density: Float
+        private var config: RenderConfig = notifications[currentIndex]
+
+        // Paint objects
         private val titlePaint: Paint
         private val subtitlePaint: Paint
         private val contentPaint: Paint
@@ -402,11 +648,22 @@ class BackScreenNotificationActivity : Activity() {
         private val bgPaint: Paint
         private val iconBgPaint: Paint
         private val iconTextPaint: Paint
+        private val arrowPaint: Paint
         private val timeFormat = SimpleDateFormat("HH:mm", Locale.getDefault())
+
+        // Transition animation
+        private var transitionAlpha = 1f
+        private var isTransitioning = false
+        private val transitionDuration = 250L
+
+        // Swipe gesture detection
+        private val gestureDetector: GestureDetector
+        private val swipeThreshold = 80f
+        private val swipeVelocityThreshold = 200f
 
         init {
             density = context.resources.displayMetrics.density
-            Log.d(TAG, "RenderView init, density=$density")
+            Log.d(TAG, "RenderView init, density=$density, listSize=${notifications.size}, index=$currentIndex")
 
             val tSize = config.titleFontSize * density
             val stSize = config.subtitleFontSize * density
@@ -441,10 +698,52 @@ class BackScreenNotificationActivity : Activity() {
                 textAlign = Paint.Align.CENTER
                 typeface = Typeface.DEFAULT_BOLD
             }
+            arrowPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                color = Color.parseColor("#60FFFFFF")
+                style = Paint.Style.FILL
+            }
+
+            gestureDetector = GestureDetector(context, object : GestureDetector.SimpleOnGestureListener() {
+                override fun onFling(
+                    e1: MotionEvent?, e2: MotionEvent,
+                    velocityX: Float, velocityY: Float
+                ): Boolean {
+                    if (isTransitioning) return false
+                    val diffY = (e1?.y ?: 0f) - e2.y
+                    // Swipe up -> next notification (newer)
+                    if (diffY > swipeThreshold && Math.abs(velocityY) > swipeVelocityThreshold) {
+                        navigateTo(currentIndex - 1)
+                        return true
+                    }
+                    // Swipe down -> previous notification (older)
+                    if (-diffY > swipeThreshold && Math.abs(velocityY) > swipeVelocityThreshold) {
+                        navigateTo(currentIndex + 1)
+                        return true
+                    }
+                    return false
+                }
+            })
+        }
+
+        fun updateList(newList: MutableList<RenderConfig>, newIndex: Int) {
+            notifications.clear()
+            notifications.addAll(newList)
+            currentIndex = newIndex.coerceIn(0, (notifications.size - 1).coerceAtLeast(0))
+            config = notifications[currentIndex]
+            updatePaintsFromConfig()
+            startTransition()
         }
 
         fun updateConfig(newConfig: RenderConfig) {
             this.config = newConfig
+            if (currentIndex < notifications.size) {
+                notifications[currentIndex] = newConfig
+            }
+            updatePaintsFromConfig()
+            invalidate()
+        }
+
+        private fun updatePaintsFromConfig() {
             val tSize = config.titleFontSize * density
             val stSize = config.subtitleFontSize * density
             val cSize = config.contentFontSize * density
@@ -461,7 +760,41 @@ class BackScreenNotificationActivity : Activity() {
             foldCountPaint.textSize = cntSize
             bgPaint.color = config.backgroundColor
             iconTextPaint.color = config.titleColor
-            invalidate()
+        }
+
+        private fun navigateTo(newIndex: Int) {
+            if (newIndex < 0 || newIndex >= notifications.size) return
+            if (newIndex == currentIndex) return
+            currentIndex = newIndex
+            config = notifications[currentIndex]
+            updatePaintsFromConfig()
+            startTransition()
+            onNavigateCallback?.invoke(currentIndex)
+        }
+
+        private fun startTransition() {
+            transitionAlpha = 0f
+            isTransitioning = true
+            val animator = android.animation.ValueAnimator.ofFloat(0f, 1f).apply {
+                duration = transitionDuration
+                interpolator = DecelerateInterpolator()
+                addUpdateListener { anim ->
+                    transitionAlpha = anim.animatedValue as Float
+                    invalidate()
+                }
+                addListener(object : android.animation.AnimatorListenerAdapter() {
+                    override fun onAnimationEnd(animation: android.animation.Animator) {
+                        isTransitioning = false
+                        transitionAlpha = 1f
+                    }
+                })
+            }
+            animator.start()
+        }
+
+        override fun onTouchEvent(event: MotionEvent): Boolean {
+            gestureDetector.onTouchEvent(event)
+            return true
         }
 
         override fun onDraw(canvas: Canvas) {
@@ -470,38 +803,36 @@ class BackScreenNotificationActivity : Activity() {
             val h = height.toFloat()
             if (w <= 0 || h <= 0) return
 
-            // 将所有布局参数乘以 density（sp → px）
+            canvas.saveLayerAlpha(0f, 0f, w, h, (transitionAlpha * 255).toInt())
+
             val p = config.padding * density
             val s = config.spacing * density
-            val ho = config.horizontalOffset * density // 避开摄像头时的水平偏移
-            val leftPad = p + ho // 内容实际起始 x
+            val ho = config.horizontalOffset * density
+            val leftPad = p + ho
 
-            // 背景 — 始终全屏
+            // Background
             canvas.drawRect(0f, 0f, w, h, bgPaint)
 
-            // 先计算内容总高度，用于垂直居中
+            // Center content vertically
             val contentHeight = measureContentHeight(w, p, s, leftPad)
             val topOffset = maxOf(p, (h - contentHeight) / 2f)
             var y = topOffset
 
-            // 标题行（带应用图标）
+            // App icon row
             if (config.showAppIcon) {
                 val iconSize = config.titleFontSize * density + 8f * density
                 val iconRadius = iconSize * 0.2f
                 val iconRect = RectF(leftPad, y, leftPad + iconSize, y + iconSize)
 
                 if (config.appIcon != null) {
-                    // 绘制真实应用图标（圆角裁剪）
-                    val icon: Bitmap = config.appIcon!!
                     canvas.save()
                     val path = Path().apply {
                         addRoundRect(iconRect, iconRadius, iconRadius, Path.Direction.CW)
                     }
                     canvas.clipPath(path)
-                    canvas.drawBitmap(icon, null, iconRect, null)
+                    canvas.drawBitmap(config.appIcon!!, null, iconRect, null)
                     canvas.restore()
                 } else {
-                    // 降级: 字母首字符占位
                     iconBgPaint.color = (config.titleColor and 0x00FFFFFF) or 0x33000000.toInt()
                     canvas.drawRoundRect(iconRect, iconRadius, iconRadius, iconBgPaint)
                     val firstChar = if (config.appName.isNotEmpty()) config.appName.first().toString() else "?"
@@ -509,7 +840,6 @@ class BackScreenNotificationActivity : Activity() {
                     canvas.drawText(firstChar, iconRect.centerX(), iconRect.centerY() + iconSize * 0.18f, iconTextPaint)
                 }
 
-                // 软件名称（appName）紧随图标右侧
                 val appNameX = leftPad + iconSize + s * 0.6f
                 val appNameBaseline = y + iconSize / 2f + config.titleFontSize * density / 2.8f
                 canvas.drawText(config.appName, appNameX, appNameBaseline, titlePaint)
@@ -519,13 +849,13 @@ class BackScreenNotificationActivity : Activity() {
                 y += config.titleFontSize * density + s
             }
 
-            // 标题（notification title）作为副标题行
+            // Notification title
             if (config.title.isNotEmpty()) {
                 canvas.drawText(config.title, leftPad, y + config.subtitleFontSize * density, subtitlePaint)
                 y += config.subtitleFontSize * density + s
             }
 
-            // 正文 — 自动换行 + 截断
+            // Body text — auto-wrap + truncate
             val maxWidth = w - leftPad - p
             val remainingHeight = h - y - p
             if (config.content.isNotEmpty() && remainingHeight > contentPaint.textSize) {
@@ -538,46 +868,63 @@ class BackScreenNotificationActivity : Activity() {
                 }
             }
 
-            // 底部: 折叠计数 / 时间戳
+            // Bottom: timestamp
             val bottomY = h - p
-            if (config.showFoldCount) {
-                val countText = "通知消息：${config.notificationCount}条"
-                val countWidth = foldCountPaint.measureText(countText)
-                val countX = (w - countWidth) / 2f
-                canvas.drawText(countText, countX, bottomY, foldCountPaint)
-
-                if (config.showTimestamp) {
-                    val now = timeFormat.format(Date())
-                    val tw = timestampPaint.measureText(now)
-                    canvas.drawText(now, w - p - tw, bottomY, timestampPaint)
-                }
-            } else if (config.showTimestamp) {
+            if (config.showTimestamp) {
                 val now = timeFormat.format(Date())
                 val tw = timestampPaint.measureText(now)
                 canvas.drawText(now, w - p - tw, bottomY, timestampPaint)
             }
+
+            canvas.restore()
+
+            // Draw navigation arrows (outside the alpha transition)
+            drawArrows(canvas, w, h)
         }
 
-        /**
-         * 计算内容块的总高度，用于垂直居中。
-         * 排除超出屏幕底部的部分。
-         */
-        private fun measureContentHeight(w: Float, p: Float, s: Float, leftPad: Float): Float {
-            var h = p // 顶部 padding
+        private fun drawArrows(canvas: Canvas, w: Float, h: Float) {
+            if (notifications.size <= 1) return
 
-            // 标题行（图标 + appName）
+            val arrowSize = 12f * density
+            val arrowMargin = 16f * density
+            val centerX = w / 2f
+
+            // Bottom arrow (more notifications below) — show when not at last item
+            if (currentIndex < notifications.size - 1) {
+                val path = Path().apply {
+                    moveTo(centerX, h - arrowMargin)
+                    lineTo(centerX - arrowSize / 2, h - arrowMargin - arrowSize)
+                    lineTo(centerX + arrowSize / 2, h - arrowMargin - arrowSize)
+                    close()
+                }
+                canvas.drawPath(path, arrowPaint)
+            }
+
+            // Top arrow (notifications above) — show when not at first item
+            if (currentIndex > 0) {
+                val path = Path().apply {
+                    moveTo(centerX, arrowMargin)
+                    lineTo(centerX - arrowSize / 2, arrowMargin + arrowSize)
+                    lineTo(centerX + arrowSize / 2, arrowMargin + arrowSize)
+                    close()
+                }
+                canvas.drawPath(path, arrowPaint)
+            }
+        }
+
+        private fun measureContentHeight(w: Float, p: Float, s: Float, leftPad: Float): Float {
+            var h = p
+
             if (config.showAppIcon) {
                 h += config.titleFontSize * density + 8f * density + s
             } else {
                 h += config.titleFontSize * density + s
             }
 
-            // 标题作为副标题行
             if (config.title.isNotEmpty()) {
                 h += config.subtitleFontSize * density + s
             }
 
-            // 正文（按 3 行估算是典型的最大可见行数）
             if (config.content.isNotEmpty()) {
                 val maxWidth = w - leftPad - p
                 val estLines = if (contentPaint.measureText(config.content) > maxWidth) {
@@ -588,8 +935,7 @@ class BackScreenNotificationActivity : Activity() {
                 h += estLines * contentPaint.textSize * 1.45f + s * 0.5f
             }
 
-            // 底部折叠计数/时间戳行
-            h += if (config.showFoldCount || config.showTimestamp) {
+            h += if (config.showTimestamp) {
                 foldCountPaint.textSize + p
             } else {
                 p
@@ -607,9 +953,8 @@ class BackScreenNotificationActivity : Activity() {
             var remaining = text
             while (remaining.isNotEmpty()) {
                 if (lines.size * lineHeight > maxHeight) {
-                    // 超出行数，截断最后一行
                     val lastLine = lines.removeAt(lines.lastIndex)
-                    lines.add(lastLine.trimEnd().dropLast(1) + "…")
+                    lines.add(lastLine.trimEnd().dropLast(1) + "\u2026")
                     break
                 }
                 var cut = remaining.length

@@ -23,6 +23,7 @@ class MainActivity : FlutterActivity() {
     private lateinit var backScreenController: BackScreenController
     private var eventChannel: EventChannel? = null
     private var flutterMethodChannel: MethodChannel? = null
+    private var hasRebinnedListener = false
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
@@ -53,14 +54,18 @@ class MainActivity : FlutterActivity() {
                     result.success(true)
                 }
                 "rebindNotificationListener" -> {
-                    // API 34+ requestRebind is deprecated; toggle the component
-                    val cn = ComponentName(this, FBSNotificationListenerService::class.java)
-                    packageManager.setComponentEnabledSetting(cn,
-                        PackageManager.COMPONENT_ENABLED_STATE_DISABLED,
-                        PackageManager.DONT_KILL_APP)
-                    packageManager.setComponentEnabledSetting(cn,
-                        PackageManager.COMPONENT_ENABLED_STATE_ENABLED,
-                        PackageManager.DONT_KILL_APP)
+                    // 只在首次调用时执行 disable→enable，避免重复触发系统资源抖动
+                    if (!hasRebinnedListener) {
+                        hasRebinnedListener = true
+                        val cn = ComponentName(this, FBSNotificationListenerService::class.java)
+                        packageManager.setComponentEnabledSetting(cn,
+                            PackageManager.COMPONENT_ENABLED_STATE_DISABLED,
+                            PackageManager.DONT_KILL_APP)
+                        packageManager.setComponentEnabledSetting(cn,
+                            PackageManager.COMPONENT_ENABLED_STATE_ENABLED,
+                            PackageManager.DONT_KILL_APP)
+                        Log.d("MainActivity", "NotificationListener rebinned (once)")
+                    }
                     result.success(true)
                 }
                 "isShizukuRunning" -> {
@@ -101,6 +106,7 @@ class MainActivity : FlutterActivity() {
                     val content = call.argument<String>("content") ?: ""
                     val appName = call.argument<String>("appName") ?: ""
                     val packageName = call.argument<String>("packageName") ?: ""
+                    val notificationKey = call.argument<String>("notificationKey") ?: ""
                     @Suppress("UNCHECKED_CAST")
                     val styleExtras = (call.argument<Map<String, Any>>("styleExtras")
                         ?: emptyMap<String, Any>())
@@ -112,6 +118,7 @@ class MainActivity : FlutterActivity() {
                         appName = appName,
                         packageName = packageName,
                         styleExtras = styleExtras,
+                        notificationKey = notificationKey,
                     )
                     result.success(true)
                 }

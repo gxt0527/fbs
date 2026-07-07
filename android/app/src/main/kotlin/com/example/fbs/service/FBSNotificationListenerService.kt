@@ -9,6 +9,7 @@ import android.service.notification.NotificationListenerService
 import android.service.notification.StatusBarNotification
 import android.util.Log
 import io.flutter.plugin.common.EventChannel
+import java.util.concurrent.ConcurrentHashMap
 
 class FBSNotificationListenerService : NotificationListenerService() {
 
@@ -23,6 +24,14 @@ class FBSNotificationListenerService : NotificationListenerService() {
         var monitorAll = false
         @Volatile
         var enabledApps = setOf<String>()
+
+        /** 应用名缓存 — 避免每个通知都调用 packageManager.getApplicationInfo() */
+        private val appNameCache = ConcurrentHashMap<String, String>()
+
+        /** 通知频率统计 — 用于诊断卡顿 */
+        private var notifCount = 0
+        private var windowStart = System.currentTimeMillis()
+        private const val FREQ_WINDOW_MS = 10_000L
 
         fun setEventSink(sink: EventChannel.EventSink?) { eventSink = sink }
 
@@ -57,6 +66,29 @@ class FBSNotificationListenerService : NotificationListenerService() {
                 "notificationKey" to key, "subText" to subText, "bigText" to bigText,
             ))
         }
+
+        /** 获取缓存的应用名，避免重复 PM 调用 */
+        fun getCachedAppName(packageName: String, provider: android.content.pm.PackageManager): String {
+            appNameCache[packageName]?.let { return it }
+            return try {
+                val ai = provider.getApplicationInfo(packageName, 0)
+                val name = provider.getApplicationLabel(ai).toString()
+                appNameCache[packageName] = name
+                name
+            } catch (_: Exception) { "" }
+        }
+
+        /** 记录通知频率，每 FREQ_WINDOW_MS 输出一次统计 */
+        fun logFrequency() {
+            notifCount++
+            val now = System.currentTimeMillis()
+            if (now - windowStart >= FREQ_WINDOW_MS) {
+                val rate = notifCount * 1000.0 / (now - windowStart)
+                Log.w(TAG, ">>> FREQ: $notifCount notifs in ${now - windowStart}ms (${String.format("%.1f", rate)} notif/s)")
+                notifCount = 0
+                windowStart = now
+            }
+        }
     }
 
     override fun onBind(intent: Intent): IBinder? {
@@ -82,6 +114,8 @@ class FBSNotificationListenerService : NotificationListenerService() {
         super.onNotificationPosted(sbn)
         if (sbn == null) return
 
+        logFrequency()
+
         val notif = sbn.notification
         val extras = notif.extras
         val sbnKey = sbn.key
@@ -95,12 +129,8 @@ class FBSNotificationListenerService : NotificationListenerService() {
         val isFocus = isFocusNotification(notif)
         val isOngoing = sbn.isOngoing
 
-        // 获取应用名
-        var appName = ""
-        try {
-            val ai = packageManager.getApplicationInfo(sbn.packageName, 0)
-            appName = packageManager.getApplicationLabel(ai).toString()
-        } catch (_: Exception) {}
+        // 获取应用名（使用缓存）
+        val appName = getCachedAppName(sbn.packageName, packageManager)
 
         Log.d(TAG, "NOTIF | key=$sbnKey pkg=${sbn.packageName}($appName) " +
             "focus=$isFocus ongoing=$isOngoing cat=$category " +
@@ -113,20 +143,16 @@ class FBSNotificationListenerService : NotificationListenerService() {
             return
         }
 
-        // → Flutter (UI 显示用)
+        // → Flutter (UI 显示 + 背屏转发)
         sendToFlutter(
             title = title, content = content, packageName = sbn.packageName,
             appName = appName, category = category, isFocus = isFocus,
             isOngoing = isOngoing, key = sbnKey, subText = subText, bigText = bigText,
         )
 
-        // → 背屏控制器
-        backScreenController?.onNotificationAdded(
-            key = sbnKey, title = title, content = content,
-            packageName = sbn.packageName, appName = appName,
-            isFocus = isFocus, isOngoing = isOngoing,
-            category = category, subText = subText, bigText = bigText,
-        )
+        // 注意: 不再直接调用 backScreenController?.onNotificationAdded()
+        // 背屏转发由 Flutter 层 _forwardToBackScreenWithDedup → displayOnBackScreenV2 处理
+        // 避免双重 am start 导致通知渲染到正面屏幕 (display 0)
     }
 
     // ═══════════════════════════════════════════
