@@ -16,6 +16,7 @@ class _SettingsPageState extends State<SettingsPage> with WidgetsBindingObserver
   bool _promotedPerm = false;
   bool _installedAppsSupported = false;
   bool _installedAppsGranted = false;
+  bool _mirrorEnabled = true;
 
   @override
   void initState() {
@@ -37,12 +38,16 @@ class _SettingsPageState extends State<SettingsPage> with WidgetsBindingObserver
       _nativeService.isShizukuRunning(), _nativeService.hasShizukuPermission(),
       _nativeService.isPostNotificationsGranted(), _nativeService.hasPromotedPermission(),
       _nativeService.isInstalledAppsPermissionSupported(), _nativeService.isInstalledAppsPermissionGranted(),
+      _nativeService.isMirrorEnabled(),
     ]);
-    if (mounted) setState(() {
-      _shizukuRunning = r[0] as bool; _shizukuPerm = r[1] as bool;
-      _postNotifGranted = r[2] as bool; _promotedPerm = r[3] as bool;
-      _installedAppsSupported = r[4] as bool; _installedAppsGranted = r[5] as bool;
-    });
+    if (mounted) {
+      setState(() {
+        _shizukuRunning = r[0] as bool; _shizukuPerm = r[1] as bool;
+        _postNotifGranted = r[2] as bool; _promotedPerm = r[3] as bool;
+        _installedAppsSupported = r[4] as bool; _installedAppsGranted = r[5] as bool;
+        _mirrorEnabled = r[6] as bool;
+      });
+    }
   }
 
   @override
@@ -60,6 +65,20 @@ class _SettingsPageState extends State<SettingsPage> with WidgetsBindingObserver
           _actionTile('超级岛权限', _promotedPerm,
             onGrant: () => _nativeService.requestPromotedPermission(),
             onSettings: () => _nativeService.openFocusNotificationSettings(),
+          ),
+        ]),
+        const SizedBox(height: 16),
+        _buildSection('背屏镜像', [
+          SwitchListTile(
+            title: const Text('通知镜像到背屏', style: TextStyle(fontSize: 14)),
+            subtitle: const Text('自动将前端通知同步显示到背屏', style: TextStyle(fontSize: 12)),
+            value: _mirrorEnabled,
+            onChanged: (v) async {
+              await _nativeService.setMirrorEnabled(v);
+              setState(() => _mirrorEnabled = v);
+            },
+            dense: true,
+            contentPadding: EdgeInsets.zero,
           ),
         ]),
         const SizedBox(height: 16),

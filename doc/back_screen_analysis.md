@@ -154,7 +154,7 @@ ComponentName(SUBSCREEN_PACKAGE, "$SUBSCREEN_PACKAGE.pin.PinReceiveActivity")
 ```kotlin
 // ❌ 不存在
 Intent("com.xiaomi.subscreencenter.SHOW_NOTIFICATION")
-// ✅ 正确的广播
+// ❌ protected broadcast，第三方无法发送 (即使 Shizuku am broadcast 也失败)
 Intent("miui.intent.action.SUB_SCREEN_ON")
 ```
 
@@ -162,13 +162,13 @@ Intent("miui.intent.action.SUB_SCREEN_ON")
 ```kotlin
 // ❌ 不存在
 Uri.parse("content://$SUBSCREEN_PACKAGE.provider/notification")
-// ✅ 实际的提供者
+// ❌ ContentProvider 需系统权限，读/写均失败
 Uri.parse("content://com.xiaomi.subscreencenter.settings.SubScreenAppProvider/packages")
 ```
 
 ## 修复方案
 
-### 方案A: PinReceiveActivity (无需 Shizuku)
+### 方案A: PinReceiveActivity (无需 Shizuku) ✅ 已验证
 ```kotlin
 val intent = Intent().apply {
     component = ComponentName(SUBSCREEN_PACKAGE, "$SUBSCREEN_PACKAGE.pin.PinReceiveActivity")
@@ -180,14 +180,35 @@ val intent = Intent().apply {
 context.startActivity(intent)
 ```
 
-### 方案B: Shizuku 写文件 + 广播 (需要 Shizuku)
-1. 写入 `notification_widget.json`
-2. 发送 `miui.intent.action.SUB_SCREEN_ON`
-3. `input keyevent 26` 唤醒屏幕
+### 方案B: Shizuku 写文件 + 广播 ❌ 不可用
+1. 写入 `notification_widget.json` — ✅ Shizuku shell 可写
+2. 发送 `miui.intent.action.SUB_SCREEN_ON` — ❌ protected broadcast
+3. `input keyevent 26` 唤醒屏幕 — ✅ Shizuku shell 可用
 
-### 方案C: Shizuku Shell 直调 (需要 Shizuku)
+### 方案C: Shizuku Shell 直调 — 部分可用
 ```
-settings put system screen_off_timeout 90000
-input keyevent 26
-am broadcast -a miui.intent.action.SUB_SCREEN_ON
+✅ settings put system screen_off_timeout 90000   # 设 90s 超时
+✅ input -d 1 keyevent KEYCODE_WAKEUP             # 唤醒背屏
+❌ am broadcast -a miui.intent.action.SUB_SCREEN_ON  # protected broadcast
+✅ service call activity_task 50 i32 <taskId> i32 1  # 移 task 到 display 1
+✅ am start -n <pkg>/.service.BackScreenNotificationActivity -f ... --user 0  # 启动 Activity
 ```
+
+## 12个官方接口实测结果 (2026-07-08)
+
+| # | 接口 | 方式 | 结果 |
+|---|------|------|------|
+| 1 | PinReceiveActivity | 标准 ACTION_SEND | ✅ 可用 |
+| 2 | 写 notification_widget.json | Shizuku shell | ✅ 可用 |
+| 3 | 读 notification_widget.json | Shizuku shell | ✅ 可用 |
+| 4 | 广播 SUB_SCREEN_ON | Shizuku am broadcast | ❌ protected |
+| 5 | 广播 SUB_SCREEN_OFF | Shizuku am broadcast | ❌ protected |
+| 6 | input keyevent WAKEUP | Shizuku shell | ✅ 可用 |
+| 7 | settings 屏超时 | Shizuku shell | ✅ 可用 |
+| 8 | service call task 50 | Shizuku shell | ✅ 可用 |
+| 9 | SubScreenAppProvider | ContentProvider | ❌ 需系统权限 |
+| 10 | statusbar.notification | ContentProvider | ❌ 需 STATUS_BAR |
+| 11 | force-stop 背屏 | Shizuku shell | ✅ 可用 |
+| 12 | am start Activity | Shizuku shell | ✅ 可用 |
+
+**结论**: 12 个接口中 8 个可用。不可用的 4 个均为系统级保护接口（protected broadcast / system ContentProvider），第三方无法绕过。

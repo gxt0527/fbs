@@ -3,7 +3,10 @@
 import android.animation.ValueAnimator
 import android.animation.AnimatorListenerAdapter
 import android.app.Activity
+import android.content.BroadcastReceiver
+import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
 import android.content.res.Configuration
 import android.graphics.*
 import android.os.*
@@ -43,6 +46,7 @@ class BackScreenNotificationActivity : Activity() {
     private var renderView: NotificationRenderView? = null
     private var dismissHandler = Handler(Looper.getMainLooper())
     private var isSticky = false
+    private var isMirror = false
     private var currentConfig: RenderConfig? = null
     private var iconLoadThread: Thread? = null
     private var isActivated = false
@@ -56,6 +60,23 @@ class BackScreenNotificationActivity : Activity() {
     private var lastNotifCount = 0
 
     private val aodTransitionRunnable = Runnable { enterAodMode() }
+
+    // mirror mode broadcast receiver
+    private val mirrorReceiver = MirrorReceiver()
+
+    // 镜像模式: 定期唤醒 display 1 防止 DOZE 休眠 (15s 间隔)
+    private val dozePreventionHandler = Handler(Looper.getMainLooper())
+    private val dozePreventionRunnable = object : Runnable {
+        override fun run() {
+            if (!isMirror) return
+            Thread {
+                try {
+                    BackScreenController.execShell("input -d 1 keyevent KEYCODE_WAKEUP")
+                } catch (_: Exception) {}
+            }.apply { isDaemon = true; start() }
+            dozePreventionHandler.postDelayed(this, 15000)
+        }
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -75,7 +96,15 @@ class BackScreenNotificationActivity : Activity() {
             needsWake = intent.getStringExtra("needsWake")?.toBooleanStrictOrNull() ?: true
             isDozing = intent.getStringExtra("isDozing")?.toBooleanStrictOrNull() ?: false
             wasInAod = isDozing  // 记录启动时的 AOD 状态，关闭时据此决定是否恢复 subscreencenter
-            Log.d(TAG, "needsWake=$needsWake isDozing=$isDozing wasInAod=$wasInAod")
+            isMirror = intent.getStringExtra("mirrorMode")?.toBooleanStrictOrNull() ?: false
+            Log.d(TAG, "needsWake=$needsWake isDozing=$isDozing wasInAod=$wasInAod isMirror=$isMirror")
+
+            // Register broadcast receiver for mirror updates
+            val filter = IntentFilter().apply {
+                addAction(BackScreenController.ACTION_MIRROR_REFRESH)
+                addAction(BackScreenController.ACTION_MIRROR_DISMISS)
+            }
+            registerReceiver(mirrorReceiver, filter, Context.RECEIVER_NOT_EXPORTED)
 
             // Parse notification list from JSON
             val jsonStr = intent.getStringExtra("notificationsJson") ?: ""
@@ -161,7 +190,14 @@ class BackScreenNotificationActivity : Activity() {
     private fun activateOnDisplay1() {
         if (isActivated) return
         isActivated = true
+        BackScreenController.backScreenActivityAlive = true
         Log.d(TAG, "Activated on display 1")
+
+        // 镜像模式: 定期唤醒防止 display 1 DOZE
+        if (isMirror) {
+            dozePreventionHandler.postDelayed(dozePreventionRunnable, 15000)
+            Log.d(TAG, "Doze prevention started (15s interval)")
+        }
 
         // 恢复窗口为不透明
         window.setBackgroundDrawableResource(android.R.color.black)
@@ -184,6 +220,9 @@ class BackScreenNotificationActivity : Activity() {
         val displayId = display?.displayId ?: 0
         Log.d(TAG, "onNewIntent display=$displayId")
 
+        // 更新 mirrorMode 标志
+        isMirror = intent.getStringExtra("mirrorMode")?.toBooleanStrictOrNull() ?: isMirror
+
         // 检查 dismiss 指令
         if (intent.getStringExtra("dismiss")?.toBooleanStrictOrNull() == true) {
             Log.d(TAG, "Dismiss signal received, closing back screen")
@@ -201,6 +240,11 @@ class BackScreenNotificationActivity : Activity() {
             // Parse updated notifications list
             val jsonStr = intent.getStringExtra("notificationsJson") ?: ""
             val newList = parseNotificationsJson(jsonStr)
+            if (isMirror && newList.isEmpty()) {
+                Log.d(TAG, "onNewIntent mirror: empty list, finishing")
+                finishAndRestore()
+                return
+            }
             if (newList.isNotEmpty()) {
                 notificationsList = newList
             }
@@ -246,6 +290,11 @@ class BackScreenNotificationActivity : Activity() {
      */
     override fun dispatchKeyEvent(event: KeyEvent): Boolean {
         if (event.keyCode == KeyEvent.KEYCODE_BACK && event.action == KeyEvent.ACTION_DOWN) {
+            if (isMirror) {
+                // 镜像模式: 返回手势清除当前通知 (前端)
+                cancelCurrentMirrorNotification()
+                return true
+            }
             Log.d(TAG, "Back key intercepted by dispatchKeyEvent, restoring subscreen")
             finishAndRestore()
             return true
@@ -262,6 +311,9 @@ class BackScreenNotificationActivity : Activity() {
     }
 
     override fun onDestroy() {
+        try { unregisterReceiver(mirrorReceiver) } catch (_: Exception) {}
+        BackScreenController.backScreenActivityAlive = false
+        dozePreventionHandler.removeCallbacks(dozePreventionRunnable)
         dismissHandler.removeCallbacksAndMessages(null)
         iconLoadThread?.interrupt()
         Log.d(TAG, "onDestroy, key=${currentConfig?.notificationKey}")
@@ -272,27 +324,134 @@ class BackScreenNotificationActivity : Activity() {
     // 背屏关闭 & 恢复
     // ═══════════════════════════════════════════
 
-    /** 关闭本 Activity。subscreencenter 未被杀死，自动回到前台。AOD 时发 KEYCODE_SLEEP 回 DOZE。 */
+    /** 关闭本 Activity。系统会自动恢复 SECONDARY_HOME (subscreencenter)。 */
     private fun finishAndRestore() {
+        BackScreenController.backScreenActivityAlive = false
+        dozePreventionHandler.removeCallbacks(dozePreventionRunnable)
         dismissHandler.removeCallbacksAndMessages(null)
         finish()
         if (wasInAod) {
-            // AOD 模式: finish 后等 500ms 确保 Activity 完全销毁 + subscreencenter 恢复前景，
-            // 再发送 KEYCODE_SLEEP 让 display 1 从 ON 回到 DOZE/AOD
+            // AOD 模式: finish 后等 subscreencenter 恢复前景，再 sleep 回到 AOD
             Thread {
                 try {
-                    Thread.sleep(500)
+                    Thread.sleep(800)
                     BackScreenController.instance?.putBackScreenToSleep()
                 } catch (e: Exception) {
                     Log.e(TAG, "AOD sleep failed", e)
                 }
             }.apply { isDaemon = true }.start()
-            Log.d(TAG, "AOD mode: dispatched KEYCODE_SLEEP (500ms delay) to restore AOD")
+            Log.d(TAG, "AOD mode: Activity finished, subscreencenter will auto-resume + KEYCODE_SLEEP")
             return
         }
-        // 非 AOD: subscreencenter 未被杀死，Activity finish 后它自动恢复前台
-        // 无需手动 restore，避免 SECONDARY_HOME 选择对话框
-        Log.d(TAG, "Activity finished, subscreencenter will resume naturally")
+        Log.d(TAG, "Activity finished, system will auto-restore SECONDARY_HOME on display 1")
+    }
+
+    // ═══════════════════════════════════════════
+    //  镜像模式方法
+    // ═══════════════════════════════════════════
+
+    /** 接收镜像刷新/消除广播 */
+    private inner class MirrorReceiver : BroadcastReceiver() {
+        override fun onReceive(context: Context?, intent: Intent?) {
+            if (intent == null) return
+            when (intent.action) {
+                BackScreenController.ACTION_MIRROR_REFRESH -> {
+                    val json = intent.getStringExtra("notificationsJson") ?: ""
+                    val displayId = display?.displayId ?: 0
+                    Log.d(TAG, "Mirror refresh: jsonLen=${json.length} display=$displayId")
+                    applyMirrorUpdate(json, intent.extras)
+                    if (displayId == 1 && isActivated) {
+                        wakeToShow()
+                    }
+                }
+                BackScreenController.ACTION_MIRROR_DISMISS -> {
+                    Log.d(TAG, "Mirror dismiss received")
+                    finishAndRestore()
+                }
+            }
+        }
+    }
+
+    /** 应用镜像广播中的通知列表更新 */
+    private fun applyMirrorUpdate(json: String, extras: Bundle?) {
+        val newList = parseNotificationsJson(json)
+        if (newList.isEmpty()) {
+            // 所有通知已消除 → 关闭背屏
+            Log.d(TAG, "Mirror update: empty list, finishing")
+            finishAndRestore()
+            return
+        }
+        // 应用广播中的样式参数
+        val styled = applyStyleFromBundle(extras, newList)
+        notificationsList = styled
+        lastNotifCount = styled.size
+        currentIndex = 0
+        currentConfig = notificationsList[currentIndex]
+        renderView?.updateList(notificationsList, currentIndex)
+        loadAppIconAsync(currentConfig!!)
+        Log.d(TAG, "Mirror update: ${notificationsList.size} items, currentIndex=0")
+    }
+
+    /** 镜像模式: 返回手势清除当前在前端显示的这条通知 */
+    private fun cancelCurrentMirrorNotification() {
+        val key = currentConfig?.notificationKey
+        if (key.isNullOrEmpty()) {
+            Log.w(TAG, "Mirror back-gesture: no notificationKey, falling back to finish")
+            finishAndRestore()
+            return
+        }
+        Log.d(TAG, "Mirror back-gesture: cancelling notification key=$key")
+        FBSNotificationListenerService.instance?.cancelNotification(key)
+        // cancelNotification 触发 onNotificationRemoved → remove from mirroredItems → refreshOrDismissMirror
+        // 如果只有一条，mirroredItems 清空 → dismiss broadcast → finishAndRestore
+        // 如果多条，mirroredItems 仍有数据 → refresh broadcast → applyMirrorUpdate 重新渲染
+    }
+
+    /** 从广播 extras 应用样式 (mirror refresh 使用) */
+    private fun applyStyleFromBundle(bundle: Bundle?, configs: MutableList<RenderConfig>): MutableList<RenderConfig> {
+        if (bundle == null) return configs
+        return configs.map { c ->
+            c.copy(
+                titleFontSize = bundle.getString("titleFontSize")?.toFloatOrNull() ?: c.titleFontSize,
+                subtitleFontSize = bundle.getString("subtitleFontSize")?.toFloatOrNull() ?: c.subtitleFontSize,
+                contentFontSize = bundle.getString("contentFontSize")?.toFloatOrNull() ?: c.contentFontSize,
+                titleColor = parseBundleColor(bundle, "titleColor", c.titleColor),
+                subtitleColor = parseBundleColor(bundle, "subtitleColor", c.subtitleColor),
+                contentColor = parseBundleColor(bundle, "contentColor", c.contentColor),
+                backgroundColor = parseBundleColor(bundle, "backgroundColor", c.backgroundColor),
+                showAppIcon = bundle.getString("showAppIcon")?.toBooleanStrictOrNull() ?: c.showAppIcon,
+                showTimestamp = bundle.getString("showTimestamp")?.toBooleanStrictOrNull() ?: c.showTimestamp,
+                cameraAvoidanceEnabled = bundle.getString("cameraAvoidanceEnabled")?.toBooleanStrictOrNull() ?: c.cameraAvoidanceEnabled,
+                horizontalOffset = if (bundle.getString("cameraAvoidanceEnabled")?.toBooleanStrictOrNull() == true) {
+                    bundle.getString("horizontalOffset")?.toFloatOrNull() ?: 85f
+                } else 0f,
+                padding = bundle.getString("padding")?.toFloatOrNull() ?: c.padding,
+                spacing = bundle.getString("spacing")?.toFloatOrNull() ?: c.spacing,
+            )
+        }.toMutableList()
+    }
+
+    private fun parseBundleColor(bundle: Bundle, key: String, default: Int): Int {
+        val hex = bundle.getString(key) ?: return default
+        return try {
+            val clean = hex.replace("#", "")
+            if (clean.length == 6 || clean.length == 8) Color.parseColor("#$clean") else default
+        } catch (_: Exception) { default }
+    }
+
+    /** 从 AOD 暗屏唤醒显示: 恢复亮度和触摸 */
+    private fun wakeToShow() {
+        try {
+            window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+            val lp = window.attributes
+            lp.screenBrightness = -1.0f // 跟随系统亮度
+            window.attributes = lp
+            // 重新计时: 5s 后再次暗屏
+            scheduleAodTransition()
+            Log.d(TAG, "Wake to show: brightness restored, AOD transition rescheduled")
+        } catch (e: Exception) {
+            Log.e(TAG, "wakeToShow failed", e)
+        }
     }
 
     /** 恢复系统背屏 — 优先 Shizuku 在 display 1 启动，不可用时退化为本地 startActivity */
@@ -353,12 +512,12 @@ class BackScreenNotificationActivity : Activity() {
 
     private fun enterAodMode() {
         try {
-            // 5 秒后把亮度降到 AOD 水平，保持通知内容但不再主动保持屏幕常亮
+            // 降低亮度到 AOD 水平，保持通知内容可见
+            // 关键: 不清除 FLAG_KEEP_SCREEN_ON，防止 display 1 睡眠后 subscreencenter 接管
             val lp = window.attributes
-            lp.screenBrightness = 0.01f
+            lp.screenBrightness = 0.05f
             window.attributes = lp
-            window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
-            Log.d(TAG, "Entered AOD brightness mode")
+            Log.d(TAG, "Entered AOD brightness mode (KEEP_SCREEN_ON retained)")
         } catch (e: Exception) {
             Log.e(TAG, "enterAodMode failed", e)
         }

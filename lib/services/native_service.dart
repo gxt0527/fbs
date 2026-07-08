@@ -37,6 +37,18 @@ class NativeService {
     try { await _methodChannel.invokeMethod('dismissBackScreen'); } catch (_) {}
   }
 
+  // 背屏镜像
+  Future<bool> isMirrorEnabled() async {
+    try { return await _methodChannel.invokeMethod<bool>('isMirrorEnabled') ?? false; }
+    catch (e) { return false; }
+  }
+  Future<void> setMirrorEnabled(bool enabled) async {
+    try { await _methodChannel.invokeMethod('setMirrorEnabled', {'enabled': enabled}); } catch (_) {}
+  }
+  Future<void> clearAllMirroredNotifications() async {
+    try { await _methodChannel.invokeMethod('clearAllMirroredNotifications'); } catch (_) {}
+  }
+
   // 超级岛
   Future<void> sendSuperIslandNotification({
     required String title, required String content,

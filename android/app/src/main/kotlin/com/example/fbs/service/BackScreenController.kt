@@ -19,9 +19,22 @@ class BackScreenController(private val context: Context) {
         private const val TAG = "BackScreenController"
         private const val SUBSCREEN_PACKAGE = "com.xiaomi.subscreencenter"
         private const val REQUEST_CODE_SHIZUKU = 1001
+        const val ACTION_MIRROR_REFRESH = "com.example.fbs.MIRROR_REFRESH"
+        const val ACTION_MIRROR_DISMISS = "com.example.fbs.MIRROR_DISMISS"
 
         @Volatile
         var instance: BackScreenController? = null
+
+        /** 背屏 Activity 是否活跃（供 ListenerService 判断 launch vs broadcast） */
+        @Volatile
+        var backScreenActivityAlive = false
+
+        fun isShizukuReady(): Boolean {
+            return try { Shizuku.pingBinder() } catch (_: Exception) { false }
+        }
+        fun hasShizukuPermission(): Boolean {
+            return try { isShizukuReady() && Shizuku.checkSelfPermission() == PackageManager.PERMISSION_GRANTED } catch (_: Exception) { false }
+        }
 
         /** 通过 Shizuku 执行 shell 命令（供 BackScreenNotificationActivity 等调用） */
         fun execShell(command: String): String {
@@ -45,6 +58,33 @@ class BackScreenController(private val context: Context) {
             } catch (e: Exception) {
                 "ERROR: ${e.message}"
             }
+        }
+
+        /** 构建镜像模式的 am start 命令，携带通知 JSON 和样式参数 */
+        fun buildMirrorLaunchCommand(context: Context, json: String, styleExtras: Map<String, String>, needsWake: Boolean): String {
+            val sb = StringBuilder("am start")
+            sb.append(" -n ${context.packageName}/.service.BackScreenNotificationActivity")
+            val flags = 0x10200000 or 0x20000000
+            sb.append(" -f $flags")
+            sb.append(" --user 0")
+            appendExtraStatic(sb, "notificationsJson", json)
+            appendExtraStatic(sb, "mirrorMode", "true")
+            appendExtraStatic(sb, "isSticky", "true")
+            appendExtraStatic(sb, "needsWake", needsWake.toString())
+            appendExtraStatic(sb, "isDozing", (!needsWake).toString())
+            appendExtraStatic(sb, "stayAwake", "true")
+            for ((k, v) in styleExtras) {
+                appendExtraStatic(sb, k, v)
+            }
+            return sb.toString()
+        }
+
+        private fun appendExtraStatic(sb: StringBuilder, key: String, value: String) {
+            val escaped = value.replace("\\", "\\\\")
+                .replace("\"", "\\\"")
+                .replace("\$", "\\\$")
+                .replace("'", "\\'")
+            sb.append(" --es $key \"$escaped\"")
         }
     }
 
@@ -133,27 +173,21 @@ class BackScreenController(private val context: Context) {
         sb.append(" -f $flags")
         sb.append(" --user 0")
 
-        appendExtra(sb, "title", title)
-        appendExtra(sb, "subtitle", subtitle)
-        appendExtra(sb, "content", content)
-        appendExtra(sb, "appName", appName)
-        appendExtra(sb, "notificationKey", "manual_${System.currentTimeMillis()}")
-        appendExtra(sb, "isSticky", "true")
-        appendExtra(sb, "notificationCount", "1")
-        appendExtra(sb, "needsWake", needsWake.toString())
-        appendExtra(sb, "isDozing", "false")
-        appendExtra(sb, "stayAwake", "true")
+        appendExtraStatic(sb, "title", title)
+        appendExtraStatic(sb, "subtitle", subtitle)
+        appendExtraStatic(sb, "content", content)
+        appendExtraStatic(sb, "appName", appName)
+        appendExtraStatic(sb, "notificationKey", "manual_${System.currentTimeMillis()}")
+        appendExtraStatic(sb, "isSticky", "true")
+        appendExtraStatic(sb, "notificationCount", "1")
+        appendExtraStatic(sb, "needsWake", needsWake.toString())
+        appendExtraStatic(sb, "isDozing", "false")
+        appendExtraStatic(sb, "stayAwake", "true")
 
         return sb.toString()
     }
 
-    private fun appendExtra(sb: StringBuilder, key: String, value: String) {
-        val escaped = value.replace("\\", "\\\\")
-            .replace("\"", "\\\"")
-            .replace("\$", "\\\$")
-            .replace("'", "\\'")
-        sb.append(" --es $key \"$escaped\"")
-    }
+    // appendExtra 已移至 companion object (appendExtraStatic)
 
     // ═══════════════════════════════════════════
     //  BackScreenNotificationActivity 需要的方法
@@ -191,16 +225,11 @@ class BackScreenController(private val context: Context) {
 
     fun dismissBackScreen() {
         try {
-            if (isShizukuRunning() && hasPermission()) {
-                val dismissCmd = "am start -n ${context.packageName}/.service.BackScreenNotificationActivity -f 0x20000000 --es dismiss \"true\" --user 0"
-                execShizukuShell(dismissCmd)
-                Log.d(TAG, "Back screen dismissed via Shizuku")
-                return
-            }
-            val intent = Intent(context, BackScreenNotificationActivity::class.java)
-            intent.putExtra("dismiss", "true")
-            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP)
-            context.startActivity(intent)
+            // 优先用广播: 直接通知 display 1 上的 Activity 关闭，不触发前屏
+            val dismissIntent = Intent(ACTION_MIRROR_DISMISS)
+            dismissIntent.setPackage(context.packageName)
+            context.sendBroadcast(dismissIntent)
+            Log.d(TAG, "Back screen dismiss broadcast sent")
         } catch (e: Exception) {
             Log.e(TAG, "Dismiss failed", e)
         }

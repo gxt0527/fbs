@@ -11,7 +11,7 @@ class HomePage extends StatefulWidget {
   State<HomePage> createState() => _HomePageState();
 }
 
-class _HomePageState extends State<HomePage> {
+class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
   final _nativeService = NativeService();
   final _textController = TextEditingController();
   final _titleController = TextEditingController();
@@ -25,7 +25,22 @@ class _HomePageState extends State<HomePage> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _refreshStatus();
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _textController.dispose();
+    _titleController.dispose();
+    _subtitleController.dispose();
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) _refreshStatus();
   }
 
   Future<void> _refreshStatus() async {
@@ -58,13 +73,6 @@ class _HomePageState extends State<HomePage> {
     }
   }
 
-  void _clearAll() {
-    _textController.clear();
-    _titleController.clear();
-    _subtitleController.clear();
-    setState(() => _parsed = null);
-  }
-
   Future<void> _forwardAll() async {
     if (_isForwarding) return;
     setState(() => _isForwarding = true);
@@ -86,14 +94,6 @@ class _HomePageState extends State<HomePage> {
     } finally {
       if (mounted) setState(() => _isForwarding = false);
     }
-  }
-
-  @override
-  void dispose() {
-    _textController.dispose();
-    _titleController.dispose();
-    _subtitleController.dispose();
-    super.dispose();
   }
 
   @override
@@ -149,10 +149,13 @@ class _HomePageState extends State<HomePage> {
           shizukuOk ? 'Shizuku 已连接' : _isShizukuRunning ? 'Shizuku 未授权' : 'Shizuku 未运行',
           style: TextStyle(fontSize: 13, color: shizukuOk ? Colors.green.shade800 : Colors.orange.shade800),
         )),
-        if (_isShizukuRunning && !_hasShizukuPermission)
+        if (!shizukuOk)
           TextButton(
             onPressed: _requestShizuku,
-            child: const Text('授权', style: TextStyle(fontSize: 12)),
+            child: Text(
+              _isShizukuRunning ? '授权' : '启动并授权',
+              style: const TextStyle(fontSize: 12),
+            ),
           ),
       ]),
     );
@@ -276,7 +279,7 @@ class _HomePageState extends State<HomePage> {
         icon: const Icon(Icons.cleaning_services, size: 18),
         label: const Text('清除背屏'),
         onPressed: () async {
-          await _nativeService.dismissBackScreen();
+          await _nativeService.clearAllMirroredNotifications();
           await _nativeService.cancelSuperIslandNotification();
         },
       ),

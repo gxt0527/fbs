@@ -8,6 +8,7 @@ import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
 import com.example.fbs.service.BackScreenController
+import com.example.fbs.service.FBSNotificationListenerService
 import com.example.fbs.service.PermissionHelper
 
 class MainActivity : FlutterActivity() {
@@ -52,6 +53,21 @@ class MainActivity : FlutterActivity() {
                     result.success(true)
                 }
                 "dismissBackScreen" -> {
+                    backScreenController.dismissBackScreen()
+                    result.success(true)
+                }
+
+                // 背屏镜像
+                "isMirrorEnabled" -> {
+                    result.success(FBSNotificationListenerService.mirrorEnabled)
+                }
+                "setMirrorEnabled" -> {
+                    val enabled = call.argument<Boolean>("enabled") ?: true
+                    FBSNotificationListenerService.updateMirrorEnabled(this, enabled)
+                    result.success(true)
+                }
+                "clearAllMirroredNotifications" -> {
+                    FBSNotificationListenerService.instance?.clearAllMirrored()
                     backScreenController.dismissBackScreen()
                     result.success(true)
                 }
