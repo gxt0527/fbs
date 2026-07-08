@@ -1,29 +1,21 @@
 package com.example.fbs
 
-import android.content.ComponentName
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
-import android.provider.Settings
 import android.util.Log
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
-import io.flutter.plugin.common.EventChannel
 import io.flutter.plugin.common.MethodChannel
 import com.example.fbs.service.BackScreenController
-import com.example.fbs.service.FBSForegroundService
-import com.example.fbs.service.FBSNotificationListenerService
 import com.example.fbs.service.PermissionHelper
 
 class MainActivity : FlutterActivity() {
 
     private val METHOD_CHANNEL = "com.example.fbs/native"
-    private val EVENT_CHANNEL = "com.example.fbs/notification_events"
 
     private lateinit var backScreenController: BackScreenController
-    private var eventChannel: EventChannel? = null
     private var flutterMethodChannel: MethodChannel? = null
-    private var hasRebinnedListener = false
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
@@ -31,112 +23,70 @@ class MainActivity : FlutterActivity() {
         backScreenController = BackScreenController(this)
         backScreenController.initialize()
         BackScreenController.instance = backScreenController
-        FBSNotificationListenerService.backScreenController = backScreenController
 
         flutterMethodChannel = MethodChannel(flutterEngine.dartExecutor.binaryMessenger, METHOD_CHANNEL)
 
         flutterMethodChannel?.setMethodCallHandler { call, result ->
             Log.d("MainActivity", ">>> methodCallHandler: ${call.method}")
             when (call.method) {
-                "isNotificationListenerEnabled" -> {
-                    result.success(isNotificationListenerEnabled())
-                }
-                "openNotificationListenerSettings" -> {
-                    PermissionHelper.openNotificationListenerSettings(this)
-                    result.success(true)
-                }
-                "startForegroundService" -> {
-                    FBSForegroundService.startService(this)
-                    result.success(true)
-                }
-                "stopForegroundService" -> {
-                    FBSForegroundService.stopService(this)
-                    result.success(true)
-                }
-                "rebindNotificationListener" -> {
-                    // 只在首次调用时执行 disable→enable，避免重复触发系统资源抖动
-                    if (!hasRebinnedListener) {
-                        hasRebinnedListener = true
-                        val cn = ComponentName(this, FBSNotificationListenerService::class.java)
-                        packageManager.setComponentEnabledSetting(cn,
-                            PackageManager.COMPONENT_ENABLED_STATE_DISABLED,
-                            PackageManager.DONT_KILL_APP)
-                        packageManager.setComponentEnabledSetting(cn,
-                            PackageManager.COMPONENT_ENABLED_STATE_ENABLED,
-                            PackageManager.DONT_KILL_APP)
-                        Log.d("MainActivity", "NotificationListener rebinned (once)")
-                    }
-                    result.success(true)
-                }
-                "isShizukuRunning" -> {
-                    result.success(backScreenController.isShizukuRunning())
-                }
-                "hasShizukuPermission" -> {
-                    result.success(backScreenController.hasPermission())
-                }
+                // Shizuku
+                "isShizukuRunning" -> { result.success(backScreenController.isShizukuRunning()) }
+                "hasShizukuPermission" -> { result.success(backScreenController.hasPermission()) }
                 "requestShizukuPermission" -> {
                     backScreenController.requestPermission { granted ->
                         runOnUiThread {
-                            flutterMethodChannel?.invokeMethod(
-                                "onShizukuPermissionResult",
-                                mapOf("granted" to granted)
-                            )
+                            flutterMethodChannel?.invokeMethod("onShizukuPermissionResult", mapOf("granted" to granted))
                         }
                     }
                     result.success(true)
                 }
-                "getInstalledApps" -> {
-                    // Shizuku 仅用于背屏操作，应用列表走官方 GET_INSTALLED_APPS 通道
-                    result.success(getInstalledApps())
-                }
-                "requestAppListPermission" -> {
-                    PermissionHelper.openAppDetailsSettings(this)
-                    result.success(true)
-                }
-                "displayOnBackScreen" -> {
-                    val title = call.argument<String>("title") ?: ""
-                    val content = call.argument<String>("content") ?: ""
-                    backScreenController.displayOnBackScreen(title, content)
-                    result.success(true)
-                }
-                // V2: MRSS 风格 — 自定义渲染 Activity 投屏到 display 1
+
+                // 背屏转发
                 "displayOnBackScreenV2" -> {
-                    val title = call.argument<String>("title") ?: ""
-                    val subtitle = call.argument<String>("subtitle") ?: ""
-                    val content = call.argument<String>("content") ?: ""
-                    val appName = call.argument<String>("appName") ?: ""
-                    val packageName = call.argument<String>("packageName") ?: ""
-                    val notificationKey = call.argument<String>("notificationKey") ?: ""
-                    @Suppress("UNCHECKED_CAST")
-                    val styleExtras = (call.argument<Map<String, Any>>("styleExtras")
-                        ?: emptyMap<String, Any>())
-                        .mapValues { it.value.toString() }
-                    backScreenController.displayNotificationOnBackScreenV2(
-                        title = title,
-                        subtitle = subtitle,
-                        content = content,
-                        appName = appName,
-                        packageName = packageName,
-                        styleExtras = styleExtras,
-                        notificationKey = notificationKey,
+                    backScreenController.displayOnBackScreenV2(
+                        title = call.argument<String>("title") ?: "",
+                        subtitle = call.argument<String>("subtitle") ?: "",
+                        content = call.argument<String>("content") ?: "",
+                        appName = call.argument<String>("appName") ?: "",
                     )
                     result.success(true)
                 }
-                "wakeUpScreen" -> {
-                    backScreenController.wakeUpScreen()
+                "dismissBackScreen" -> {
+                    backScreenController.dismissBackScreen()
                     result.success(true)
                 }
-                "setScreenTimeout" -> {
-                    val millis = call.argument<Int>("millis") ?: 90000
-                    backScreenController.setScreenTimeout(millis)
+
+                // 超级岛
+                "sendSuperIslandNotification" -> {
+                    val title = call.argument<String>("title") ?: ""
+                    val content = call.argument<String>("content") ?: ""
+                    com.example.fbs.service.SuperIslandHelper.sendNotification(this, title, content)
                     result.success(true)
                 }
-                "setBackScreenBrightness" -> {
-                    val brightness = call.argument<Int>("brightness") ?: 128
-                    backScreenController.setBackScreenBrightness(brightness)
+                "cancelSuperIslandNotification" -> {
+                    com.example.fbs.service.SuperIslandHelper.cancelNotification(this)
                     result.success(true)
                 }
-                // === 澎湃OS 权限引导相关方法 ===
+                "hasPromotedNotificationPermission" -> {
+                    result.success(com.example.fbs.service.SuperIslandHelper.hasPromotedPermission(this))
+                }
+                "requestPromotedNotificationPermission" -> {
+                    if (Build.VERSION.SDK_INT >= 34) {
+                        requestPermissions(arrayOf("android.permission.POST_PROMOTED_NOTIFICATIONS"), 2001)
+                    }
+                    result.success(true)
+                }
+                "openFocusNotificationSettings" -> {
+                    com.example.fbs.service.SuperIslandHelper.openFocusNotificationSettings(this)
+                    result.success(true)
+                }
+
+                // 应用列表
+                "getInstalledApps" -> {
+                    result.success(getInstalledApps())
+                }
+
+                // 权限
                 "isInstalledAppsPermissionSupported" -> {
                     result.success(PermissionHelper.isInstalledAppsPermissionSupported(this))
                 }
@@ -155,206 +105,50 @@ class MainActivity : FlutterActivity() {
                     result.success(true)
                 }
                 "openAutoStartSettings" -> {
-                    val ok = PermissionHelper.openAutoStartSettings(this)
-                    result.success(ok)
+                    result.success(PermissionHelper.openAutoStartSettings(this))
                 }
                 "openBatteryOptimizationSettings" -> {
                     PermissionHelper.openBatteryOptimizationSettings(this)
-                    result.success(true)
-                }
-                "openBackgroundPopSettings" -> {
-                    PermissionHelper.openBackgroundPopSettings(this)
-                    result.success(true)
-                }
-                "openOverlaySettings" -> {
-                    PermissionHelper.openOverlaySettings(this)
-                    result.success(true)
-                }
-                "sendIslandTestNotification" -> {
-                    sendIslandTestNotification()
-                    result.success(true)
-                }
-                "getIslandDiagnostics" -> {
-                    val diag = com.example.fbs.service.SuperIslandHelper.getDiagnostics(this)
-                    result.success(diag)
-                }
-                "openFocusNotificationSettings" -> {
-                    com.example.fbs.service.SuperIslandHelper.openFocusNotificationSettings(this)
                     result.success(true)
                 }
                 "openAppDetailsSettings" -> {
                     PermissionHelper.openAppDetailsSettings(this)
                     result.success(true)
                 }
-                "updateMonitorSettings" -> {
-                    val monitorAll = call.argument<Boolean>("monitorAll") ?: true
-                    @Suppress("UNCHECKED_CAST")
-                    val enabledApps = call.argument<List<String>>("enabledApps") ?: emptyList()
-                    FBSNotificationListenerService.updateMonitorSettings(monitorAll, enabledApps)
-                    result.success(true)
-                }
-                "isMiuiOrHyperOS" -> {
-                    result.success(PermissionHelper.isMiuiOrHyperOS())
-                }
-                else -> {
-                    result.notImplemented()
-                }
+                "isMiuiOrHyperOS" -> { result.success(PermissionHelper.isMiuiOrHyperOS()) }
+
+                else -> { result.notImplemented() }
             }
-        }
-
-        // Event channel for notification events to Flutter
-        eventChannel = EventChannel(flutterEngine.dartExecutor.binaryMessenger, EVENT_CHANNEL)
-        eventChannel?.setStreamHandler(object : EventChannel.StreamHandler {
-            override fun onListen(arguments: Any?, events: EventChannel.EventSink?) {
-                FBSNotificationListenerService.setEventSink(events)
-                Log.d("MainActivity", "EventChannel onListen")
-            }
-
-            override fun onCancel(arguments: Any?) {
-                FBSNotificationListenerService.setEventSink(null)
-                Log.d("MainActivity", "EventChannel onCancel")
-            }
-        })
-    }
-
-    override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
-
-        // 首次启动时发送超级岛测试通知
-        val prefs = getSharedPreferences("fbs_island_test", MODE_PRIVATE)
-        if (!prefs.getBoolean("launched", false)) {
-            prefs.edit().putBoolean("launched", true).apply()
-            android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
-                sendIslandTestNotification()
-            }, 2000)
-        }
-    }
-
-    /**
-     * 发送超级岛测试通知，供 Flutter 调用和自动触发使用。
-     */
-    private fun sendIslandTestNotification() {
-        try {
-            val supported = com.example.fbs.service.SuperIslandHelper.isIslandSupported(this)
-            Log.d("MainActivity", "islandSupported=$supported")
-            if (supported) {
-                com.example.fbs.service.SuperIslandHelper.sendTestIslandNotification(this)
-                Log.d("MainActivity", "Super Island test notification sent")
-            } else {
-                // 即使不支持岛，也发普通通知测试权限是否正常
-                com.example.fbs.service.SuperIslandHelper.sendTestIslandNotification(this)
-                Log.d("MainActivity", "Island not supported, sent as普通通知")
-            }
-        } catch (e: Exception) {
-            Log.e("MainActivity", "Failed to send island test notification", e)
-        }
-    }
-
-    override fun onRequestPermissionsResult(
-        requestCode: Int,
-        permissions: Array<out String>,
-        grantResults: IntArray
-    ) {
-        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
-        val granted = PermissionHelper.onRequestPermissionsResult(
-            requestCode, permissions, grantResults
-        )
-        if (granted != null) {
-            flutterMethodChannel?.invokeMethod(
-                "onInstalledAppsPermissionResult",
-                mapOf("granted" to granted)
-            )
-        }
-        if (requestCode == PermissionHelper.REQUEST_CODE_POST_NOTIFICATIONS) {
-            val g = grantResults.isNotEmpty() &&
-                    grantResults[0] == PackageManager.PERMISSION_GRANTED
-            flutterMethodChannel?.invokeMethod(
-                "onPostNotificationsPermissionResult",
-                mapOf("granted" to g)
-            )
         }
     }
 
     override fun onResume() {
         super.onResume()
-        flutterMethodChannel?.invokeMethod("onPermissionScreenResumed", null)
-    }
-
-    private fun isNotificationListenerEnabled(): Boolean {
-        val flat = Settings.Secure.getString(contentResolver, "enabled_notification_listeners")
-        return flat?.contains(packageName) == true || flat?.contains(
-            ComponentName(this, FBSNotificationListenerService::class.java).flattenToString()
-        ) == true
+        flutterMethodChannel?.invokeMethod("onResumed", null)
     }
 
     private fun getInstalledApps(): List<Map<String, String>> {
         val apps = mutableListOf<Map<String, String>>()
         try {
             val installedApps = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                packageManager.getInstalledApplications(
-                    PackageManager.ApplicationInfoFlags.of(0L))
+                packageManager.getInstalledApplications(PackageManager.ApplicationInfoFlags.of(0L))
             } else {
                 @Suppress("DEPRECATION")
                 packageManager.getInstalledApplications(0)
             }
-
-            Log.d("MainActivity", "getInstalledApps: raw count = ${installedApps.size}")
-
-            var skippedSelf = 0
             for (ai in installedApps) {
-                if (ai.packageName == packageName) {
-                    skippedSelf++
-                    continue
-                }
+                if (ai.packageName == packageName) continue
                 try {
                     val name = packageManager.getApplicationLabel(ai).toString()
-                    val isSystem = try {
-                        (ai.flags and android.content.pm.ApplicationInfo.FLAG_SYSTEM) != 0
-                    } catch (_: Exception) { false }
-                    val entry = mapOf(
-                        "package" to ai.packageName,
-                        "name" to name,
-                        "isSystem" to isSystem.toString(),
-                    )
-                    apps.add(entry)
+                    val isSystem = (ai.flags and android.content.pm.ApplicationInfo.FLAG_SYSTEM) != 0
+                    apps.add(mapOf("package" to ai.packageName, "name" to name, "isSystem" to isSystem.toString()))
                 } catch (_: Exception) {}
             }
-            // 系统应用排后面，用户应用排前面
             apps.sortWith(compareBy<Map<String, String>> { it["isSystem"] == "true" }.thenBy { it["name"] })
-            Log.d("MainActivity",
-                "getInstalledApps: total=${installedApps.size} self=$skippedSelf user=${apps.size}")
         } catch (e: Exception) {
             Log.e("MainActivity", "Error getting installed apps", e)
-            tryFallbackInstalledPackages(apps)
         }
         return apps
-    }
-
-    @Suppress("DEPRECATION")
-    private fun tryFallbackInstalledPackages(apps: MutableList<Map<String, String>>) {
-        try {
-            val pkgs = packageManager.getInstalledPackages(0)
-            Log.d("MainActivity", "fallback getInstalledPackages: ${pkgs.size} pkgs")
-            for (pi in pkgs) {
-                if (pi.packageName == packageName) continue
-                val ai = pi.applicationInfo ?: continue
-                try {
-                    val name = ai.loadLabel(packageManager).toString()
-                    val isSystem = try {
-                        (ai.flags and android.content.pm.ApplicationInfo.FLAG_SYSTEM) != 0
-                    } catch (_: Exception) { false }
-                    apps.add(mapOf(
-                        "package" to pi.packageName,
-                        "name" to name,
-                        "isSystem" to isSystem.toString(),
-                    ))
-                } catch (_: Exception) {}
-            }
-            apps.sortWith(compareBy<Map<String, String>> { it["isSystem"] == "true" }.thenBy { it["name"] })
-            Log.d("MainActivity", "fallback getInstalledPackages: ${apps.size} apps")
-        } catch (e: Exception) {
-            Log.e("MainActivity", "fallback also failed", e)
-        }
     }
 
     override fun onDestroy() {

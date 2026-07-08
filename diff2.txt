@@ -1,0 +1,239 @@
+﻿diff --git a/android/app/src/main/kotlin/com/example/fbs/service/BackScreenNotificationActivity.kt b/android/app/src/main/kotlin/com/example/fbs/service/BackScreenNotificationActivity.kt
+index 55600dd..c335f04 100644
+--- a/android/app/src/main/kotlin/com/example/fbs/service/BackScreenNotificationActivity.kt
++++ b/android/app/src/main/kotlin/com/example/fbs/service/BackScreenNotificationActivity.kt
+@@ -33,6 +33,11 @@ class BackScreenNotificationActivity : Activity() {
+         /** 绉诲睆寤惰繜 鈥?绛夊緟 Shizuku 灏?Activity 浠?display 0 绉诲埌 display 1 */
+         private const val DISPLAY_MOVE_DELAY_MS = 500L
+ 
++        /** 闈欐€佹爣蹇椾綅 鈥?鐢ㄤ簬涓嶉€氳繃 am start 瑙﹀彂 dismiss锛岄伩鍏嶇郴缁熷敜閱掑睆骞?*/
++        @Volatile
++        @JvmStatic
++        var pendingDismiss = false
++
+         /** 鏋勫缓鍏抽棴鑳屽睆鐨?Intent 瀛楃涓诧紝渚?Shizuku 鐨?am start 浣跨敤 */
+         fun buildDismissIntent(context: android.content.Context): String {
+             return "am start -n ${context.packageName}/.service.BackScreenNotificationActivity" +
+@@ -49,6 +54,7 @@ class BackScreenNotificationActivity : Activity() {
+     private var needsWake = true
+     private var isDozing = false
+     private var wasInAod = false  // 璁板綍鍚姩鏃舵槸鍚﹀浜?AOD锛屽叧闂椂鎹鍐冲畾鏄惁鎭㈠ subscreencenter
++    private var isInAodMode = false  // 褰撳墠鏄惁澶勪簬 AOD 妯″紡锛堜綆浜害 + 鏃?KEEP_SCREEN_ON锛? 
+     // multi-notification navigation
+     private var notificationsList = mutableListOf<RenderConfig>()
+@@ -57,6 +63,19 @@ class BackScreenNotificationActivity : Activity() {
+ 
+     private val aodTransitionRunnable = Runnable { enterAodMode() }
+ 
++    /** 瀹氭湡妫€鏌?pendingDismiss 鏍囧織浣嶏紝閬垮厤 am start 鍞ら啋灞忓箷 */
++    private val dismissCheckRunnable = object : Runnable {
++        override fun run() {
++            if (pendingDismiss) {
++                pendingDismiss = false
++                Log.d(TAG, "pendingDismiss detected via flag check, entering AOD")
++                dismissNotification()
++            } else {
++                dismissHandler.postDelayed(this, 200)
++            }
++        }
++    }
++
+     override fun onCreate(savedInstanceState: Bundle?) {
+         super.onCreate(savedInstanceState)
+ 
+@@ -64,10 +83,10 @@ class BackScreenNotificationActivity : Activity() {
+             val displayId = display?.displayId ?: 0
+             Log.d(TAG, "onCreate display=$displayId")
+ 
+-            // 妫€鏌?dismiss 鎸囦护锛堥槻姝?auto-dismiss 鍚庨噸寤猴級
++            // 妫€鏌?dismiss 鎸囦护锛堥€氱煡琚竻闄ゆ椂杩涘叆 AOD锛岃绯荤粺鎺ョ锛?             if (intent.getStringExtra("dismiss")?.toBooleanStrictOrNull() == true) {
+-                Log.d(TAG, "Dismiss on create, finishing immediately")
+-                finishAndRestore()
++                Log.d(TAG, "Dismiss on create, entering AOD mode")
++                dismissNotification()
+                 return
+             }
+ 
+@@ -98,6 +117,11 @@ class BackScreenNotificationActivity : Activity() {
+             renderView?.isClickable = false
+             renderView?.isFocusable = false
+             renderView?.onNavigateCallback = { newIndex -> onNavigateTo(newIndex) }
++            renderView?.onDoubleTapCallback = {
++                if (isInAodMode) {
++                    wakeFromAod()
++                }
++            }
+ 
+             // 鍦?display 0 涓?view 瀹屽叏涓嶅彲瑙侊紝绉诲埌 display 1 鍚庢墠鏄剧ず
+             if (displayId != 1) {
+@@ -119,9 +143,13 @@ class BackScreenNotificationActivity : Activity() {
+                 holdOnDisplay0()
+             }
+ 
+-            // 5 绉掑悗闄嶄綆浜害鍒?AOD 姘村钩锛屼繚鎸侀€氱煡鍐呭浣嗘ā鎷?AOD 鐘舵€?+            // 5 绉掑悗杩涘叆 AOD 妯″紡锛堜綆浜害 + 鏃?KEEP_SCREEN_ON锛?+            // 鍙屽嚮鍞ら啋鐢?FBS 鑷繁澶勭悊锛岃€屼笉鏄氦缁欑郴缁?TouchInteractionService
+             scheduleAodTransition()
+ 
++            // 鍚姩 dismiss 鏍囧織浣嶆鏌ワ紙姣?200ms 妫€鏌ヤ竴娆★級
++            dismissHandler.postDelayed(dismissCheckRunnable, 200)
++
+             Log.d(TAG, "onCreate done, sticky=$isSticky key=${currentConfig?.notificationKey}")
+         } catch (e: Exception) {
+             Log.e(TAG, "onCreate failed", e)
+@@ -184,10 +212,10 @@ class BackScreenNotificationActivity : Activity() {
+         val displayId = display?.displayId ?: 0
+         Log.d(TAG, "onNewIntent display=$displayId")
+ 
+-        // 妫€鏌?dismiss 鎸囦护
++        // 妫€鏌?dismiss 鎸囦护 鈥?閫氱煡琚竻闄ゆ椂杩涘叆 AOD 璁╃郴缁熸帴绠?         if (intent.getStringExtra("dismiss")?.toBooleanStrictOrNull() == true) {
+-            Log.d(TAG, "Dismiss signal received, closing back screen")
+-            finishAndRestore()
++            Log.d(TAG, "Dismiss signal received, entering AOD mode")
++            dismissNotification()
+             return
+         }
+ 
+@@ -235,8 +263,8 @@ class BackScreenNotificationActivity : Activity() {
+     }
+ 
+     override fun onBackPressed() {
+-        Log.d(TAG, "Back pressed, restoring subscreen")
+-        finishAndRestore()
++        Log.d(TAG, "Back pressed 鈥?entering AOD mode")
++        enterAodMode()
+     }
+ 
+     /**
+@@ -246,8 +274,8 @@ class BackScreenNotificationActivity : Activity() {
+      */
+     override fun dispatchKeyEvent(event: KeyEvent): Boolean {
+         if (event.keyCode == KeyEvent.KEYCODE_BACK && event.action == KeyEvent.ACTION_DOWN) {
+-            Log.d(TAG, "Back key intercepted by dispatchKeyEvent, restoring subscreen")
+-            finishAndRestore()
++            Log.d(TAG, "Back key intercepted 鈥?entering AOD mode")
++            enterAodMode()
+             return true
+         }
+         return super.dispatchKeyEvent(event)
+@@ -272,27 +300,24 @@ class BackScreenNotificationActivity : Activity() {
+     // 鑳屽睆鍏抽棴 & 鎭㈠
+     // 鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺? 
+-    /** 鍏抽棴鏈?Activity銆俿ubscreencenter 鏈鏉€姝伙紝鑷姩鍥炲埌鍓嶅彴銆侫OD 鏃跺彂 KEYCODE_SLEEP 鍥?DOZE銆?*/
++    /**
++     * 鍓嶅彴閫氱煡琚竻闄ゆ椂 鈥?杩涘叆 AOD 妯″紡锛屼笉 finish()
++     * Activity 淇濇寔瀛樻椿锛岀郴缁熶笉浼氭帴绠★紝灞忓箷涓嶄細鍞ら啋
++     */
++    private fun dismissNotification() {
++        dismissHandler.removeCallbacksAndMessages(null)
++        enterAodMode()
++        Log.d(TAG, "Notification dismissed 鈥?entered AOD mode")
++    }
++
++    /** 鍏抽棴鏈?Activity锛岀郴缁熻儗灞忚嚜鐒舵帴绠★紙鐢ㄤ簬鐢ㄦ埛涓诲姩杩斿洖绛夊満鏅級銆?*/
+     private fun finishAndRestore() {
+         dismissHandler.removeCallbacksAndMessages(null)
++        try {
++            window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
++        } catch (_: Exception) {}
+         finish()
+-        if (wasInAod) {
+-            // AOD 妯″紡: finish 鍚庣瓑 500ms 纭繚 Activity 瀹屽叏閿€姣?+ subscreencenter 鎭㈠鍓嶆櫙锛?-            // 鍐嶅彂閫?KEYCODE_SLEEP 璁?display 1 浠?ON 鍥炲埌 DOZE/AOD
+-            Thread {
+-                try {
+-                    Thread.sleep(500)
+-                    BackScreenController.instance?.putBackScreenToSleep()
+-                } catch (e: Exception) {
+-                    Log.e(TAG, "AOD sleep failed", e)
+-                }
+-            }.apply { isDaemon = true }.start()
+-            Log.d(TAG, "AOD mode: dispatched KEYCODE_SLEEP (500ms delay) to restore AOD")
+-            return
+-        }
+-        // 闈?AOD: subscreencenter 鏈鏉€姝伙紝Activity finish 鍚庡畠鑷姩鎭㈠鍓嶅彴
+-        // 鏃犻渶鎵嬪姩 restore锛岄伩鍏?SECONDARY_HOME 閫夋嫨瀵硅瘽妗?-        Log.d(TAG, "Activity finished, subscreencenter will resume naturally")
++        Log.d(TAG, "Activity finished, system back screen will resume")
+     }
+ 
+     /** 鎭㈠绯荤粺鑳屽睆 鈥?浼樺厛 Shizuku 鍦?display 1 鍚姩锛屼笉鍙敤鏃堕€€鍖栦负鏈湴 startActivity */
+@@ -328,17 +353,14 @@ class BackScreenNotificationActivity : Activity() {
+ 
+     private fun setupWindowFlags() {
+         try {
+-            var flags = WindowManager.LayoutParams.FLAG_FULLSCREEN or
+-                WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED
+-            // 鏉ラ€氱煡鍚庡厛淇濇寔浜睆 5 绉掞紝鏂逛究鐢ㄦ埛鐪嬫竻鍐呭
+-            // 涔嬪悗 enterAodMode() 浼氭竻闄?KEEP_SCREEN_ON 骞堕檷浣庝寒搴﹀埌 AOD 姘村钩
+-            flags = flags or WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON
+-            window.addFlags(flags)
++            window.addFlags(
++                WindowManager.LayoutParams.FLAG_FULLSCREEN or
++                WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED or
++                WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON
++            )
+             val lp = window.attributes
+-            lp.screenBrightness = -1.0f // 璺熼殢绯荤粺浜害
++            lp.screenBrightness = -1.0f
+             window.attributes = lp
+-
+-            // 娌夋蹈妯″紡 鈥?褰诲簳闅愯棌鐘舵€佹爮鍜屽鑸爮
+             setupImmersiveMode()
+         } catch (e: Exception) {
+             Log.w(TAG, "Window flags error: ${e.message}")
+@@ -353,17 +375,38 @@ class BackScreenNotificationActivity : Activity() {
+ 
+     private fun enterAodMode() {
+         try {
+-            // 5 绉掑悗鎶婁寒搴﹂檷鍒?AOD 姘村钩锛屼繚鎸侀€氱煡鍐呭浣嗕笉鍐嶄富鍔ㄤ繚鎸佸睆骞曞父浜?+            // 鍙檷浜害锛屼繚鐣?KEEP_SCREEN_ON 鈥?Activity 濮嬬粓鎸佹湁灞忓箷鎺у埗鏉?+            // 绯荤粺涓嶄細鎺ョ鑳屽睆锛岄€氱煡鎸佺画鏄剧ず鐩村埌鍓嶅彴閫氱煡娓呴櫎鎴栫敤鎴疯繑鍥炴墜鍔?             val lp = window.attributes
+             lp.screenBrightness = 0.01f
+             window.attributes = lp
+             window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+-            Log.d(TAG, "Entered AOD brightness mode")
++            isInAodMode = true
++            Log.d(TAG, "Entered AOD mode 鈥?low brightness, KEEP_SCREEN_ON retained")
+         } catch (e: Exception) {
+             Log.e(TAG, "enterAodMode failed", e)
+         }
+     }
+ 
++    /**
++     * 浠?AOD 妯″紡鍞ら啋鑳屽睆 鈥?鎭㈠鍏ㄤ寒 + KEEP_SCREEN_ON
++     * 璋冪敤鍚庝細閲嶆柊璋冨害 5 绉?AOD 杞崲
++     */
++    private fun wakeFromAod() {
++        try {
++            val lp = window.attributes
++            lp.screenBrightness = -1.0f  // 鎭㈠绯荤粺榛樿浜害
++            window.attributes = lp
++            window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
++            isInAodMode = false
++            Log.d(TAG, "Woke from AOD 鈥?full brightness, scheduling AOD transition")
++            // 閲嶆柊璋冨害 5 绉掑悗杩涘叆 AOD
++            scheduleAodTransition()
++        } catch (e: Exception) {
++            Log.e(TAG, "wakeFromAod failed", e)
++        }
++    }
++
+     private fun setupImmersiveMode() {
+         try {
+             window.decorView.systemUiVisibility = (
+@@ -635,6 +678,7 @@ class BackScreenNotificationActivity : Activity() {
+     ) : View(context) {
+ 
+         var onNavigateCallback: ((Int) -> Unit)? = null
++        var onDoubleTapCallback: (() -> Unit)? = null
+ 
+         private val density: Float
+         private var config: RenderConfig = notifications[currentIndex]
+@@ -704,6 +748,12 @@ class BackScreenNotificationActivity : Activity() {
+             }
+ 
+             gestureDetector = GestureDetector(context, object : GestureDetector.SimpleOnGestureListener() {
++                override fun onDoubleTap(e: MotionEvent): Boolean {
++                    // 鍙屽嚮鍞ら啋 AOD
++                    this@NotificationRenderView.onDoubleTapCallback?.invoke()
++                    return true
++                }
++
+                 override fun onFling(
+                     e1: MotionEvent?, e2: MotionEvent,
+                     velocityX: Float, velocityY: Float

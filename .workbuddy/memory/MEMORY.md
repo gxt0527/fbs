@@ -1,7 +1,7 @@
 # FBS 项目长期记忆
 
 ## 项目概述
-- **名称**: FBS（福帮手）- Flutter Android 背屏通知转发工具
+- **名称**: FBS（福帮手）- Flutter Android 背屏转发工具（V3 手动转发）
 - **包名**: `com.example.fbs`
 - **设备**: Xiaomi 2509FPN0BC（HyperOS, Android 16）
 - **语言**: Flutter + Kotlin
