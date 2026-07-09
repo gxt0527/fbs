@@ -38,7 +38,6 @@
             </intent-filter>
         </activity>
 
-        <!-- 背屏通知渲染 Activity，由 Shizuku 通过 am start 在 display 1 启动 -->
         <activity
             android:name=".service.BackScreenNotificationActivity"
             android:exported="true"
@@ -56,6 +55,21 @@
                 <action android:name="android.service.notification.NotificationListenerService" />
             </intent-filter>
         </service>
+
+        <service
+            android:name=".service.FBSForegroundService"
+            android:exported="false"
+            android:foregroundServiceType="dataSync" />
+
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.fileprovider"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/file_paths" />
+        </provider>
 
         <provider
             android:name="rikka.shizuku.ShizukuProvider"

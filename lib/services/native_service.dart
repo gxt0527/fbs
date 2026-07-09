@@ -29,24 +29,13 @@ class NativeService {
     try {
       await _methodChannel.invokeMethod('displayOnBackScreenV2', {
         'title': title, 'subtitle': subtitle, 'content': content,
-        'appName': appName,
+        'appName': appName, 'packageName': '',
+        if (styleExtras != null) 'styleExtras': styleExtras,
       });
     } catch (e) { /* ignore */ }
   }
   Future<void> dismissBackScreen() async {
     try { await _methodChannel.invokeMethod('dismissBackScreen'); } catch (_) {}
-  }
-
-  // 背屏镜像
-  Future<bool> isMirrorEnabled() async {
-    try { return await _methodChannel.invokeMethod<bool>('isMirrorEnabled') ?? false; }
-    catch (e) { return false; }
-  }
-  Future<void> setMirrorEnabled(bool enabled) async {
-    try { await _methodChannel.invokeMethod('setMirrorEnabled', {'enabled': enabled}); } catch (_) {}
-  }
-  Future<void> clearAllMirroredNotifications() async {
-    try { await _methodChannel.invokeMethod('clearAllMirroredNotifications'); } catch (_) {}
   }
 
   // 超级岛
@@ -104,5 +93,16 @@ class NativeService {
   Future<bool> isMiuiOrHyperOS() async {
     try { return await _methodChannel.invokeMethod<bool>('isMiuiOrHyperOS') ?? false; }
     catch (e) { return false; }
+  }
+  Future<String> testPinWrite() async {
+    try { return await _methodChannel.invokeMethod('testPinWrite') ?? 'failed'; }
+    catch (e) { return 'failed'; }
+  }
+  Future<String> sendImagePin({required String title, required String subtitle, required String content}) async {
+    try {
+      return await _methodChannel.invokeMethod('sendImagePin', {
+        'title': title, 'subtitle': subtitle, 'content': content,
+      }) ?? 'failed';
+    } catch (e) { return 'failed'; }
   }
 }

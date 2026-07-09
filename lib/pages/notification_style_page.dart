@@ -45,10 +45,9 @@ class _NotificationStylePageState extends State<NotificationStylePage> {
             icon: const Icon(Icons.check),
             tooltip: '保存',
             onPressed: () async {
-              final navigator = Navigator.of(context);
               await _style.save();
               if (mounted) {
-                navigator.pop(_style);
+                Navigator.of(context).pop(_style);
               }
             },
           ),

@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import '../services/native_service.dart';
+import '../models/notification_style.dart';
+import 'notification_style_page.dart';
 
 class SettingsPage extends StatefulWidget {
   const SettingsPage({super.key});
@@ -16,7 +18,6 @@ class _SettingsPageState extends State<SettingsPage> with WidgetsBindingObserver
   bool _promotedPerm = false;
   bool _installedAppsSupported = false;
   bool _installedAppsGranted = false;
-  bool _mirrorEnabled = true;
 
   @override
   void initState() {
@@ -38,16 +39,12 @@ class _SettingsPageState extends State<SettingsPage> with WidgetsBindingObserver
       _nativeService.isShizukuRunning(), _nativeService.hasShizukuPermission(),
       _nativeService.isPostNotificationsGranted(), _nativeService.hasPromotedPermission(),
       _nativeService.isInstalledAppsPermissionSupported(), _nativeService.isInstalledAppsPermissionGranted(),
-      _nativeService.isMirrorEnabled(),
     ]);
-    if (mounted) {
-      setState(() {
-        _shizukuRunning = r[0] as bool; _shizukuPerm = r[1] as bool;
-        _postNotifGranted = r[2] as bool; _promotedPerm = r[3] as bool;
-        _installedAppsSupported = r[4] as bool; _installedAppsGranted = r[5] as bool;
-        _mirrorEnabled = r[6] as bool;
-      });
-    }
+    if (mounted) setState(() {
+      _shizukuRunning = r[0] as bool; _shizukuPerm = r[1] as bool;
+      _postNotifGranted = r[2] as bool; _promotedPerm = r[3] as bool;
+      _installedAppsSupported = r[4] as bool; _installedAppsGranted = r[5] as bool;
+    });
   }
 
   @override
@@ -68,26 +65,27 @@ class _SettingsPageState extends State<SettingsPage> with WidgetsBindingObserver
           ),
         ]),
         const SizedBox(height: 16),
-        _buildSection('背屏镜像', [
-          SwitchListTile(
-            title: const Text('通知镜像到背屏', style: TextStyle(fontSize: 14)),
-            subtitle: const Text('自动将前端通知同步显示到背屏', style: TextStyle(fontSize: 12)),
-            value: _mirrorEnabled,
-            onChanged: (v) async {
-              await _nativeService.setMirrorEnabled(v);
-              setState(() => _mirrorEnabled = v);
-            },
-            dense: true,
-            contentPadding: EdgeInsets.zero,
-          ),
-        ]),
-        const SizedBox(height: 16),
         _buildSection('系统权限', [
           if (_installedAppsSupported) _actionTile('应用列表权限', _installedAppsGranted,
             onGrant: () => _nativeService.requestInstalledAppsPermission()),
           _actionTile('自启动', null, onGrant: () => _nativeService.openAutoStartSettings()),
           _actionTile('电池优化', null, onGrant: () => _nativeService.openBatteryOptimizationSettings()),
           _actionTile('应用详情', null, onGrant: () => _nativeService.openAppDetailsSettings()),
+        ]),
+        const SizedBox(height: 16),
+        _buildSection('背屏样式', [
+          ListTile(
+            leading: const Icon(Icons.palette),
+            title: const Text('自定义样式'),
+            subtitle: const Text('字号、颜色、背景、避开摄像头'),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () async {
+              final style = await NotificationStyle.load();
+              if (!context.mounted) return;
+              Navigator.push(context,
+                MaterialPageRoute(builder: (_) => NotificationStylePage(initialStyle: style)));
+            },
+          ),
         ]),
       ]),
     );

@@ -3,6 +3,8 @@ import 'package:flutter/services.dart';
 import '../services/native_service.dart';
 import '../services/content_parser.dart';
 import 'settings_page.dart';
+import 'notification_style_page.dart';
+import '../models/notification_style.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -11,7 +13,7 @@ class HomePage extends StatefulWidget {
   State<HomePage> createState() => _HomePageState();
 }
 
-class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
+class _HomePageState extends State<HomePage> {
   final _nativeService = NativeService();
   final _textController = TextEditingController();
   final _titleController = TextEditingController();
@@ -25,22 +27,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addObserver(this);
     _refreshStatus();
-  }
-
-  @override
-  void dispose() {
-    WidgetsBinding.instance.removeObserver(this);
-    _textController.dispose();
-    _titleController.dispose();
-    _subtitleController.dispose();
-    super.dispose();
-  }
-
-  @override
-  void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.resumed) _refreshStatus();
   }
 
   Future<void> _refreshStatus() async {
@@ -73,20 +60,52 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
     }
   }
 
-  Future<void> _forwardAll() async {
+  void _clearAll() {
+    _textController.clear();
+    _titleController.clear();
+    _subtitleController.clear();
+    setState(() => _parsed = null);
+  }
+
+  Future<void> _forwardAll() async => _doForward(true);
+
+  Future<void> _doForward(bool showAnimation) async {
     if (_isForwarding) return;
     setState(() => _isForwarding = true);
 
     final title = _titleController.text.trim();
     final subtitle = _subtitleController.text.trim();
     final content = _textController.text.trim();
+    final style = await NotificationStyle.load();
+    // 转成背屏 Activity 期待的 key/value 格式
+    final styleMap = {
+      'titleFontSize': style.titleFontSize.toString(),
+      'subtitleFontSize': style.subtitleFontSize.toString(),
+      'contentFontSize': style.contentFontSize.toString(),
+      'titleColor': '#${style.titleColor.toARGB32().toRadixString(16).padLeft(8, '0')}',
+      'subtitleColor': '#${style.subtitleColor.toARGB32().toRadixString(16).padLeft(8, '0')}',
+      'contentColor': '#${style.contentColor.toARGB32().toRadixString(16).padLeft(8, '0')}',
+      'backgroundColor': '#${style.backgroundColor.toARGB32().toRadixString(16).padLeft(8, '0')}',
+      'showAppIcon': style.showAppIcon.toString(),
+      'showTimestamp': style.showTimestamp.toString(),
+      'cameraAvoidanceEnabled': style.cameraAvoidanceEnabled.toString(),
+      'padding': style.padding.toString(),
+      'spacing': style.spacing.toString(),
+      'displayDurationMs': style.displayDurationMs.toString(),
+    };
 
     try {
-      await _nativeService.displayOnBackScreen(title: title, subtitle: subtitle, content: content);
-      await _nativeService.sendSuperIslandNotification(title: title, content: subtitle.isNotEmpty ? subtitle : content);
+      await _nativeService.displayOnBackScreen(
+        title: title, subtitle: subtitle, content: content,
+        styleExtras: styleMap,
+      );
+      if (showAnimation) {
+        await _nativeService.sendSuperIslandNotification(title: title, content: subtitle.isNotEmpty ? subtitle : content);
+      }
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-          content: Text('已转发到背屏 + 超级岛'), duration: Duration(seconds: 2),
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text(showAnimation ? '已转发到背屏 + 超级岛' : '已静默更新背屏'),
+          duration: const Duration(seconds: 2),
         ));
       }
     } catch (e) {
@@ -94,6 +113,14 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
     } finally {
       if (mounted) setState(() => _isForwarding = false);
     }
+  }
+
+  @override
+  void dispose() {
+    _textController.dispose();
+    _titleController.dispose();
+    _subtitleController.dispose();
+    super.dispose();
   }
 
   @override
@@ -123,9 +150,13 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
               _buildParsedResult(),
             ],
             const SizedBox(height: 24),
-            _buildForwardButton(),
+            _buildForwardButtons(),
             const SizedBox(height: 8),
             _buildDismissButton(),
+            const SizedBox(height: 8),
+            _buildImagePinSingleButton(),
+            const SizedBox(height: 8),
+            _buildStyleButton(),
           ],
         ),
       ),
@@ -149,13 +180,10 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
           shizukuOk ? 'Shizuku 已连接' : _isShizukuRunning ? 'Shizuku 未授权' : 'Shizuku 未运行',
           style: TextStyle(fontSize: 13, color: shizukuOk ? Colors.green.shade800 : Colors.orange.shade800),
         )),
-        if (!shizukuOk)
+        if (_isShizukuRunning && !_hasShizukuPermission)
           TextButton(
             onPressed: _requestShizuku,
-            child: Text(
-              _isShizukuRunning ? '授权' : '启动并授权',
-              style: const TextStyle(fontSize: 12),
-            ),
+            child: const Text('授权', style: TextStyle(fontSize: 12)),
           ),
       ]),
     );
@@ -253,10 +281,9 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
     );
   }
 
-  Widget _buildForwardButton() {
+  Widget _buildForwardButtons() {
     final canForward = _isShizukuRunning && _hasShizukuPermission && _titleController.text.trim().isNotEmpty;
-    return SizedBox(
-      width: double.infinity, height: 48,
+    return SizedBox(width: double.infinity, height: 48,
       child: ElevatedButton.icon(
         icon: _isForwarding
             ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
@@ -279,8 +306,56 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
         icon: const Icon(Icons.cleaning_services, size: 18),
         label: const Text('清除背屏'),
         onPressed: () async {
-          await _nativeService.clearAllMirroredNotifications();
+          await _nativeService.dismissBackScreen();
           await _nativeService.cancelSuperIslandNotification();
+        },
+      ),
+    );
+  }
+
+  Widget _buildTestPinButton() {
+    return SizedBox(width: double.infinity, height: 40,
+      child: OutlinedButton.icon(
+        icon: const Icon(Icons.bug_report, size: 18),
+        label: const Text('测试写 pin_info.json'),
+        onPressed: () async {
+          final r = await _nativeService.testPinWrite();
+          if (mounted) ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('PinWrite: $r')),
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildImagePinSingleButton() {
+    final canForward = _isShizukuRunning && _hasShizukuPermission && _titleController.text.trim().isNotEmpty;
+    return SizedBox(width: double.infinity, height: 40,
+      child: OutlinedButton.icon(
+        icon: const Icon(Icons.image, size: 18),
+        label: const Text('图片贴背屏'),
+        onPressed: canForward ? () async {
+          final r = await _nativeService.sendImagePin(
+            title: _titleController.text.trim(),
+            subtitle: _subtitleController.text.trim(),
+            content: _textController.text.trim(),
+          );
+          if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('图片贴背屏: $r')));
+        } : null,
+      ),
+    );
+  }
+
+  Widget _buildStyleButton() {
+    return SizedBox(width: double.infinity, height: 40,
+      child: OutlinedButton.icon(
+        icon: const Icon(Icons.palette, size: 18),
+        label: const Text('背屏样式'),
+        onPressed: () async {
+          final style = await NotificationStyle.load();
+          if (!mounted) return;
+          Navigator.push(context,
+            MaterialPageRoute(builder: (_) => NotificationStylePage(initialStyle: style)));
         },
       ),
     );
