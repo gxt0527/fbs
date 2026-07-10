@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+  <!-- Bag body -->
+  <path d="M5 7l-1 13c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2L19 7"/>
+  <!-- Bag handles -->
+  <path d="M8 7V5c0-2 1.5-3 4-3s4 1 4 3v2"/>
+  <!-- Receipt tag -->
+  <path d="M6.5 11h11"/>
+  <path d="M6.5 15h8"/>
+</svg>

@@ -134,6 +134,18 @@ object PermissionHelper {
     //  自启动 / 后台 / 电池 / 悬浮窗 / 应用详情
     // ===================================================================
 
+    fun openAppNotificationSettings(context: Context) {
+        try {
+            val intent = android.content.Intent(android.provider.Settings.ACTION_APP_NOTIFICATION_SETTINGS)
+            intent.putExtra(android.provider.Settings.EXTRA_APP_PACKAGE, context.packageName)
+            context.startActivity(intent)
+        } catch (e: Exception) {
+            Log.e(TAG, "openAppNotificationSettings failed", e)
+            // fallback: 打开应用详情
+            openAppDetailsSettings(context)
+        }
+    }
+
     fun isMiuiOrHyperOS(): Boolean {
         return try {
             val prop = Class.forName("android.os.SystemProperties")

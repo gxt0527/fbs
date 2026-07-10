@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../models/notification_item.dart';
+import '../main.dart';
 
 class NotificationCard extends StatelessWidget {
   final NotificationItem notification;
@@ -15,98 +16,122 @@ class NotificationCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Card(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-      child: Padding(
-        padding: const EdgeInsets.all(12),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+      child: Container(
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(GlassTokens.radiusLG),
+              gradient: GlassTokens.glassGradient(Theme.of(context).brightness),
+              border: Border.all(
+                color: isDark ? Colors.white.withValues(alpha: 0.08) : Colors.white.withValues(alpha: 0.30),
+                width: 0.5,
+              ),
+              boxShadow: GlassTokens.glassShadow(Theme.of(context).brightness),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Icon(
-                  notification.isFocusNotification
-                      ? Icons.warning_amber_rounded
-                      : Icons.notifications,
-                  size: 18,
-                  color: notification.isFocusNotification
-                      ? Colors.orange
-                      : theme.colorScheme.primary,
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    notification.displayTitle,
-                    style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-                if (notification.typeLabel.isNotEmpty)
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                    decoration: BoxDecoration(
-                      color: notification.isOngoing
-                          ? Colors.green.withValues(alpha: 0.1)
-                          : Colors.blue.withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(4),
-                    ),
-                    child: Text(
-                      notification.typeLabel,
-                      style: TextStyle(
-                        fontSize: 10,
-                        color: notification.isOngoing ? Colors.green : Colors.blue,
+                Row(
+                  children: [
+                    Container(
+                      width: 28, height: 28,
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(GlassTokens.radiusXS),
+                        color: notification.isFocusNotification
+                            ? const Color(0xFFFF9500).withValues(alpha: 0.12)
+                            : GlassTokens.accent.withValues(alpha: 0.12),
+                      ),
+                      child: Icon(
+                        notification.isFocusNotification
+                            ? Icons.warning_amber_rounded
+                            : Icons.notifications_rounded,
+                        size: 16,
+                        color: notification.isFocusNotification
+                            ? const Color(0xFFFF9500)
+                            : GlassTokens.accent,
                       ),
                     ),
-                  ),
-                const SizedBox(width: 4),
-                Text(
-                  notification.displayTime,
-                  style: TextStyle(fontSize: 11, color: Colors.grey[500]),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        notification.displayTitle,
+                        style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    if (notification.typeLabel.isNotEmpty)
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                        decoration: BoxDecoration(
+                          color: notification.isOngoing
+                              ? const Color(0xFF34C759).withValues(alpha: 0.10)
+                              : GlassTokens.accent.withValues(alpha: 0.10),
+                          borderRadius: BorderRadius.circular(GlassTokens.radiusFull),
+                        ),
+                        child: Text(
+                          notification.typeLabel,
+                          style: TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.w600,
+                            color: notification.isOngoing ? const Color(0xFF34C759) : GlassTokens.accent,
+                          ),
+                        ),
+                      ),
+                    const SizedBox(width: 4),
+                    Text(
+                      notification.displayTime,
+                      style: TextStyle(fontSize: 11, color: isDark ? Colors.white38 : Colors.black38),
+                    ),
+                  ],
                 ),
-              ],
-            ),
-            if (notification.content.isNotEmpty) ...[
-              const SizedBox(height: 6),
-              Text(
-                notification.content,
-                style: TextStyle(fontSize: 13, color: Colors.grey[700]),
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-              ),
-            ],
-            const SizedBox(height: 6),
-            Row(
-              children: [
-                Icon(Icons.phone_android, size: 12, color: Colors.grey[400]),
-                const SizedBox(width: 4),
-                Expanded(
-                  child: Text(
-                    notification.displayAppName,
-                    style: TextStyle(fontSize: 11, color: Colors.grey[500]),
-                    maxLines: 1,
+                if (notification.content.isNotEmpty) ...[
+                  const SizedBox(height: 6),
+                  Text(
+                    notification.content,
+                    style: TextStyle(fontSize: 13, color: isDark ? Colors.white54 : Colors.black54),
+                    maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                   ),
+                ],
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    Icon(Icons.phone_android, size: 12, color: isDark ? Colors.white24 : Colors.black26),
+                    const SizedBox(width: 4),
+                    Expanded(
+                      child: Text(
+                        notification.displayAppName,
+                        style: TextStyle(fontSize: 11, color: isDark ? Colors.white30 : Colors.black38),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    if (onForward != null)
+                      _glassIconButton(Icons.send_rounded, '发送到背屏', onForward!),
+                    if (onDelete != null)
+                      _glassIconButton(Icons.delete_outline_rounded, '删除', onDelete!),
+                  ],
                 ),
-                if (onForward != null)
-                  IconButton(
-                    icon: const Icon(Icons.send, size: 16),
-                    onPressed: onForward,
-                    tooltip: '发送到背屏',
-                    visualDensity: VisualDensity.compact,
-                  ),
-                if (onDelete != null)
-                  IconButton(
-                    icon: const Icon(Icons.delete_outline, size: 16),
-                    onPressed: onDelete,
-                    tooltip: '删除',
-                    visualDensity: VisualDensity.compact,
-                  ),
               ],
             ),
-          ],
+          ),
+    );
+  }
+
+  Widget _glassIconButton(IconData icon, String tooltip, VoidCallback onTap) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: 30, height: 30,
+        margin: const EdgeInsets.only(left: 2),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(GlassTokens.radiusXS),
+          color: GlassTokens.accent.withValues(alpha: 0.08),
         ),
+        child: Icon(icon, size: 15, color: GlassTokens.accent),
       ),
     );
   }

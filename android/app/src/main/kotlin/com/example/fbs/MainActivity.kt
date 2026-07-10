@@ -1,11 +1,14 @@
 package com.example.fbs
 
 import android.content.ComponentName
+import android.content.Intent
 import android.content.pm.PackageManager
+import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.provider.Settings
 import android.util.Log
+import androidx.lifecycle.lifecycleScope
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.EventChannel
@@ -13,7 +16,11 @@ import io.flutter.plugin.common.MethodChannel
 import com.example.fbs.service.BackScreenController
 import com.example.fbs.service.FBSForegroundService
 import com.example.fbs.service.FBSNotificationListenerService
+import com.example.fbs.service.NativeOcrService
 import com.example.fbs.service.PermissionHelper
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 class MainActivity : FlutterActivity() {
 
@@ -21,6 +28,7 @@ class MainActivity : FlutterActivity() {
     private val EVENT_CHANNEL = "com.example.fbs/notification_events"
 
     private lateinit var backScreenController: BackScreenController
+    private lateinit var ocrService: NativeOcrService
     private var eventChannel: EventChannel? = null
     private var flutterMethodChannel: MethodChannel? = null
 
@@ -41,7 +49,27 @@ class MainActivity : FlutterActivity() {
             }
         } catch (_: Exception) {}
 
+        // 初始化OCR服务（单例）
+        ocrService = NativeOcrService.getInstance()
+        lifecycleScope.launch {
+            ocrService.init(this@MainActivity)
+        }
+
         flutterMethodChannel = MethodChannel(flutterEngine.dartExecutor.binaryMessenger, METHOD_CHANNEL)
+
+        // 注册 ShareReceiverActivity 回调 — 当透明 Activity 收到分享时直接通知 Flutter
+        ShareReceiverActivity.onSharedContent = { type, text, imageUri ->
+            runOnUiThread {
+                flutterMethodChannel?.invokeMethod("onSharedContent", mapOf(
+                    "type" to type,
+                    "text" to text,
+                    "imageUri" to imageUri,
+                ))
+            }
+        }
+
+        // 处理冷启动时 Intent 携带的分享数据
+        handleShareIntent(intent)
 
         flutterMethodChannel?.setMethodCallHandler { call, result ->
             Log.d("MainActivity", ">>> methodCallHandler: ${call.method}")
@@ -104,6 +132,7 @@ class MainActivity : FlutterActivity() {
                     val content = call.argument<String>("content") ?: ""
                     val appName = call.argument<String>("appName") ?: ""
                     val packageName = call.argument<String>("packageName") ?: ""
+                    val category = call.argument<String>("category") ?: "general"
                     @Suppress("UNCHECKED_CAST")
                     val styleExtras = (call.argument<Map<String, Any>>("styleExtras")
                         ?: emptyMap<String, Any>())
@@ -115,12 +144,49 @@ class MainActivity : FlutterActivity() {
                         appName = appName,
                         packageName = packageName,
                         styleExtras = styleExtras,
+                        category = category,
                     )
                     result.success(true)
                 }
                 "dismissBackScreen" -> {
                     backScreenController.dismissBackScreen()
                     result.success(true)
+                }
+                "sendImagePin" -> {
+                    val title = call.argument<String>("title") ?: ""
+                    val subtitle = call.argument<String>("subtitle") ?: ""
+                    val content = call.argument<String>("content") ?: ""
+                    val r = backScreenController.renderAndPinImage(title, subtitle, content)
+                    result.success(r)
+                }
+                "forwardSharedImage" -> {
+                    val imageUri = call.argument<String>("imageUri") ?: ""
+                    val r = backScreenController.forwardSharedImage(imageUri)
+                    result.success(r)
+                }
+                // 新增：OCR识别图片文字
+                "recognizeImageText" -> {
+                    val imageUri = call.argument<String>("imageUri") ?: ""
+                    if (imageUri.isEmpty()) {
+                        result.error("INVALID_URI", "图片URI不能为空", null)
+                        return@setMethodCallHandler
+                    }
+                    
+                    // 后台线程执行，不阻塞UI
+                    lifecycleScope.launch {
+                        val ocrResult = ocrService.recognizeText(this@MainActivity, imageUri)
+                        withContext(Dispatchers.Main) {
+                            result.success(mapOf(
+                                "success" to ocrResult.success,
+                                "text" to ocrResult.text,
+                                "lineCount" to ocrResult.lineCount,
+                                "detectionTimeMs" to ocrResult.detectionTimeMs,
+                                "recognitionTimeMs" to ocrResult.recognitionTimeMs,
+                                "totalTimeMs" to ocrResult.totalTimeMs,
+                                "errorMessage" to ocrResult.errorMessage,
+                            ))
+                        }
+                    }
                 }
                 "removePinByNotificationId" -> {
                     val id = call.argument<Int>("notificationId") ?: 0
@@ -217,6 +283,10 @@ class MainActivity : FlutterActivity() {
                     PermissionHelper.openAppDetailsSettings(this)
                     result.success(true)
                 }
+                "openAppNotificationSettings" -> {
+                    PermissionHelper.openAppNotificationSettings(this)
+                    result.success(true)
+                }
                 "isMiuiOrHyperOS" -> {
                     result.success(PermissionHelper.isMiuiOrHyperOS())
                 }
@@ -243,6 +313,58 @@ class MainActivity : FlutterActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        handleShareIntent(intent)
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        handleShareIntent(intent)
+    }
+
+    /**
+     * 解析 Intent 中的分享数据并通知 Flutter
+     */
+    private fun handleShareIntent(intent: Intent?) {
+        if (intent == null) return
+        val action = intent.action ?: return
+
+        when (action) {
+            Intent.ACTION_PROCESS_TEXT -> {
+                val text = intent.getCharSequenceExtra(Intent.EXTRA_PROCESS_TEXT)?.toString()
+                if (!text.isNullOrBlank()) {
+                    Log.d("MainActivity", "PROCESS_TEXT: ${text.take(100)}")
+                    flutterMethodChannel?.invokeMethod("onSharedContent", mapOf(
+                        "type" to "text",
+                        "text" to text,
+                        "imageUri" to null as String?,
+                    ))
+                }
+            }
+            Intent.ACTION_SEND -> {
+                val mimeType = intent.type ?: ""
+                if (mimeType.startsWith("image/")) {
+                    val uri = intent.getParcelableExtra<Uri>(Intent.EXTRA_STREAM)
+                    if (uri != null) {
+                        Log.d("MainActivity", "SEND image: $uri")
+                        flutterMethodChannel?.invokeMethod("onSharedContent", mapOf(
+                            "type" to "image",
+                            "text" to null as String?,
+                            "imageUri" to uri.toString(),
+                        ))
+                    }
+                } else {
+                    val text = intent.getStringExtra(Intent.EXTRA_TEXT)
+                    if (!text.isNullOrBlank()) {
+                        Log.d("MainActivity", "SEND text: ${text.take(100)}")
+                        flutterMethodChannel?.invokeMethod("onSharedContent", mapOf(
+                            "type" to "text",
+                            "text" to text,
+                            "imageUri" to null as String?,
+                        ))
+                    }
+                }
+            }
+        }
     }
 
     override fun onRequestPermissionsResult(

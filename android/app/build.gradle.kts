@@ -19,7 +19,7 @@ android {
         applicationId = "com.example.fbs"
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.
-        minSdk = 24
+        minSdk = 26
         targetSdk = 37
         versionCode = flutter.versionCode
         versionName = flutter.versionName
@@ -38,6 +38,12 @@ dependencies {
     // Shizuku SDK
     implementation("dev.rikka.shizuku:api:13.1.5")
     implementation("dev.rikka.shizuku:provider:13.1.5")
+    
+    // PaddleOCR-Lite
+    implementation(files("libs/ppocr-sdk-release.aar"))
+    implementation("com.microsoft.onnxruntime:onnxruntime-android:1.21.1")
+    implementation("org.opencv:opencv:4.13.0")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.9.0")
 }
 
 kotlin {

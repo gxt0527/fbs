@@ -4,10 +4,15 @@ import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.graphics.*
 import android.os.Build
 import android.os.IBinder
 import android.os.PowerManager
 import android.util.Log
+import java.io.File
+import java.io.FileOutputStream
+import java.text.SimpleDateFormat
+import java.util.*
 import rikka.shizuku.Shizuku
 import java.io.BufferedReader
 import java.io.InputStreamReader
@@ -173,6 +178,7 @@ class BackScreenController(private val context: Context) {
         appName: String,
         packageName: String,
         styleExtras: Map<String, String>,
+        category: String = "general",
     ) {
         val now = System.currentTimeMillis()
         if (now - lastForwardTime < GLOBAL_COOLDOWN_MS) {
@@ -198,6 +204,7 @@ class BackScreenController(private val context: Context) {
                 putExtra("content", content)
                 putExtra("appName", appName)
                 putExtra("packageName", packageName)
+                putExtra("category", category)
                 // 传递全部样式参数
                 for ((k, v) in styleExtras) {
                     putExtra(k, v)
@@ -227,6 +234,109 @@ class BackScreenController(private val context: Context) {
 
         } catch (e: Exception) {
             Log.e(TAG, "displayNotificationOnBackScreenV2 failed", e)
+        }
+    }
+
+    /**
+     * 图片贴背屏 — 走官方 PinReceiveActivity（无需 Shizuku）
+     * 流程: 渲染通知 → Bitmap → PNG → FileProvider URI → ACTION_SEND image/png → PinReceiveActivity
+     */
+    fun renderAndPinImage(title: String, subtitle: String, content: String): String {
+        return try {
+            val w = 976; val h = 596; val p = 48f; val density = 3.0f
+            val titleSize = 28f * density; val bodySize = 16f * density
+
+            val bitmap = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888)
+            val canvas = Canvas(bitmap)
+
+            canvas.drawColor(Color.parseColor("#1A1A1E"))
+
+            val titlePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                color = Color.WHITE; textSize = titleSize; typeface = Typeface.DEFAULT_BOLD
+            }
+            val bodyPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                color = Color.parseColor("#BBBBBB"); textSize = bodySize
+            }
+
+            var y = p
+            canvas.drawText(title.take(30), p, y + titleSize, titlePaint)
+            y += titleSize + 14f * density
+
+            if (subtitle.isNotEmpty()) {
+                canvas.drawText(subtitle.take(40), p, y + bodySize, bodyPaint)
+                y += bodySize + 10f * density
+            }
+
+            val maxWidth = w - p * 2f
+            for (line in wrapText(content, bodyPaint, maxWidth)) {
+                canvas.drawText(line, p, y + bodySize, bodyPaint)
+                y += bodySize + 4f * density
+            }
+
+            val wmPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                color = Color.parseColor("#555555"); textSize = 11f * density
+            }
+            canvas.drawText("FBS ${SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date())}", p, h - p, wmPaint)
+
+            val file = File(context.cacheDir, "fbs_pin.png")
+            FileOutputStream(file).use { bitmap.compress(Bitmap.CompressFormat.PNG, 90, it) }
+            bitmap.recycle()
+
+            val uri = androidx.core.content.FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", file)
+            context.grantUriPermission(SUBSCREEN_PACKAGE, uri, Intent.FLAG_GRANT_READ_URI_PERMISSION)
+
+            val intent = Intent().apply {
+                setClassName(SUBSCREEN_PACKAGE, "${SUBSCREEN_PACKAGE}.pin.PinReceiveActivity")
+                action = Intent.ACTION_SEND
+                type = "image/png"
+                putExtra(Intent.EXTRA_STREAM, uri)
+                putExtra(Intent.EXTRA_TEXT, "$title $content")
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            }
+            context.startActivity(intent)
+            Log.d(TAG, "Image pinned to back screen: ${file.length()} bytes")
+            "ok"
+        } catch (e: Exception) {
+            Log.e(TAG, "renderAndPinImage failed", e)
+            "failed: ${e.message}"
+        }
+    }
+
+    /**
+     * 将分享过来的图片 URI 转发到背屏（PinReceiveActivity）
+     */
+    fun forwardSharedImage(imageUri: String): String {
+        return try {
+            val uri = android.net.Uri.parse(imageUri)
+            // 复制到缓存目录以获取稳定的文件路径
+            val inputStream = context.contentResolver.openInputStream(uri)
+                ?: return "failed: cannot open URI"
+            val file = File(context.cacheDir, "fbs_shared_image.png")
+            FileOutputStream(file).use { out ->
+                inputStream.copyTo(out)
+            }
+            inputStream.close()
+
+            val fileUri = androidx.core.content.FileProvider.getUriForFile(
+                context, "${context.packageName}.fileprovider", file
+            )
+            context.grantUriPermission(SUBSCREEN_PACKAGE, fileUri, Intent.FLAG_GRANT_READ_URI_PERMISSION)
+
+            val intent = Intent().apply {
+                setClassName(SUBSCREEN_PACKAGE, "${SUBSCREEN_PACKAGE}.pin.PinReceiveActivity")
+                action = Intent.ACTION_SEND
+                type = "image/png"
+                putExtra(Intent.EXTRA_STREAM, fileUri)
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            }
+            context.startActivity(intent)
+            Log.d(TAG, "Shared image forwarded to back screen: ${file.length()} bytes")
+            "ok"
+        } catch (e: Exception) {
+            Log.e(TAG, "forwardSharedImage failed", e)
+            "failed: ${e.message}"
         }
     }
 
@@ -444,6 +554,31 @@ print(json.dumps(data))
         } catch (e: Exception) {
             Log.e(TAG, "Clear pins failed", e)
         }
+    }
+
+    /** Canvas 文本自动换行 */
+    private fun wrapText(text: String, paint: Paint, maxWidth: Float): List<String> {
+        val lines = mutableListOf<String>()
+        val paragraphs = text.split("\n")
+        for (para in paragraphs) {
+            if (para.isEmpty()) { lines.add(""); continue }
+            var cur = 0
+            while (cur < para.length) {
+                var br = getBreakPos(para, cur, paint, maxWidth)
+                lines.add(para.substring(cur, br).trim())
+                cur = br
+                while (cur < para.length && para[cur] == ' ') cur++
+            }
+        }
+        return lines
+    }
+
+    private fun getBreakPos(text: String, start: Int, paint: Paint, maxWidth: Float): Int {
+        var pos = start + 1
+        while (pos <= text.length && paint.measureText(text, start, pos) <= maxWidth) pos++
+        val breakAt = if (pos > text.length) text.length else pos - 1
+        val spaceIdx = text.lastIndexOf(' ', breakAt - 1)
+        return if (spaceIdx > start) spaceIdx + 1 else if (breakAt > start) breakAt else start + 1
     }
 
     private fun execShizukuShell(command: String): String {

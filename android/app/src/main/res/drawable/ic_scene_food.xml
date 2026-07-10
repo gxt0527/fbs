@@ -1,0 +1,45 @@
+<!-- 取餐码 — 奶茶杯 + 取餐号牌 -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <!-- Cup body -->
+    <path
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="1.75"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:pathData="M6,9 l-1.3,12 c-0.2,1,0.5,1.8,1.5,1.6 l11.6,-1.6 c1,-0.2,1.4,-1.1,1.1,-2 l-1.4,-9"/>
+    <!-- Lid dome -->
+    <path
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="1.75"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:pathData="M5.5,9 Q12,5 18.5,9"/>
+    <!-- Straw -->
+    <path
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="1.75"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:pathData="M14,7.5 L18,3"/>
+    <!-- Pickup code tag (rounded rect + lines) -->
+    <path
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="1.75"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:pathData="M16.5,14 a1,1 0 0,1 1,-1 h3.5 a1,1 0 0,1 1,1 v4 a1,1 0 0,1 -1,1 h-3.5 a1,1 0 0,1 -1,-1 Z"/>
+    <path
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="1.75"
+        android:strokeLineCap="round"
+        android:pathData="M15.5,16 L20.5,16"/>
+    <path
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="1.75"
+        android:strokeLineCap="round"
+        android:pathData="M16.5,18 L19.5,18"/>
+</vector>

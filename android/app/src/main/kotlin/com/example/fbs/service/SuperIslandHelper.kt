@@ -8,6 +8,7 @@ import android.content.Context
 import android.content.Intent
 import android.os.Build
 import android.util.Log
+import com.example.fbs.R
 
 /**
  * 小米超级岛通知 — 核心原理:
@@ -23,18 +24,16 @@ object SuperIslandHelper {
     private const val CHANNEL_NAME = "FBS 超级岛"
     private const val NOTIFICATION_ID = 9001
 
-    /** 场景 → Android 内置 drawable 映射 */
+    /** 场景 → 自定义 Vector Drawable 映射 */
     private fun getIconRes(iconName: String): Int = when (iconName) {
-        "express" -> android.R.drawable.ic_menu_compass         // 包裹 / 到家
-        "foodDelivery" -> android.R.drawable.ic_menu_myplaces // 地点 / 餐厅
-        "payment" -> android.R.drawable.ic_menu_directions     // 方向 / 交易
-        "order" -> android.R.drawable.ic_menu_report_image    // 清单 / 报告
-        "meeting" -> android.R.drawable.ic_menu_today          // 日历 / 今天
-        "travel" -> android.R.drawable.ic_menu_send            // 发送 / 出发
-        "verification" -> android.R.drawable.ic_menu_compass   // 罗盘 / 安全
-        "bill" -> android.R.drawable.ic_menu_agenda            // 议程 / 账单
-        "system" -> android.R.drawable.ic_menu_preferences     // 设置
-        else -> android.R.drawable.ic_dialog_info              // 通用信息 (默认)
+        "foodDelivery" -> R.drawable.ic_scene_food
+        "express" -> R.drawable.ic_scene_express
+        "verification" -> R.drawable.ic_scene_verify
+        "payment" -> R.drawable.ic_scene_pay
+        "meeting" -> R.drawable.ic_scene_meeting
+        "travel" -> R.drawable.ic_scene_travel
+        "order" -> R.drawable.ic_scene_order
+        else -> R.drawable.ic_scene_scan  // bill / system / general
     }
 
     fun getDiagnostics(context: Context): String {

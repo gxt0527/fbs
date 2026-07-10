@@ -1,0 +1,28 @@
+<!-- 快递 — 包裹盒 -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <path
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="1.75"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:pathData="M3,8 l9,-5 l9,5 l0,9 l-9,5 l-9,-5 Z"/>
+    <path
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="1.75"
+        android:strokeLineCap="round"
+        android:pathData="M12,3 L12,14"/>
+    <path
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="1.75"
+        android:strokeLineCap="round"
+        android:pathData="M3,8 L21,8"/>
+    <path
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="1.75"
+        android:strokeLineCap="round"
+        android:pathData="M3,17 L12,22"/>
+</vector>

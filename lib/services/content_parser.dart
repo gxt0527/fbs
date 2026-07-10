@@ -306,21 +306,57 @@ class ContentParser {
       }
     }
 
-    // 1. 取件码 / 验证码
+    // 1. 取件码（驿站/快递柜）- 4-8位数字，常见格式
     for (final m in RegExp(
-      r'(取件码|取餐码|提货码|验证码|核销码|兑换码|校验码|动态码)\s*[:：]?\s*([A-Za-z0-9]{4,12})',
+      r'(取件码|取件号|取货码|提货码|货架号|柜号|箱号)\s*[:：]?\s*(\d{4,8})',
     ).allMatches(clean)) {
       add(KeyInfo(label: m.group(1)!, value: m.group(2)!, type: KeyType.code));
     }
 
-    // 2. 订单号 / 运单号
+    // 2. 取餐码（外卖平台）- 字母+数字组合 或 纯数字
+    for (final m in RegExp(
+      r'(取餐码|取餐号)\s*[:：]?\s*([A-Za-z0-9]{4,10})',
+    ).allMatches(clean)) {
+      final code = m.group(2)!;
+      // 接受: 字母+数字(A7832) 或 纯数字(7656)，拒绝纯字母
+      final hasLetter = RegExp(r'[A-Za-z]').hasMatch(code);
+      final hasDigit = RegExp(r'[0-9]').hasMatch(code);
+      if (hasDigit) {
+        add(KeyInfo(label: m.group(1)!, value: code, type: KeyType.code));
+      }
+    }
+
+    // 3. 验证码/核销码
+    for (final m in RegExp(
+      r'(验证码|核销码|兑换码|校验码|动态码)\s*[:：]?\s*([A-Za-z0-9]{4,12})',
+    ).allMatches(clean)) {
+      add(KeyInfo(label: m.group(1)!, value: m.group(2)!, type: KeyType.code));
+    }
+
+    // 4. 订单号 / 运单号
     for (final m in RegExp(
       r'(订单号|运单号|快递单号|交易单号|流水号|订单编号|商品单号)\s*[:：]?\s*([A-Za-z0-9\-]{8,30})',
     ).allMatches(clean)) {
       add(KeyInfo(label: m.group(1)!, value: m.group(2)!, type: KeyType.order));
     }
 
-    // 3. 金额（有标签）
+    // 5. 快递单号（智能识别各快递公司）
+    final expressPatterns = {
+      '中通': RegExp(r'(?:中通|ZTO)\s*[A-Z]?\d{12,15}', caseSensitive: false),
+      '圆通': RegExp(r'(?:圆通|YTO)\s*[A-Z]?\d{13,15}', caseSensitive: false),
+      '申通': RegExp(r'(?:申通|STO)\s*[A-Z]?\d{12,15}', caseSensitive: false),
+      '韵达': RegExp(r'(?:韵达|YUNDA)\s*[A-Z]?\d{13,15}', caseSensitive: false),
+      '顺丰': RegExp(r'(?:顺丰|SF)\s*[A-Z0-9]{12,15}', caseSensitive: false),
+      '极兔': RegExp(r'(?:极兔|JT|J&T)\s*[A-Z]?\d{12,15}', caseSensitive: false),
+    };
+    for (final entry in expressPatterns.entries) {
+      for (final m in entry.value.allMatches(clean)) {
+        final trackingNo = m.group(0)!.replaceAll(RegExp(r'\s+'), '');
+        add(KeyInfo(label: '${entry.key}单号', value: trackingNo, type: KeyType.order));
+      }
+    }
+
+    // 6. 金额（有标签）
     for (final m in RegExp(
       r'(金额|消费|支付|收款|转账|退款|支出|收入|到账|费用|合计|共)[：:]?\s*'
       r'(人民币|美元|港币|欧元)?\s*[¥￥]?\s*'
@@ -339,28 +375,51 @@ class ContentParser {
       add(KeyInfo(label: '金额', value: amount, type: KeyType.amount));
     }
 
-    // 4. 手机号
+    // 7. 手机号（兼容带空格/横杠）
     for (final m in RegExp(
-      r'(?:[电話电话联系方式][：:]?\s*)?(1[3-9]\d{9})',
+      r'(?:[电話电话联系方式][：:]?\s*)?(1[3-9]\d[\s\-]?\d[\s\-]?\d[\s\-]?\d[\s\-]?\d[\s\-]?\d[\s\-]?\d[\s\-]?\d)',
     ).allMatches(clean)) {
-      add(KeyInfo(label: '电话', value: m.group(1)!, type: KeyType.phone));
+      final phone = m.group(1)!.replaceAll(RegExp(r'[\s\-]'), '');
+      if (phone.length == 11) {
+        add(KeyInfo(label: '电话', value: phone, type: KeyType.phone));
+      }
     }
 
-    // 5. 链接
+    // 8. 姓名（2-4位中文，上下文匹配）
+    for (final m in RegExp(
+      r'(?:收件人|姓名|联系人|快递员|配送员|收货人)\s*[:：]\s*([^\s,，。]{2,4})',
+    ).allMatches(clean)) {
+      final name = m.group(1)!.trim();
+      if (RegExp(r'^[\u4e00-\u9fa5]{2,4}$').hasMatch(name)) {
+        add(KeyInfo(label: '姓名', value: name, type: KeyType.general));
+      }
+    }
+
+    // 9. 地址（省市区街道小区楼栋单元）
+    for (final m in RegExp(
+      r'(?:地址|地点|位置|收货地址|配送地址|取件地址|发货地址)\s*[:：]\s*([^\s,，。]{8,60})',
+    ).allMatches(clean)) {
+      final addr = m.group(1)!.trim();
+      if (addr.length >= 8) {
+        add(KeyInfo(label: '地址', value: addr, type: KeyType.location));
+      }
+    }
+
+    // 10. 链接
     for (final m in RegExp(
       r'(https?://[^\s,，；;<>"()（）]{3,150})',
     ).allMatches(clean)) {
       add(KeyInfo(label: '链接', value: m.group(1)!, type: KeyType.link));
     }
 
-    // 6. 邮箱
+    // 11. 邮箱
     for (final m in RegExp(
       r'([a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,})',
     ).allMatches(clean)) {
       add(KeyInfo(label: '邮箱', value: m.group(1)!, type: KeyType.email));
     }
 
-    // 7. 车牌号
+    // 12. 车牌号
     for (final m in RegExp(
       r'[京津沪渝冀豫云辽黑湘皖鲁新苏浙赣鄂桂甘晋蒙陕吉闽贵粤川青藏琼]'
       r'[A-Z][A-HJ-NP-Z0-9]{4,5}[A-HJ-NP-Z0-9挂学警港澳]',
@@ -368,7 +427,7 @@ class ContentParser {
       add(KeyInfo(label: '车牌', value: m.group(0)!, type: KeyType.location));
     }
 
-    // 8. 航班号
+    // 13. 航班号
     for (final m in RegExp(
       r'\b([A-Z]{2}\d{3,4})\b',
     ).allMatches(clean)) {

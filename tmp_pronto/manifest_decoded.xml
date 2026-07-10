@@ -1,0 +1,255 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android" android:versionCode="90" android:versionName="2.9.1" android:compileSdkVersion="37" android:compileSdkVersionCodename="17" package="com.mt.pronto" platformBuildVersionCode="37" platformBuildVersionName="17">
+  <uses-sdk android:minSdkVersion="34" android:targetSdkVersion="35"/>
+  <uses-permission android:name="android.permission.INTERNET"/>
+  <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
+  <uses-permission android:name="android.permission.POST_PROMOTED_NOTIFICATIONS"/>
+  <uses-permission android:name="android.permission.USE_EXACT_ALARM"/>
+  <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED"/>
+  <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM"/>
+  <uses-permission android:name="android.permission.ACCESS_WIFI_STATE"/>
+  <uses-permission android:name="android.permission.CHANGE_WIFI_MULTICAST_STATE"/>
+  <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/>
+  <uses-permission android:name="android.permission.NEARBY_WIFI_DEVICES"/>
+  <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION"/>
+  <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION"/>
+  <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES"/>
+  <uses-permission android:name="android.permission.READ_CLIPBOARD"/>
+  <uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>
+  <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PROJECTION"/>
+  <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC"/>
+  <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE"/>
+  <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS"/>
+  <uses-permission android:name="android.permission.QUERY_ALL_PACKAGES"/>
+  <queries>
+    <intent>
+      <action android:name="android.intent.action.INSERT"/>
+      <data android:mimeType="vnd.android.cursor.dir/event"/>
+    </intent>
+    <intent>
+      <action android:name="android.provider.action.PICK_IMAGES"/>
+    </intent>
+    <intent>
+      <action android:name="android.settings.APPLICATION_DETAILS_SETTINGS"/>
+      <data android:scheme="package"/>
+    </intent>
+  </queries>
+  <supports-screens android:anyDensity="true" android:smallScreens="true" android:normalScreens="true" android:largeScreens="true" android:xlargeScreens="true"/>
+  <uses-permission android:name="android.permission.USE_BIOMETRIC"/>
+  <uses-permission android:name="android.permission.USE_FINGERPRINT"/>
+  <uses-permission android:name="android.permission.WAKE_LOCK"/>
+  <permission android:name="com.mt.pronto.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION" android:protectionLevel="0x00000002"/>
+  <uses-permission android:name="com.mt.pronto.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION"/>
+  <uses-permission android:name="moe.shizuku.manager.permission.API_V23"/>
+  <application android:theme="@7F0F0114" android:label="@7F0E001E" android:icon="@7F0D0000" android:name="com.mt.pronto.ProntoApp" android:allowBackup="true" android:supportsRtl="true" android:extractNativeLibs="false" android:fullBackupContent="@7F110000" android:resizeableActivity="true" android:networkSecurityConfig="@7F110003" android:roundIcon="@7F0D001B" android:appComponentFactory="androidx.core.app.CoreComponentFactory" android:dataExtractionRules="@7F110001" android:enableOnBackInvokedCallback="true">
+    <profileable android:shell="true"/>
+    <property android:name="android.window.PROPERTY_ACTIVITY_EMBEDDING_SPLITS_ENABLED" android:value="true"/>
+    <activity android:theme="@7F0F0115" android:name="com.mt.pronto.MainActivity" android:exported="true" android:launchMode="2" android:configChanges="0x00000580" android:windowSoftInputMode="0x00000010">
+      <meta-data android:name="android.window.PROPERTY_ACTIVITY_EMBEDDING_SPLITS_ENABLED" android:value="true"/>
+      <meta-data android:name="android.max_aspect" android:value="2.400000"/>
+      <intent-filter>
+        <action android:name="android.intent.action.SEND"/>
+        <category android:name="android.intent.category.DEFAULT"/>
+        <data android:mimeType="text/plain"/>
+      </intent-filter>
+      <intent-filter>
+        <action android:name="android.intent.action.SEND"/>
+        <category android:name="android.intent.category.DEFAULT"/>
+        <data android:mimeType="image/*"/>
+      </intent-filter>
+      <intent-filter>
+        <action android:name="android.intent.action.SEND_MULTIPLE"/>
+        <category android:name="android.intent.category.DEFAULT"/>
+        <data android:mimeType="image/*"/>
+      </intent-filter>
+      <intent-filter>
+        <action android:name="android.intent.action.SEND"/>
+        <category android:name="android.intent.category.DEFAULT"/>
+        <data android:mimeType="*/*"/>
+      </intent-filter>
+      <intent-filter>
+        <action android:name="android.intent.action.VIEW"/>
+        <category android:name="android.intent.category.DEFAULT"/>
+        <category android:name="android.intent.category.BROWSABLE"/>
+        <data android:scheme="file"/>
+        <data android:scheme="content"/>
+        <data android:mimeType="*/*"/>
+        <data android:pathPattern=".*\.pronto"/>
+        <data android:host="*"/>
+      </intent-filter>
+    </activity>
+    <activity-alias android:icon="@7F0D000F" android:name="com.mt.pronto.MainActivityGlassLightWhite" android:enabled="false" android:exported="true" android:targetActivity="com.mt.pronto.MainActivity" android:roundIcon="@7F0D0012">
+      <meta-data android:name="android.app.shortcuts" android:resource="@7F110004"/>
+      <intent-filter>
+        <action android:name="android.intent.action.MAIN"/>
+        <category android:name="android.intent.category.LAUNCHER"/>
+      </intent-filter>
+    </activity-alias>
+    <activity-alias android:icon="@7F0D000B" android:name="com.mt.pronto.MainActivityGlassLightBlue" android:enabled="false" android:exported="true" android:targetActivity="com.mt.pronto.MainActivity" android:roundIcon="@7F0D000E">
+      <meta-data android:name="android.app.shortcuts" android:resource="@7F110004"/>
+      <intent-filter>
+        <action android:name="android.intent.action.MAIN"/>
+        <category android:name="android.intent.category.LAUNCHER"/>
+      </intent-filter>
+    </activity-alias>
+    <activity-alias android:icon="@7F0D0003" android:name="com.mt.pronto.MainActivityGlassDarkBlack" android:enabled="false" android:exported="true" android:targetActivity="com.mt.pronto.MainActivity" android:roundIcon="@7F0D0006">
+      <meta-data android:name="android.app.shortcuts" android:resource="@7F110004"/>
+      <intent-filter>
+        <action android:name="android.intent.action.MAIN"/>
+        <category android:name="android.intent.category.LAUNCHER"/>
+      </intent-filter>
+    </activity-alias>
+    <activity-alias android:icon="@7F0D0007" android:name="com.mt.pronto.MainActivityGlassDarkBlue" android:enabled="false" android:exported="true" android:targetActivity="com.mt.pronto.MainActivity" android:roundIcon="@7F0D000A">
+      <meta-data android:name="android.app.shortcuts" android:resource="@7F110004"/>
+      <intent-filter>
+        <action android:name="android.intent.action.MAIN"/>
+        <category android:name="android.intent.category.LAUNCHER"/>
+      </intent-filter>
+    </activity-alias>
+    <activity-alias android:icon="@7F0D0017" android:name="com.mt.pronto.MainActivityMiniLight" android:enabled="false" android:exported="true" android:targetActivity="com.mt.pronto.MainActivity" android:roundIcon="@7F0D001A">
+      <meta-data android:name="android.app.shortcuts" android:resource="@7F110004"/>
+      <intent-filter>
+        <action android:name="android.intent.action.MAIN"/>
+        <category android:name="android.intent.category.LAUNCHER"/>
+      </intent-filter>
+    </activity-alias>
+    <activity-alias android:icon="@7F0D0013" android:name="com.mt.pronto.MainActivityMiniDark" android:enabled="false" android:exported="true" android:targetActivity="com.mt.pronto.MainActivity" android:roundIcon="@7F0D0016">
+      <meta-data android:name="android.app.shortcuts" android:resource="@7F110004"/>
+      <intent-filter>
+        <action android:name="android.intent.action.MAIN"/>
+        <category android:name="android.intent.category.LAUNCHER"/>
+      </intent-filter>
+    </activity-alias>
+    <activity-alias android:icon="@7F0D0000" android:name="com.mt.pronto.MainActivityDefault" android:enabled="true" android:exported="true" android:targetActivity="com.mt.pronto.MainActivity" android:roundIcon="@7F0D001B">
+      <meta-data android:name="android.app.shortcuts" android:resource="@7F110004"/>
+      <intent-filter>
+        <action android:name="android.intent.action.MAIN"/>
+        <category android:name="android.intent.category.LAUNCHER"/>
+      </intent-filter>
+    </activity-alias>
+    <activity android:theme="@7F0F0114" android:name="com.mt.pronto.TodoDetailActivity" android:exported="false" android:configChanges="0x00000580"/>
+    <activity android:theme="@7F0F0116" android:name="com.mt.pronto.ImagePreviewActivity" android:exported="false" android:taskAffinity=".ImagePreview" android:excludeFromRecents="true" android:launchMode="2" android:configChanges="0x00000580"/>
+    <activity android:theme="@7F0F0116" android:name="com.mt.pronto.ui.TransparentCaptureActivity" android:exported="false" android:taskAffinity="" android:excludeFromRecents="true" android:launchMode="2"/>
+    <receiver android:name="com.mt.pronto.notification.TodoActionReceiver" android:exported="false"/>
+    <receiver android:name="com.mt.pronto.notification.ReminderReceiver" android:exported="false"/>
+    <receiver android:name="com.mt.pronto.update.ApkDownloadCancelReceiver" android:exported="false"/>
+    <receiver android:name="com.mt.pronto.update.ApkInstallReceiver" android:exported="false"/>
+    <receiver android:name="com.mt.pronto.notification.BootCompletedReceiver" android:exported="true">
+      <intent-filter>
+        <action android:name="android.intent.action.BOOT_COMPLETED"/>
+        <action android:name="android.intent.action.LOCKED_BOOT_COMPLETED"/>
+        <action android:name="android.intent.action.QUICKBOOT_POWERON"/>
+      </intent-filter>
+    </receiver>
+    <service android:label="大狗记" android:icon="@7F080100" android:name="com.mt.pronto.tile.DagoujiTileService" android:permission="android.permission.BIND_QUICK_SETTINGS_TILE" android:exported="true">
+      <intent-filter>
+        <action android:name="android.service.quicksettings.action.QS_TILE"/>
+      </intent-filter>
+    </service>
+    <service android:label="大狗识屏" android:icon="@7F0800FF" android:name="com.mt.pronto.tile.DagouScreenTileService" android:permission="android.permission.BIND_QUICK_SETTINGS_TILE" android:exported="true">
+      <intent-filter>
+        <action android:name="android.service.quicksettings.action.QS_TILE"/>
+      </intent-filter>
+    </service>
+    <service android:name="com.mt.pronto.service.ScreenshotService" android:enabled="true" android:exported="false" android:foregroundServiceType="0x00000020"/>
+    <service android:name="com.mt.pronto.service.AgentForegroundService" android:enabled="true" android:exported="false" android:foregroundServiceType="0x00000001"/>
+    <service android:name="androidx.work.impl.foreground.SystemForegroundService" android:enabled="true" android:exported="false" android:directBootAware="false" android:foregroundServiceType="0x00000001"/>
+    <service android:name="com.mt.pronto.aiframework.mcp.service.MCPService" android:enabled="true" android:exported="false" android:foregroundServiceType="0x40000000">
+      <property android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE" android:value="mcp_server"/>
+    </service>
+    <service android:label="@7F0E0045" android:name="com.mt.pronto.notification.memory.service.NotificationMemoryService" android:permission="android.permission.BIND_NOTIFICATION_LISTENER_SERVICE" android:exported="true" android:foregroundServiceType="0x40000000">
+      <intent-filter>
+        <action android:name="android.service.notification.NotificationListenerService"/>
+      </intent-filter>
+      <property android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE" android:value="notification_memory_monitor"/>
+    </service>
+    <provider android:name="rikka.shizuku.ShizukuProvider" android:permission="android.permission.INTERACT_ACROSS_USERS_FULL" android:enabled="true" android:exported="true" android:multiprocess="false" android:authorities="com.mt.pronto.shizuku"/>
+    <provider android:name="androidx.core.content.FileProvider" android:exported="false" android:authorities="com.mt.pronto.fileprovider" android:grantUriPermissions="true">
+      <meta-data android:name="android.support.FILE_PROVIDER_PATHS" android:resource="@7F110002"/>
+    </provider>
+    <activity android:theme="@7F0F0108" android:label="@7F0E0032" android:name="androidx.biometric.internal.ui.FingerprintDialogActivity" android:exported="false"/>
+    <provider android:name="androidx.startup.InitializationProvider" android:exported="false" android:authorities="com.mt.pronto.androidx-startup">
+      <meta-data android:name="androidx.work.WorkManagerInitializer" android:value="androidx.startup"/>
+      <meta-data android:name="androidx.emoji2.text.EmojiCompatInitializer" android:value="androidx.startup"/>
+      <meta-data android:name="androidx.lifecycle.ProcessLifecycleInitializer" android:value="androidx.startup"/>
+      <meta-data android:name="androidx.profileinstaller.ProfileInstallerInitializer" android:value="androidx.startup"/>
+    </provider>
+    <service android:name="androidx.work.impl.background.systemalarm.SystemAlarmService" android:enabled="@7F050004" android:exported="false" android:directBootAware="false"/>
+    <service android:name="androidx.work.impl.background.systemjob.SystemJobService" android:permission="android.permission.BIND_JOB_SERVICE" android:enabled="@7F050006" android:exported="true" android:directBootAware="false"/>
+    <receiver android:name="androidx.work.impl.utils.ForceStopRunnable$BroadcastReceiver" android:enabled="true" android:exported="false" android:directBootAware="false"/>
+    <receiver android:name="androidx.work.impl.background.systemalarm.ConstraintProxy$BatteryChargingProxy" android:enabled="false" android:exported="false" android:directBootAware="false">
+      <intent-filter>
+        <action android:name="android.intent.action.ACTION_POWER_CONNECTED"/>
+        <action android:name="android.intent.action.ACTION_POWER_DISCONNECTED"/>
+      </intent-filter>
+    </receiver>
+    <receiver android:name="androidx.work.impl.background.systemalarm.ConstraintProxy$BatteryNotLowProxy" android:enabled="false" android:exported="false" android:directBootAware="false">
+      <intent-filter>
+        <action android:name="android.intent.action.BATTERY_OKAY"/>
+        <action android:name="android.intent.action.BATTERY_LOW"/>
+      </intent-filter>
+    </receiver>
+    <receiver android:name="androidx.work.impl.background.systemalarm.ConstraintProxy$StorageNotLowProxy" android:enabled="false" android:exported="false" android:directBootAware="false">
+      <intent-filter>
+        <action android:name="android.intent.action.DEVICE_STORAGE_LOW"/>
+        <action android:name="android.intent.action.DEVICE_STORAGE_OK"/>
+      </intent-filter>
+    </receiver>
+    <receiver android:name="androidx.work.impl.background.systemalarm.ConstraintProxy$NetworkStateProxy" android:enabled="false" android:exported="false" android:directBootAware="false">
+      <intent-filter>
+        <action android:name="android.net.conn.CONNECTIVITY_CHANGE"/>
+      </intent-filter>
+    </receiver>
+    <receiver android:name="androidx.work.impl.background.systemalarm.RescheduleReceiver" android:enabled="false" android:exported="false" android:directBootAware="false">
+      <intent-filter>
+        <action android:name="android.intent.action.BOOT_COMPLETED"/>
+        <action android:name="android.intent.action.TIME_SET"/>
+        <action android:name="android.intent.action.TIMEZONE_CHANGED"/>
+      </intent-filter>
+    </receiver>
+    <receiver android:name="androidx.work.impl.background.systemalarm.ConstraintProxyUpdateReceiver" android:enabled="@7F050004" android:exported="false" android:directBootAware="false">
+      <intent-filter>
+        <action android:name="androidx.work.impl.background.systemalarm.UpdateProxies"/>
+      </intent-filter>
+    </receiver>
+    <receiver android:name="androidx.work.impl.diagnostics.DiagnosticsReceiver" android:permission="android.permission.DUMP" android:enabled="true" android:exported="true" android:directBootAware="false">
+      <intent-filter>
+        <action android:name="androidx.work.diagnostics.REQUEST_DIAGNOSTICS"/>
+      </intent-filter>
+    </receiver>
+    <service android:name="androidx.appfunctions.service.PlatformAppFunctionService" android:permission="android.permission.BIND_APP_FUNCTION_SERVICE" android:enabled="@7F050003" android:exported="true">
+      <property android:name="android.app.appfunctions" android:value="app_functions.xml"/>
+      <property android:name="android.app.appfunctions.schema" android:value="app_functions_schema.xsd"/>
+      <property android:name="android.app.appfunctions.v2" android:value="app_functions_v2.xml"/>
+      <intent-filter>
+        <action android:name="android.app.appfunctions.AppFunctionService"/>
+      </intent-filter>
+    </service>
+    <service android:name="androidx.appfunctions.service.ExtensionAppFunctionService" android:permission="android.permission.BIND_APP_FUNCTION_SERVICE" android:enabled="@7F050002" android:exported="true">
+      <property android:name="android.app.appfunctions" android:value="app_functions.xml"/>
+      <property android:name="android.app.appfunctions.schema" android:value="app_functions_schema.xsd"/>
+      <property android:name="android.app.appfunctions.v2" android:value="app_functions_v2.xml"/>
+      <intent-filter>
+        <action android:name="android.app.appfunctions.AppFunctionService"/>
+      </intent-filter>
+    </service>
+    <uses-library android:name="com.android.extensions.appfunctions" android:required="false"/>
+    <uses-library android:name="androidx.window.extensions" android:required="false"/>
+    <uses-library android:name="androidx.window.sidecar" android:required="false"/>
+    <service android:name="androidx.room.MultiInstanceInvalidationService" android:exported="false" android:directBootAware="true"/>
+    <meta-data android:name="moe.shizuku.client.V3_SUPPORT" android:value="true"/>
+    <receiver android:name="androidx.profileinstaller.ProfileInstallReceiver" android:permission="android.permission.DUMP" android:enabled="true" android:exported="true" android:directBootAware="false">
+      <intent-filter>
+        <action android:name="androidx.profileinstaller.action.INSTALL_PROFILE"/>
+      </intent-filter>
+      <intent-filter>
+        <action android:name="androidx.profileinstaller.action.SKIP_FILE"/>
+      </intent-filter>
+      <intent-filter>
+        <action android:name="androidx.profileinstaller.action.SAVE_PROFILE"/>
+      </intent-filter>
+      <intent-filter>
+        <action android:name="androidx.profileinstaller.action.BENCHMARK_OPERATION"/>
+      </intent-filter>
+    </receiver>
+  </application>
+</manifest>

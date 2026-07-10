@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../main.dart';
 
 class StatusIndicator extends StatelessWidget {
   final IconData icon;
@@ -16,35 +17,43 @@ class StatusIndicator extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return InkWell(
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final color = isEnabled ? const Color(0xFF34C759) : const Color(0xFFFF375F);
+    return GestureDetector(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(8),
       child: Padding(
         padding: const EdgeInsets.symmetric(vertical: 4),
-        child: Row(
-          children: [
-            Icon(
-              icon,
-              size: 20,
-              color: isEnabled ? Colors.green : Colors.red,
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Text(
-                label,
-                style: const TextStyle(fontSize: 14),
-              ),
-            ),
-            Container(
-              width: 10,
-              height: 10,
+        child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
               decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: isEnabled ? Colors.green : Colors.red.shade300,
+                borderRadius: BorderRadius.circular(GlassTokens.radiusSM),
+                color: isDark ? Colors.white.withValues(alpha: 0.03) : Colors.white.withValues(alpha: 0.35),
+                border: Border.all(
+                  color: isDark ? Colors.white.withValues(alpha: 0.06) : Colors.white.withValues(alpha: 0.22),
+                  width: 0.5,
+                ),
+              ),
+              child: Row(
+                children: [
+                  Icon(icon, size: 18, color: color),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      label,
+                      style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: isDark ? Colors.white70 : Colors.black87),
+                    ),
+                  ),
+                  Container(
+                    width: 8, height: 8,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: color,
+                      boxShadow: [BoxShadow(color: color.withValues(alpha: 0.4), blurRadius: 4)],
+                    ),
+                  ),
+                ],
               ),
             ),
-          ],
-        ),
       ),
     );
   }

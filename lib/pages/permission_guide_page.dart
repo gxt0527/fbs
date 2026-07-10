@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../services/native_service.dart';
 import 'home_page.dart';
+import '../main.dart';
+import '../widgets/slide_route.dart';
 
 class PermissionGuidePage extends StatefulWidget {
   const PermissionGuidePage({super.key});
@@ -64,7 +66,7 @@ class _PermissionGuidePageState extends State<PermissionGuidePage>
     if (mounted) {
       Navigator.pushReplacement(
         context,
-        MaterialPageRoute(builder: (_) => const HomePage()),
+        SlideRoute(builder: (_) => const HomePage()),
       );
     }
   }
@@ -75,24 +77,26 @@ class _PermissionGuidePageState extends State<PermissionGuidePage>
     if (mounted) {
       Navigator.pushReplacement(
         context,
-        MaterialPageRoute(builder: (_) => const HomePage()),
+        SlideRoute(builder: (_) => const HomePage()),
       );
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Scaffold(
+      extendBodyBehindAppBar: true,
       appBar: AppBar(
         title: const Text('权限引导'),
       ),
       body: ListView(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.fromLTRB(16, 72, 16, 24),
         children: [
           _buildSection(
-            '1. 通知监听权限',
-            Icons.notifications_active,
-            Colors.blue,
+            '通知监听权限',
+            Icons.notifications_active_rounded,
+            const Color(0xFF0088FF),
             '清除通知时自动关闭背屏',
             _listenerEnabled,
             [
@@ -102,14 +106,15 @@ class _PermissionGuidePageState extends State<PermissionGuidePage>
                 isPrimary: !_listenerEnabled,
               ),
               if (!_listenerEnabled)
-                const Text('找到并开启 "FBS"，开启后返回本页', style: TextStyle(fontSize: 12, color: Colors.grey)),
+                Text('找到并开启 "FBS"，开启后返回本页',
+                  style: TextStyle(fontSize: 12, color: isDark ? Colors.white38 : Colors.black45)),
             ],
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: GlassTokens.spaceMD),
           _buildSection(
-            '2. 通知显示权限',
-            Icons.notifications,
-            Colors.orange,
+            '通知显示权限',
+            Icons.notifications_rounded,
+            const Color(0xFFFF9500),
             'Android 13+ 需要授予',
             _postNotifGranted,
             [
@@ -120,11 +125,11 @@ class _PermissionGuidePageState extends State<PermissionGuidePage>
               ),
             ],
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: GlassTokens.spaceMD),
           _buildSection(
-            '3. Shizuku',
-            Icons.accessibility_new,
-            Colors.teal,
+            'Shizuku',
+            Icons.usb_rounded,
+            const Color(0xFF5856D6),
             '系统级能力（背屏控制）',
             _shizukuRunning && _shizukuPerm,
             [
@@ -142,56 +147,83 @@ class _PermissionGuidePageState extends State<PermissionGuidePage>
               ),
             ],
           ),
-          const SizedBox(height: 24),
+          const SizedBox(height: GlassTokens.spaceLG),
           FilledButton(
             onPressed: _markCompleted,
             child: Text(_listenerEnabled ? '完成，开始使用 FBS' : '请先开启通知监听权限'),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: GlassTokens.spaceSM),
           Center(
             child: TextButton(
               onPressed: _skip,
-              child: const Text('跳过引导', style: TextStyle(color: Colors.grey, fontSize: 13)),
+              child: Text('跳过引导',
+                style: TextStyle(
+                  color: isDark ? Colors.white38 : Colors.black38,
+                  fontSize: 13,
+                )),
             ),
           ),
-          const SizedBox(height: 32),
+          const SizedBox(height: GlassTokens.spaceXL),
         ],
       ),
     );
   }
 
   Widget _buildSection(String title, IconData icon, Color color, String description, bool granted, List<Widget> children) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(children: [
-              Icon(icon, color: color, size: 24),
-              const SizedBox(width: 12),
-              Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Row(children: [
-                  Text(title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-                  const SizedBox(width: 8),
-                  Icon(granted ? Icons.check_circle : Icons.radio_button_unchecked,
-                    size: 16, color: granted ? Colors.green : Colors.grey),
-                ]),
-                const SizedBox(height: 2),
-                Text(description, style: TextStyle(fontSize: 12, color: Colors.grey[600])),
-              ])),
-            ]),
-            const SizedBox(height: 12),
-            ...children,
-          ],
-        ),
-      ),
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return Container(
+          padding: const EdgeInsets.all(GlassTokens.spaceMD),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(GlassTokens.radiusLG),
+            gradient: GlassTokens.glassGradient(Theme.of(context).brightness),
+            border: Border.all(
+              color: isDark ? Colors.white.withValues(alpha: 0.08) : Colors.white.withValues(alpha: 0.30),
+              width: 0.5,
+            ),
+            boxShadow: GlassTokens.glassShadow(Theme.of(context).brightness),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(children: [
+                Container(
+                  width: 36, height: 36,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(GlassTokens.radiusSM),
+                    color: color.withValues(alpha: 0.12),
+                  ),
+                  child: Icon(icon, color: color, size: 20),
+                ),
+                const SizedBox(width: 12),
+                Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Row(children: [
+                    Text(title, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 16)),
+                    const SizedBox(width: 8),
+                    Container(
+                      width: 8, height: 8,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: granted ? const Color(0xFF34C759) : const Color(0xFF8E8E93),
+                        boxShadow: granted
+                          ? [BoxShadow(color: const Color(0xFF34C759).withValues(alpha: 0.4), blurRadius: 4)]
+                          : null,
+                      ),
+                    ),
+                  ]),
+                  const SizedBox(height: 2),
+                  Text(description, style: TextStyle(fontSize: 12, color: isDark ? Colors.white54 : Colors.black45)),
+                ])),
+              ]),
+              const SizedBox(height: 14),
+              ...children,
+            ],
+          ),
     );
   }
 
   Widget _buildPermissionTile(String text, VoidCallback onTap, {bool isPrimary = false}) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.only(bottom: GlassTokens.spaceSM),
       child: isPrimary
           ? FilledButton.icon(
               onPressed: onTap,

@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+  <!-- Scan frame: corners -->
+  <path d="M3 8V4h4"/>
+  <path d="M21 8V4h-4"/>
+  <path d="M21 16v4h-4"/>
+  <path d="M3 16v4h4"/>
+  <!-- Scan line -->
+  <line x1="6" y1="12" x2="18" y2="12"/>
+  <!-- Sparkle (AI/magic) -->
+  <path d="M12 9l.5 1.5L14 11l-1.5.5L12 13l-.5-1.5L10 11l1.5-.5z"/>
+  <path d="M16 6l.3.7.7.3-.7.3-.3.7-.3-.7-.7-.3.7-.3z"/>
+</svg>

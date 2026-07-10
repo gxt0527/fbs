@@ -3,6 +3,9 @@ package com.example.fbs.service
 import android.app.Activity
 import android.graphics.*
 import android.os.*
+import android.text.Layout
+import android.text.StaticLayout
+import android.text.TextPaint
 import android.util.Log
 import android.view.View
 import android.view.WindowManager
@@ -77,6 +80,7 @@ class BackScreenNotificationActivity : Activity() {
             val subtitle = intent.getStringExtra("subtitle") ?: ""
             val content = intent.getStringExtra("content") ?: ""
             val appName = intent.getStringExtra("appName") ?: ""
+            val category = intent.getStringExtra("category") ?: "general"
 
             val titleFontSize = intent.getStringExtra("titleFontSize")?.toFloatOrNull() ?: 28f
             val subtitleFontSize = intent.getStringExtra("subtitleFontSize")?.toFloatOrNull() ?: 20f
@@ -119,6 +123,7 @@ class BackScreenNotificationActivity : Activity() {
                     title = if (title.isNotEmpty()) title else appName,
                     subtitle = subtitle,
                     content = content,
+                    category = category,
                     titleFontSize = titleFontSize,
                     subtitleFontSize = subtitleFontSize,
                     contentFontSize = contentFontSize,
@@ -169,7 +174,8 @@ class BackScreenNotificationActivity : Activity() {
     override fun onConfigurationChanged(newConfig: android.content.res.Configuration) {
         super.onConfigurationChanged(newConfig)
         Log.d(TAG, "onConfigChanged: w=${newConfig.screenWidthDp}dp h=${newConfig.screenHeightDp}dp d=${newConfig.densityDpi} display=${display?.displayId}")
-        // 移屏后强制让 View 重新布局和绘制
+        // 移屏后 density 变化，更新 Paint 字体大小
+        renderView?.refreshDensity()
         renderView?.requestLayout()
         renderView?.invalidate()
     }
@@ -303,6 +309,7 @@ class BackScreenNotificationActivity : Activity() {
         val title: String,
         val subtitle: String,
         val content: String,
+        val category: String = "general",
         val titleFontSize: Float,
         val subtitleFontSize: Float,
         val contentFontSize: Float,
@@ -327,88 +334,347 @@ class BackScreenNotificationActivity : Activity() {
         private val config: RenderConfig,
     ) : View(context) {
 
-        private val density = context.resources.displayMetrics.density
+        private var curDensity = context.resources.displayMetrics.density
+
+        // CJK 字体（从系统路径加载 NotoSansCJK，背屏可能不继承主屏字体配置）
+        private val cjkTypeface: Typeface = try {
+            Typeface.createFromFile("/system/fonts/NotoSansCJK-Regular.ttc")
+        } catch (_: Exception) {
+            Typeface.create("sans-serif", Typeface.NORMAL)
+        }
+        private val cjkTypefaceBold: Typeface = try {
+            Typeface.createFromFile("/system/fonts/NotoSansCJK-Regular.ttc")
+        } catch (_: Exception) {
+            Typeface.create("sans-serif", Typeface.BOLD)
+        }
+
+        /** 每次绘制前强制刷新 density，确保移屏后与预览一致 */
+        fun refreshDensity() {
+            val d = resources.displayMetrics.density
+            curDensity = d
+            titlePaint.textSize = config.titleFontSize * d
+            subtitlePaint.textSize = config.subtitleFontSize * d
+            contentPaint.textSize = config.contentFontSize * d
+            timestampPaint.textSize = config.contentFontSize * 0.65f * d
+        }
 
         private val titlePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
             color = config.titleColor
-            textSize = config.titleFontSize * density
-            typeface = Typeface.DEFAULT_BOLD
+            textSize = config.titleFontSize * curDensity
+            typeface = cjkTypefaceBold
         }
         private val subtitlePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
             color = config.subtitleColor
-            textSize = config.subtitleFontSize * density
+            textSize = config.subtitleFontSize * curDensity
+            typeface = cjkTypeface
         }
         private val contentPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
             color = config.contentColor
-            textSize = config.contentFontSize * density
+            textSize = config.contentFontSize * curDensity
+            typeface = cjkTypeface
         }
         private val timestampPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
             color = (config.contentColor and 0x00FFFFFF) or 0x80000000.toInt()
-            textSize = config.contentFontSize * 0.65f * density
+            textSize = config.contentFontSize * 0.65f * curDensity
+            typeface = cjkTypeface
         }
         private val bgPaint = Paint().apply {
             color = config.backgroundColor
             style = Paint.Style.FILL
         }
-        private val iconPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            color = (config.titleColor and 0x00FFFFFF) or 0x33000000
-            style = Paint.Style.FILL
+
+        // ── 场景图标绘制 ──
+        private val svgBase = 24f  // SVG viewBox 基准尺寸
+        private val sceneColor: Int get() = when (config.category) {
+            "foodDelivery" -> Color.parseColor("#FF375F")
+            "express" -> Color.parseColor("#FF9500")
+            "verification" -> Color.parseColor("#FF9500")
+            "payment" -> Color.parseColor("#34C759")
+            "order" -> Color.parseColor("#5AC8FA")
+            "meeting" -> Color.parseColor("#0088FF")
+            "travel" -> Color.parseColor("#AF52DE")
+            else -> Color.parseColor("#8E8E93")
         }
-        private val iconBorderPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            color = (config.titleColor and 0x00FFFFFF) or 0x40000000
+        private val iconStrokePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
             style = Paint.Style.STROKE
-            strokeWidth = 1.5f
+            strokeWidth = 3.5f  // 2x 加粗（原 1.75）
+            strokeCap = Paint.Cap.ROUND
+            strokeJoin = Paint.Join.ROUND
         }
+        private val iconFillPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            style = Paint.Style.FILL
+            strokeWidth = 3.5f
+            strokeCap = Paint.Cap.ROUND
+            strokeJoin = Paint.Join.ROUND
+        }
+
+        /**
+         * 根据 category 绘制对应场景 SVG 图标到 canvas 指定位置
+         * @param size 图标逻辑尺寸（映射到 SVG 24x24 viewBox）
+         */
+        private fun drawSceneIcon(canvas: Canvas, left: Float, top: Float, size: Float) {
+            val s = size / svgBase
+            iconStrokePaint.color = sceneColor
+            iconFillPaint.color = sceneColor
+            when (config.category) {
+                "foodDelivery" -> drawBeveragePickup(canvas, left, top, s)
+                "express" -> drawExpress(canvas, left, top, s)
+                "verification" -> drawVerification(canvas, left, top, s)
+                "payment" -> drawPayment(canvas, left, top, s)
+                "meeting" -> drawMeeting(canvas, left, top, s)
+                "travel" -> drawTravel(canvas, left, top, s)
+                "order" -> drawOrder(canvas, left, top, s)
+                else -> drawSmartScan(canvas, left, top, s)
+            }
+        }
+
+        // ═══════════ SVG → Canvas 绘制 (viewBox 0-24) ═══════════
+
+        private fun drawBeveragePickup(c: Canvas, x: Float, y: Float, s: Float) {
+            val p = Path()
+            // Cup body
+            p.moveTo(x + 6f * s, y + 9f * s)
+            p.lineTo(x + 4.7f * s, y + 21f * s)
+            p.cubicTo(x + 4.5f * s, y + 22f * s, x + 5.2f * s, y + 22.8f * s, x + 6f * s, y + 22.6f * s)
+            p.lineTo(x + 17.8f * s, y + 20f * s)
+            p.cubicTo(x + 18.8f * s, y + 19.8f * s, x + 19.2f * s, y + 18.9f * s, x + 18.9f * s, y + 18f * s)
+            p.lineTo(x + 17.5f * s, y + 9f * s)
+            c.drawPath(p, iconStrokePaint)
+            // Lid
+            val lid = Path()
+            lid.moveTo(x + 5.5f * s, y + 9f * s)
+            lid.quadTo(x + 12f * s, y + 5f * s, x + 18.5f * s, y + 9f * s)
+            c.drawPath(lid, iconStrokePaint)
+            // Straw
+            c.drawLine(x + 14f * s, y + 7.5f * s, x + 18f * s, y + 3f * s, iconStrokePaint)
+            // Tag
+            val tagR = 1f * s
+            c.drawRoundRect(x + 15.5f * s, y + 14f * s, x + 21f * s, y + 20f * s, tagR, tagR, iconStrokePaint)
+            c.drawLine(x + 15.5f * s, y + 16f * s, x + 20.5f * s, y + 16f * s, iconStrokePaint)
+            c.drawLine(x + 16.5f * s, y + 18f * s, x + 19.5f * s, y + 18f * s, iconStrokePaint)
+        }
+
+        private fun drawExpress(c: Canvas, x: Float, y: Float, s: Float) {
+            val p = Path()
+            // Box front face
+            p.moveTo(x + 3f * s, y + 8f * s)
+            p.lineTo(x + 12f * s, y + 3f * s)
+            p.lineTo(x + 21f * s, y + 8f * s)
+            p.lineTo(x + 21f * s, y + 17f * s)
+            p.lineTo(x + 12f * s, y + 22f * s)
+            p.lineTo(x + 3f * s, y + 17f * s)
+            p.close()
+            c.drawPath(p, iconStrokePaint)
+            // Lid flap left
+            c.drawLine(x + 12f * s, y + 3f * s, x + 12f * s, y + 14f * s, iconStrokePaint)
+            // Top ridge
+            c.drawLine(x + 3f * s, y + 8f * s, x + 21f * s, y + 8f * s, iconStrokePaint)
+            // Bottom edge
+            c.drawLine(x + 3f * s, y + 17f * s, x + 12f * s, y + 22f * s, iconStrokePaint)
+        }
+
+        private fun drawVerification(c: Canvas, x: Float, y: Float, s: Float) {
+            val p = Path()
+            // Shield
+            p.moveTo(x + 12f * s, y + 2f * s)
+            p.lineTo(x + 4f * s, y + 6f * s)
+            p.rLineTo(0f, 5.5f * s)
+            p.rCubicTo(0f, 4.5f * s, 3.5f * s, 8f * s, 8f * s, 10f * s)
+            p.rCubicTo(4.5f * s, -2f * s, 8f * s, -5.5f * s, 8f * s, -10f * s)
+            p.rLineTo(0f, -5.5f * s)
+            p.close()
+            c.drawPath(p, iconStrokePaint)
+            // Checkmark
+            val check = Path()
+            check.moveTo(x + 8f * s, y + 12f * s)
+            check.lineTo(x + 11f * s, y + 15f * s)
+            check.lineTo(x + 16f * s, y + 9f * s)
+            c.drawPath(check, iconStrokePaint)
+        }
+
+        private fun drawPayment(c: Canvas, x: Float, y: Float, s: Float) {
+            val cr = 2f * s
+            c.drawRoundRect(x + 2f * s, y + 4f * s, x + 22f * s, y + 20f * s, cr, cr, iconStrokePaint)
+            // Chip
+            c.drawRoundRect(x + 6f * s, y + 9f * s, x + 10f * s, y + 14f * s, 0.5f * s, 0.5f * s, iconStrokePaint)
+            // Contactless
+            val c1 = Path()
+            c1.moveTo(x + 13f * s, y + 10f * s)
+            c1.cubicTo(x + 13.6f * s, y + 9.6f * s, x + 14.4f * s, y + 9.4f * s, x + 15.2f * s, y + 9.4f * s)
+            c1.cubicTo(x + 17.4f * s, y + 9.4f * s, x + 19.2f * s, y + 10.7f * s, x + 19.2f * s, y + 12.4f * s)
+            c1.cubicTo(x + 19.2f * s, y + 14.1f * s, x + 17.4f * s, y + 15.4f * s, x + 15.2f * s, y + 15.4f * s)
+            c1.cubicTo(x + 14.4f * s, y + 15.4f * s, x + 13.6f * s, y + 15.2f * s, x + 13f * s, y + 14.8f * s)
+            c.drawPath(c1, iconStrokePaint)
+            val c2 = Path()
+            c2.moveTo(x + 13f * s, y + 11.5f * s)
+            c2.cubicTo(x + 13.3f * s, y + 11.3f * s, x + 13.8f * s, y + 11.1f * s, x + 14.2f * s, y + 11.1f * s)
+            c2.cubicTo(x + 15.3f * s, y + 11.1f * s, x + 16.2f * s, y + 11.8f * s, x + 16.2f * s, y + 12.6f * s)
+            c2.cubicTo(x + 16.2f * s, y + 13.4f * s, x + 15.3f * s, y + 14.1f * s, x + 14.2f * s, y + 14.1f * s)
+            c2.cubicTo(x + 13.8f * s, y + 14.1f * s, x + 13.3f * s, y + 14f * s, x + 13f * s, y + 13.7f * s)
+            c.drawPath(c2, iconStrokePaint)
+        }
+
+        private fun drawMeeting(c: Canvas, x: Float, y: Float, s: Float) {
+            val cr = 2f * s
+            c.drawRoundRect(x + 3f * s, y + 4f * s, x + 21f * s, y + 22f * s, cr, cr, iconStrokePaint)
+            c.drawLine(x + 3f * s, y + 10f * s, x + 21f * s, y + 10f * s, iconStrokePaint)
+            c.drawLine(x + 8f * s, y + 2f * s, x + 8f * s, y + 6f * s, iconStrokePaint)
+            c.drawLine(x + 16f * s, y + 2f * s, x + 16f * s, y + 6f * s, iconStrokePaint)
+            // Clock
+            c.drawCircle(x + 12f * s, y + 15.5f * s, 2.5f * s, iconStrokePaint)
+            c.drawLine(x + 12f * s, y + 15.5f * s, x + 12f * s, y + 14f * s, iconStrokePaint)
+            c.drawLine(x + 12f * s, y + 15.5f * s, x + 13.5f * s, y + 16.5f * s, iconStrokePaint)
+        }
+
+        private fun drawTravel(c: Canvas, x: Float, y: Float, s: Float) {
+            val cr = 2f * s
+            c.drawRoundRect(x + 4f * s, y + 8f * s, x + 20f * s, y + 20f * s, cr, cr, iconStrokePaint)
+            // Handle
+            val h = Path()
+            h.moveTo(x + 8f * s, y + 8f * s)
+            h.rLineTo(0f, -3f * s)
+            h.rCubicTo(0f, -1.5f * s, 1.5f * s, -3f * s, 4f * s, -3f * s)
+            h.rCubicTo(2.5f * s, 0f, 4f * s, 1.5f * s, 4f * s, 3f * s)
+            h.rLineTo(0f, 3f * s)
+            c.drawPath(h, iconStrokePaint)
+            c.drawLine(x + 9f * s, y + 5f * s, x + 15f * s, y + 5f * s, iconStrokePaint)
+            // Wheels
+            c.drawCircle(x + 7f * s, y + 21f * s, 1.5f * s, iconStrokePaint)
+            c.drawCircle(x + 17f * s, y + 21f * s, 1.5f * s, iconStrokePaint)
+            // Center line
+            c.drawLine(x + 12f * s, y + 8f * s, x + 12f * s, y + 20f * s, iconStrokePaint)
+        }
+
+        private fun drawOrder(c: Canvas, x: Float, y: Float, s: Float) {
+            val bag = Path()
+            bag.moveTo(x + 5f * s, y + 7f * s)
+            bag.lineTo(x + 4f * s, y + 20f * s)
+            bag.rCubicTo(0f, 1.1f * s, 0.9f * s, 2f * s, 2f * s, 2f * s)
+            bag.rLineTo(12f * s, 0f)
+            bag.rCubicTo(1.1f * s, 0f, 2f * s, -0.9f * s, 2f * s, -2f * s)
+            bag.lineTo(x + 19f * s, y + 7f * s)
+            c.drawPath(bag, iconStrokePaint)
+            // Handles
+            val hl = Path()
+            hl.moveTo(x + 8f * s, y + 7f * s)
+            hl.rLineTo(0f, -2f * s)
+            hl.rCubicTo(0f, -2f * s, 1.5f * s, -3f * s, 4f * s, -3f * s)
+            hl.rCubicTo(2.5f * s, 0f, 4f * s, 1f * s, 4f * s, 3f * s)
+            hl.rLineTo(0f, 2f * s)
+            c.drawPath(hl, iconStrokePaint)
+            // Lines
+            c.drawLine(x + 6.5f * s, y + 11f * s, x + 17.5f * s, y + 11f * s, iconStrokePaint)
+            c.drawLine(x + 6.5f * s, y + 15f * s, x + 14.5f * s, y + 15f * s, iconStrokePaint)
+        }
+
+        private fun drawSmartScan(c: Canvas, x: Float, y: Float, s: Float) {
+            // Corner brackets
+            c.drawLine(x + 3f * s, y + 8f * s, x + 3f * s, y + 4f * s, iconStrokePaint)
+            c.drawLine(x + 3f * s, y + 4f * s, x + 7f * s, y + 4f * s, iconStrokePaint)
+            c.drawLine(x + 21f * s, y + 8f * s, x + 21f * s, y + 4f * s, iconStrokePaint)
+            c.drawLine(x + 21f * s, y + 4f * s, x + 17f * s, y + 4f * s, iconStrokePaint)
+            c.drawLine(x + 21f * s, y + 16f * s, x + 21f * s, y + 20f * s, iconStrokePaint)
+            c.drawLine(x + 21f * s, y + 20f * s, x + 17f * s, y + 20f * s, iconStrokePaint)
+            c.drawLine(x + 3f * s, y + 16f * s, x + 3f * s, y + 20f * s, iconStrokePaint)
+            c.drawLine(x + 3f * s, y + 20f * s, x + 7f * s, y + 20f * s, iconStrokePaint)
+            // Scan line
+            c.drawLine(x + 6f * s, y + 12f * s, x + 18f * s, y + 12f * s, iconStrokePaint)
+            // Sparkle
+            val fill = iconFillPaint
+            val sp = Path()
+            sp.moveTo(x + 12f * s, y + 9f * s)
+            sp.lineTo(x + 12.5f * s, y + 10.5f * s)
+            sp.lineTo(x + 14f * s, y + 11f * s)
+            sp.lineTo(x + 12.5f * s, y + 11.5f * s)
+            sp.lineTo(x + 12f * s, y + 13f * s)
+            sp.lineTo(x + 11.5f * s, y + 11.5f * s)
+            sp.lineTo(x + 10f * s, y + 11f * s)
+            sp.lineTo(x + 11.5f * s, y + 10.5f * s)
+            sp.close()
+            c.drawPath(sp, fill)
+            val sp2 = Path()
+            sp2.moveTo(x + 16f * s, y + 6f * s)
+            sp2.rLineTo(0.3f * s, 0.7f * s)
+            sp2.rLineTo(0.7f * s, 0.3f * s)
+            sp2.rLineTo(-0.7f * s, 0.3f * s)
+            sp2.rLineTo(-0.3f * s, 0.7f * s)
+            sp2.rLineTo(-0.3f * s, -0.7f * s)
+            sp2.rLineTo(-0.7f * s, -0.3f * s)
+            sp2.rLineTo(0.7f * s, -0.3f * s)
+            sp2.close()
+            c.drawPath(sp2, fill)
+        }
+
         private val timeFormat = SimpleDateFormat("HH:mm", Locale.getDefault())
 
         override fun onDraw(canvas: Canvas) {
             super.onDraw(canvas)
+
+            // 每次绘制时读取最新 density（移屏到 display 1 后可能变化）
+            refreshDensity()
+            val d = curDensity
 
             val w = width.toFloat()
             val h = height.toFloat()
             if (w <= 0 || h <= 0) return
             val ox = config.contentOffset  // 摄像头避开偏移
 
-            android.util.Log.d("BackScreenNotif", "onDraw: ${w}x${h}, title=${config.title.take(20)}, titleColor=#${Integer.toHexString(config.titleColor)}, bgColor=#${Integer.toHexString(config.backgroundColor)}")
+            android.util.Log.d("BackScreenNotif", "onDraw: ${w}x${h}, d=$d, title=${config.title.take(20)}, titleColor=#${Integer.toHexString(config.titleColor)}, bgColor=#${Integer.toHexString(config.backgroundColor)}")
 
-            val p = config.padding * density
-            val s = config.spacing * density
+            val p = config.padding * d
+            val s = config.spacing * d
 
             // ── 背景 ──
             canvas.drawRect(0f, 0f, w, h, bgPaint)
 
             var y = p
 
-            // ── 标题行 ──
-            val iconSize = config.titleFontSize + 8f
-            val iconRadius = iconSize * 0.22f
-
-            if (config.showAppIcon) {
+            // ── 标题行（智能场景图标模式） — 与预览一致的间距 ──
+            if (config.showAppIcon && config.category != "general") {
+                // 图标容器 = titleFontSize + 8dp（与 preview Container 一致）
+                val iconSize = (config.titleFontSize + 8f) * d
                 val iconLeft = p + ox
                 val iconTop = y
-                val iconRect = RectF(iconLeft, iconTop, iconLeft + iconSize, iconTop + iconSize)
-                canvas.drawRoundRect(iconRect, iconRadius, iconRadius, iconPaint)
-                canvas.drawRoundRect(iconRect, iconRadius, iconRadius, iconBorderPaint)
+                // 内边距 = 16%（与 preview padding 一致）
+                val iconPad = iconSize * 0.16f
+                drawSceneIcon(canvas, iconLeft + iconPad, iconTop + iconPad, iconSize - iconPad * 2)
 
+                // 标题与图标间距 = spacing * 0.7（与 preview SizedBox 一致）
                 val titleX = iconLeft + iconSize + s * 0.7f
-                val titleBaseline = y + iconSize / 2f + (config.titleFontSize / 2.5f)
+                val titleBaseline = y + config.titleFontSize * d * 0.85f
                 canvas.drawText(config.title, titleX, titleBaseline, titlePaint)
                 y += iconSize + s
             } else {
-                canvas.drawText(config.title, p + ox, y + config.titleFontSize, titlePaint)
-                y += config.titleFontSize + s
+                canvas.drawText(config.title, p + ox, y + config.titleFontSize * d, titlePaint)
+                y += config.titleFontSize * d + s
             }
 
             // ── 副标题 ──
             if (config.subtitle.isNotEmpty()) {
-                canvas.drawText(config.subtitle, p + ox, y + config.subtitleFontSize, subtitlePaint)
-                y += config.subtitleFontSize + s
+                canvas.drawText(config.subtitle, p + ox, y + config.subtitleFontSize * d, subtitlePaint)
+                y += config.subtitleFontSize * d + s
             }
 
-            // ── 正文 ──
-            val maxWidth = w - p * 2
-            val contentText = fitText(config.content, contentPaint, maxWidth - ox, h - y - p)
-            canvas.drawText(contentText, p + ox, y + config.contentFontSize, contentPaint)
+            // ── 正文（自动换行） ──
+            val contentWidth = w - p * 2 - ox
+            if (config.content.isNotEmpty() && contentWidth > 0) {
+                val tp = TextPaint(contentPaint)
+                val layout = if (android.os.Build.VERSION.SDK_INT >= 23) {
+                    StaticLayout.Builder.obtain(config.content, 0, config.content.length, tp, contentWidth.toInt())
+                        .setAlignment(Layout.Alignment.ALIGN_NORMAL)
+                        .setLineSpacing(0f, 1.2f)
+                        .setIncludePad(false)
+                        .setMaxLines(((h - y - p) / (config.contentFontSize * d * 1.3f)).toInt().coerceAtLeast(1))
+                        .build()
+                } else {
+                    @Suppress("DEPRECATION")
+                    StaticLayout(config.content, tp, contentWidth.toInt(), Layout.Alignment.ALIGN_NORMAL, 1.2f, 0f, false)
+                }
+                canvas.save()
+                canvas.translate(p + ox, y)
+                layout.draw(canvas)
+                canvas.restore()
+            }
 
             // ── 时间戳 ──
             if (config.showTimestamp) {
@@ -416,17 +682,6 @@ class BackScreenNotificationActivity : Activity() {
                 val timeTextWidth = timestampPaint.measureText(now)
                 canvas.drawText(now, w - p - timeTextWidth, h - p, timestampPaint)
             }
-        }
-
-        private fun fitText(text: String, paint: Paint, maxWidth: Float, maxHeight: Float): String {
-            if (text.isEmpty()) return text
-            if (paint.measureText(text) <= maxWidth) return text
-
-            var truncated = text
-            while (truncated.length > 1 && paint.measureText("$truncated…") > maxWidth) {
-                truncated = truncated.substring(0, truncated.length - 1)
-            }
-            return "$truncated…"
         }
     }
 }

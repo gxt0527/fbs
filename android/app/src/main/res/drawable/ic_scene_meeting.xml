@@ -1,0 +1,43 @@
+<!-- 会议 — 日历 + 时钟 -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <path
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="1.75"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:pathData="M5,4 h14 a2,2 0 0,1 2,2 v16 a2,2 0 0,1 -2,2 H5 a2,2 0 0,1 -2,-2 V6 a2,2 0 0,1 2,-2 Z"/>
+    <path
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="1.75"
+        android:strokeLineCap="round"
+        android:pathData="M3,10 L21,10"/>
+    <path
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="1.75"
+        android:strokeLineCap="round"
+        android:pathData="M8,2 L8,6"/>
+    <path
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="1.75"
+        android:strokeLineCap="round"
+        android:pathData="M16,2 L16,6"/>
+    <path
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="1.75"
+        android:strokeLineCap="round"
+        android:pathData="M12,15.5 m-2.5,0 a2.5,2.5 0 1,0 5,0 a2.5,2.5 0 1,0 -5,0"/>
+    <path
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="1.75"
+        android:strokeLineCap="round"
+        android:pathData="M12,15.5 L12,14"/>
+    <path
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="1.75"
+        android:strokeLineCap="round"
+        android:pathData="M12,15.5 L13.5,16.5"/>
+</vector>
