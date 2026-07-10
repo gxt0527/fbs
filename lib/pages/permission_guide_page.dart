@@ -62,7 +62,7 @@ class _PermissionGuidePageState extends State<PermissionGuidePage>
       return;
     }
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool('permission_guide_completed', true);
+    await prefs.setBool('permission_guide_completed_v2', true);
     if (mounted) {
       Navigator.pushReplacement(
         context,
@@ -73,7 +73,7 @@ class _PermissionGuidePageState extends State<PermissionGuidePage>
 
   Future<void> _skip() async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool('permission_guide_completed', true);
+    await prefs.setBool('permission_guide_completed_v2', true);
     if (mounted) {
       Navigator.pushReplacement(
         context,
@@ -91,7 +91,7 @@ class _PermissionGuidePageState extends State<PermissionGuidePage>
         title: const Text('权限引导'),
       ),
       body: ListView(
-        padding: const EdgeInsets.fromLTRB(16, 72, 16, 24),
+        padding: const EdgeInsets.fromLTRB(16, 96, 16, 24),
         children: [
           _buildSection(
             '通知监听权限',
@@ -210,12 +210,12 @@ class _PermissionGuidePageState extends State<PermissionGuidePage>
                       ),
                     ),
                   ]),
-                  const SizedBox(height: 2),
+                  const SizedBox(height: 8),
                   Text(description, style: TextStyle(fontSize: 12, color: isDark ? Colors.white54 : Colors.black45)),
                 ])),
               ]),
-              const SizedBox(height: 14),
-              ...children,
+          const SizedBox(height: GlassTokens.spaceMD),
+          ...children,
             ],
           ),
     );

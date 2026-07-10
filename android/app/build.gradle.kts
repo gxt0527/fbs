@@ -23,14 +23,22 @@ android {
         targetSdk = 37
         versionCode = flutter.versionCode
         versionName = flutter.versionName
+        ndk {
+            abiFilters += listOf("arm64-v8a")
+        }
     }
 
     buildTypes {
         release {
-            // TODO: Add your own signing config for the release build.
-            // Signing with the debug keys for now, so `flutter run --release` works.
             signingConfig = signingConfigs.getByName("debug")
         }
+    }
+
+    // 剔除 AAR 中预编译的非 arm64 原生库
+    packagingOptions {
+        exclude("lib/x86_64/**")
+        exclude("lib/armeabi-v7a/**")
+        exclude("lib/x86/**")
     }
 }
 

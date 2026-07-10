@@ -144,7 +144,7 @@ class GlassSurface extends StatelessWidget {
 class FBSApp extends StatelessWidget {
   const FBSApp({super.key});
 
-  static const _keyCompleted = 'permission_guide_completed';
+  static const _keyCompleted = 'permission_guide_completed_v2';
 
   static ThemeData _buildTheme(Brightness brightness) {
     final isDark = brightness == Brightness.dark;

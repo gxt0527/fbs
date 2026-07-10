@@ -99,7 +99,6 @@ class _HomePageState extends State<HomePage> {
             ? '${parsed.title} · ${codeInfo.value}'
             : parsed.title;
         final islandContent = parsed.subtitle.isNotEmpty ? parsed.subtitle : text;
-        print('[FBS-SI] parsed.title=${parsed.title} codeInfo=${codeInfo?.value} islandTitle=$islandTitle keyInfos=${parsed.keyInfos.length}');
         await _nativeService.sendSuperIslandNotification(
           title: islandTitle,
           content: islandContent,
@@ -182,7 +181,6 @@ class _HomePageState extends State<HomePage> {
       final islandTitle = codeInfo != null
           ? '${parsed.title} · ${codeInfo.value}'
           : parsed.title;
-      print('[FBS-SI-OCR] ocrText=${ocrResult.text.length > 80 ? ocrResult.text.substring(0, 80) : ocrResult.text} parsed.title=${parsed.title} codeInfo=${codeInfo?.value} keyInfos=${parsed.keyInfos.map((k)=>k.value).join(",")} islandTitle=$islandTitle');
       final islandContent = parsed.subtitle.isNotEmpty ? parsed.subtitle : parsed.body;
       await _nativeService.sendSuperIslandNotification(
         title: islandTitle,
@@ -335,7 +333,6 @@ class _HomePageState extends State<HomePage> {
             ? '$parsedTitle · ${codeInfo.value}'
             : parsedTitle;
         final islandContent = subtitle.isNotEmpty ? subtitle : content;
-        print('[FBS-SI-manual] parsedTitle=$parsedTitle codeInfo=${codeInfo?.value} islandTitle=$islandTitle');
         await _nativeService.sendSuperIslandNotification(
           title: islandTitle,
           content: islandContent,

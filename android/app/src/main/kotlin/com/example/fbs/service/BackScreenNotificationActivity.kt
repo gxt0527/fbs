@@ -619,8 +619,6 @@ class BackScreenNotificationActivity : Activity() {
             if (w <= 0 || h <= 0) return
             val ox = config.contentOffset  // 摄像头避开偏移
 
-            android.util.Log.d("BackScreenNotif", "onDraw: ${w}x${h}, d=$d, title=${config.title.take(20)}, titleColor=#${Integer.toHexString(config.titleColor)}, bgColor=#${Integer.toHexString(config.backgroundColor)}")
-
             val p = config.padding * d
             val s = config.spacing * d
 
