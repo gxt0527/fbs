@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../services/native_service.dart';
+import 'home_page.dart';
 
 class PermissionGuidePage extends StatefulWidget {
   const PermissionGuidePage({super.key});
@@ -9,20 +10,73 @@ class PermissionGuidePage extends StatefulWidget {
   State<PermissionGuidePage> createState() => _PermissionGuidePageState();
 }
 
-class _PermissionGuidePageState extends State<PermissionGuidePage> {
-  final NativeService _nativeService = NativeService();
+class _PermissionGuidePageState extends State<PermissionGuidePage>
+    with WidgetsBindingObserver {
+  final _nativeService = NativeService();
+  bool _listenerEnabled = false;
+  bool _postNotifGranted = false;
+  bool _shizukuRunning = false;
+  bool _shizukuPerm = false;
 
   @override
   void initState() {
     super.initState();
-    _nativeService.initialize();
+    WidgetsBinding.instance.addObserver(this);
+    _refreshStatus();
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) _refreshStatus();
+  }
+
+  Future<void> _refreshStatus() async {
+    final r = await Future.wait([
+      _nativeService.isNotificationListenerEnabled(),
+      _nativeService.isPostNotificationsGranted(),
+      _nativeService.isShizukuRunning(),
+      _nativeService.hasShizukuPermission(),
+    ]);
+    if (!mounted) return;
+    setState(() {
+      _listenerEnabled = r[0] as bool;
+      _postNotifGranted = r[1] as bool;
+      _shizukuRunning = r[2] as bool;
+      _shizukuPerm = r[3] as bool;
+    });
   }
 
   Future<void> _markCompleted() async {
+    if (!_listenerEnabled) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('请先开启通知监听权限，否则清除通知无法关闭背屏')),
+      );
+      return;
+    }
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool('permission_guide_completed', true);
     if (mounted) {
-      Navigator.pushReplacementNamed(context, '/');
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (_) => const HomePage()),
+      );
+    }
+  }
+
+  Future<void> _skip() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('permission_guide_completed', true);
+    if (mounted) {
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (_) => const HomePage()),
+      );
     }
   }
 
@@ -31,12 +85,6 @@ class _PermissionGuidePageState extends State<PermissionGuidePage> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('权限引导'),
-        actions: [
-          TextButton(
-            onPressed: _markCompleted,
-            child: const Text('跳过'),
-          ),
-        ],
       ),
       body: ListView(
         padding: const EdgeInsets.all(16),
@@ -45,15 +93,16 @@ class _PermissionGuidePageState extends State<PermissionGuidePage> {
             '1. 通知监听权限',
             Icons.notifications_active,
             Colors.blue,
-            'FBS 需要监听通知才能转发到背屏',
+            '清除通知时自动关闭背屏',
+            _listenerEnabled,
             [
               _buildPermissionTile(
-                '前往系统设置 → 通知访问权限',
+                '前往系统设置 > 通知使用权',
                 () => _nativeService.openNotificationListenerSettings(),
-                isPrimary: true,
+                isPrimary: !_listenerEnabled,
               ),
-              const Text('找到 "FBS" 并开启开关', style: TextStyle(fontSize: 12, color: Colors.grey)),
-              const Text('返回后点击 "检查并继续"', style: TextStyle(fontSize: 12, color: Colors.grey)),
+              if (!_listenerEnabled)
+                const Text('找到并开启 "FBS"，开启后返回本页', style: TextStyle(fontSize: 12, color: Colors.grey)),
             ],
           ),
           const SizedBox(height: 16),
@@ -61,47 +110,31 @@ class _PermissionGuidePageState extends State<PermissionGuidePage> {
             '2. 通知显示权限',
             Icons.notifications,
             Colors.orange,
-            'Android 13+ 需要授予通知显示权限',
+            'Android 13+ 需要授予',
+            _postNotifGranted,
             [
               _buildPermissionTile(
                 '请求通知显示权限',
                 () => _nativeService.requestPostNotifications(),
-                isPrimary: true,
+                isPrimary: !_postNotifGranted,
               ),
             ],
           ),
           const SizedBox(height: 16),
           _buildSection(
-            '3. 应用列表权限（澎湃OS）',
-            Icons.apps,
-            Colors.purple,
-            '澎湃OS 需要获取已安装应用列表以配置白名单',
-            [
-              _buildPermissionTile(
-                '请求应用列表权限',
-                () => _nativeService.requestInstalledAppsPermission(),
-                isPrimary: true,
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          _buildSection(
-            '4. Shizuku（可选）',
+            '3. Shizuku',
             Icons.accessibility_new,
             Colors.teal,
-            'Shizuku 提供系统级能力（背屏唤醒、超时控制等）',
+            '系统级能力（背屏控制）',
+            _shizukuRunning && _shizukuPerm,
             [
               _buildPermissionTile(
-                'Shizuku Manager',
+                '授权 Shizuku',
                 () => _nativeService.requestShizukuPermission(),
               ),
               _buildPermissionTile(
-                '自启动权限（重要）',
+                '自启动权限',
                 () => _nativeService.openAutoStartSettings(),
-              ),
-              _buildPermissionTile(
-                '后台弹出权限',
-                () => _nativeService.openBackgroundPopSettings(),
               ),
               _buildPermissionTile(
                 '电池优化（建议关闭）',
@@ -112,7 +145,14 @@ class _PermissionGuidePageState extends State<PermissionGuidePage> {
           const SizedBox(height: 24),
           FilledButton(
             onPressed: _markCompleted,
-            child: const Text('完成，开始使用 FBS'),
+            child: Text(_listenerEnabled ? '完成，开始使用 FBS' : '请先开启通知监听权限'),
+          ),
+          const SizedBox(height: 8),
+          Center(
+            child: TextButton(
+              onPressed: _skip,
+              child: const Text('跳过引导', style: TextStyle(color: Colors.grey, fontSize: 13)),
+            ),
           ),
           const SizedBox(height: 32),
         ],
@@ -120,35 +160,27 @@ class _PermissionGuidePageState extends State<PermissionGuidePage> {
     );
   }
 
-  Widget _buildSection(
-    String title,
-    IconData icon,
-    Color color,
-    String description,
-    List<Widget> children,
-  ) {
+  Widget _buildSection(String title, IconData icon, Color color, String description, bool granted, List<Widget> children) {
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
-              children: [
-                Icon(icon, color: color, size: 24),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-                      const SizedBox(height: 2),
-                      Text(description, style: TextStyle(fontSize: 12, color: Colors.grey[600])),
-                    ],
-                  ),
-                ),
-              ],
-            ),
+            Row(children: [
+              Icon(icon, color: color, size: 24),
+              const SizedBox(width: 12),
+              Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Row(children: [
+                  Text(title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                  const SizedBox(width: 8),
+                  Icon(granted ? Icons.check_circle : Icons.radio_button_unchecked,
+                    size: 16, color: granted ? Colors.green : Colors.grey),
+                ]),
+                const SizedBox(height: 2),
+                Text(description, style: TextStyle(fontSize: 12, color: Colors.grey[600])),
+              ])),
+            ]),
             const SizedBox(height: 12),
             ...children,
           ],

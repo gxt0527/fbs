@@ -31,6 +31,15 @@ class MainActivity : FlutterActivity() {
         backScreenController.initialize()
         // 通知监听服务可以通过静态引用直接访问 Controller
         com.example.fbs.service.FBSNotificationListenerService.backScreenController = backScreenController
+        // 确保监听组件已启用（用户自行在系统设置打开通知使用权后自动启用）
+        try {
+            val cn = android.content.ComponentName(this, com.example.fbs.service.FBSNotificationListenerService::class.java)
+            if (packageManager.getComponentEnabledSetting(cn) == android.content.pm.PackageManager.COMPONENT_ENABLED_STATE_DISABLED) {
+                packageManager.setComponentEnabledSetting(cn,
+                    android.content.pm.PackageManager.COMPONENT_ENABLED_STATE_ENABLED,
+                    android.content.pm.PackageManager.DONT_KILL_APP)
+            }
+        } catch (_: Exception) {}
 
         flutterMethodChannel = MethodChannel(flutterEngine.dartExecutor.binaryMessenger, METHOD_CHANNEL)
 
@@ -53,7 +62,8 @@ class MainActivity : FlutterActivity() {
                     result.success(true)
                 }
                 "rebindNotificationListener" -> {
-                    FBSNotificationListenerService.requestRebind(this)
+                    // 优先用 Shizuku（绕过 HyperOS 对 app setComponentEnabledSetting 的限制）
+                    backScreenController.enableNotificationListener()
                     result.success(true)
                 }
                 "isShizukuRunning" -> {

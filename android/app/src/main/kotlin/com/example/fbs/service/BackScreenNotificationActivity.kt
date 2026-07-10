@@ -22,9 +22,11 @@ class BackScreenNotificationActivity : Activity() {
         private const val TAG = "BackScreenNotif"
         private const val LUX_THRESHOLD = 5.0f
         private const val AOD_DELAY_MS = 8000L
-        private const val COVER_THRESHOLD_MS = 300_000L  // 5min遮挡→最低亮度
+        private const val COVER_THRESHOLD_MS = 300_000L
         private const val MIN_AOD_BRIGHTNESS = 0.02f
         private const val MAX_AOD_BRIGHTNESS = 0.15f
+        @Volatile
+        var instance: BackScreenNotificationActivity? = null
     }
 
     private var renderView: NotificationRenderView? = null
@@ -146,6 +148,7 @@ class BackScreenNotificationActivity : Activity() {
             // ── 注册光线传感器（官方算法: lux 阈值控制 AOD/息屏） ──
             registerLightSensor()
 
+            instance = this
             Log.d(TAG, "onCreate complete")
 
         } catch (e: Exception) {
@@ -269,6 +272,7 @@ class BackScreenNotificationActivity : Activity() {
     }
 
     override fun onDestroy() {
+        if (instance === this) instance = null
         dismissHandler.removeCallbacksAndMessages(null)
         try {
             sensorManager?.unregisterListener(sensorListener)

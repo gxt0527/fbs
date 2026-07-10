@@ -521,6 +521,17 @@ print(json.dumps(data))
         }.apply { isDaemon = true }.start()
     }
 
+    /** 通过 Shizuku 启用通知监听组件（HyperOS 上 app 自身无法调用 setComponentEnabledSetting） */
+    fun enableNotificationListener() {
+        if (!isShizukuRunning() || !hasPermission()) return
+        try {
+            execShizukuShell("pm enable ${context.packageName}/.service.FBSNotificationListenerService")
+            Log.d(TAG, "Notification listener component enabled via Shizuku")
+        } catch (e: Exception) {
+            Log.e(TAG, "enableNotificationListener failed", e)
+        }
+    }
+
     fun destroy() {
         Shizuku.removeBinderReceivedListener(binderReceivedListener)
         Shizuku.removeBinderDeadListener(binderDeadListener)

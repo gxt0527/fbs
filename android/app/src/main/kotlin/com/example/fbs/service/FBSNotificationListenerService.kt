@@ -29,6 +29,7 @@ class FBSNotificationListenerService : NotificationListenerService() {
         private const val POLL_INTERVAL_MS = 5000L
         var eventSink: EventChannel.EventSink? = null
             private set
+        @Volatile
         var backScreenController: com.example.fbs.service.BackScreenController? = null
 
         fun setEventSink(sink: EventChannel.EventSink?) {
@@ -175,12 +176,19 @@ class FBSNotificationListenerService : NotificationListenerService() {
     override fun onNotificationRemoved(sbn: StatusBarNotification?) {
         super.onNotificationRemoved(sbn)
         if (sbn == null) return
-        // 仅当 FBS 自身通知被清除时同步关闭背屏（通知 ID = 9001）
         if (sbn.packageName == "com.example.fbs" && sbn.id == 9001) {
             Log.d(TAG, "FBS notification removed (id=9001), dismissing back screen")
+            // 方式1: 直接 finish Activity（同一进程，最可靠）
+            val act = com.example.fbs.service.BackScreenNotificationActivity.instance
+            if (act != null && !act.isFinishing) {
+                Log.d(TAG, "Direct finish() Activity")
+                act.finish()
+                return
+            }
+            // 方式2: Shizuku am start 发送 dismiss Intent（Activity 存活但引用丢失）
             backScreenController?.onNotificationRemoved(sbn.key)
         } else {
-            Log.d(TAG, "NOTIF removed: key=${sbn.key} pkg=${sbn.packageName} id=${sbn.id} (ignored, not FBS 9001)")
+            Log.d(TAG, "NOTIF removed: key=${sbn.key} pkg=${sbn.packageName} id=${sbn.id} (ignored)")
         }
     }
 
