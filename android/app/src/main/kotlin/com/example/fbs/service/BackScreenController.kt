@@ -346,6 +346,17 @@ class BackScreenController(private val context: Context) {
         }
     }
 
+    /** 控制系统背屏亮度（子屏独立亮度设置，值域 0-255） */
+    fun setSubDisplayBrightness(brightness: Int = 46) {
+        if (!isShizukuRunning() || !hasPermission()) return
+        try {
+            execShizukuShell("settings put system sub_display_screen_brightness $brightness")
+            Log.d(TAG, "Sub display brightness set to $brightness")
+        } catch (e: Exception) {
+            Log.e(TAG, "Set sub display brightness failed", e)
+        }
+    }
+
     fun setBackScreenBrightness(brightness: Int = 128) {
         if (!isShizukuRunning() || !hasPermission()) return
         try {
@@ -365,6 +376,26 @@ class BackScreenController(private val context: Context) {
             Log.d(TAG, "Back screen sleep broadcast sent")
         } catch (e: Exception) {
             Log.e(TAG, "Sleep back screen failed", e)
+        }
+    }
+
+    /** FBS 自身通知被清除时同步关闭背屏 */
+    fun onNotificationRemoved(key: String) {
+        Log.d(TAG, "onNotificationRemoved: key=$key → dismissing")
+        dismissBackScreen()
+    }
+
+    /** 通知清除后同步关闭背屏 */
+    fun dismissBackScreen() {
+        if (!isShizukuRunning() || !hasPermission()) return
+        try {
+            // V3 方式: 向背屏 Activity 发送 dismiss Intent (FLAG_ACTIVITY_SINGLE_TOP)
+            val cmd = "am start -n ${context.packageName}/.service.BackScreenNotificationActivity" +
+                    " -f 0x20000000 --es dismiss \"true\" --user 0"
+            execShizukuShell(cmd)
+            Log.d(TAG, "dismissBackScreen done")
+        } catch (e: Exception) {
+            Log.e(TAG, "dismissBackScreen failed", e)
         }
     }
 

@@ -28,6 +28,20 @@ class _HomePageState extends State<HomePage> {
   void initState() {
     super.initState();
     _refreshStatus();
+    _listenNotificationEvents();
+  }
+
+  /// 监听通知移除事件 — 通知被清除时同步关闭背屏
+  void _listenNotificationEvents() {
+    _nativeService.eventStream.listen((event) {
+      if (event is Map) {
+        final type = event['type'] as String?;
+        final pkg = event['packageName'] as String?;
+        if (type == 'removed' && pkg == 'com.example.fbs') {
+          _nativeService.dismissBackScreen();
+        }
+      }
+    });
   }
 
   Future<void> _refreshStatus() async {
@@ -67,6 +81,50 @@ class _HomePageState extends State<HomePage> {
     setState(() => _parsed = null);
   }
 
+  void _handleAction(ActionItem action) {
+    switch (action.type) {
+      case ActionType.copy:
+        Clipboard.setData(ClipboardData(text: action.data ?? ''));
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('已复制: ${action.data}'), duration: const Duration(seconds: 2)),
+          );
+        }
+      case ActionType.call:
+        Clipboard.setData(ClipboardData(text: action.data ?? ''));
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('号码 ${action.data} 已复制到剪贴板'),
+              duration: const Duration(seconds: 2),
+            ),
+          );
+        }
+      case ActionType.open:
+        Clipboard.setData(ClipboardData(text: action.data ?? ''));
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('链接已复制到剪贴板'),
+              duration: const Duration(seconds: 2),
+            ),
+          );
+        }
+      case ActionType.mail:
+        Clipboard.setData(ClipboardData(text: action.data ?? ''));
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('邮箱 ${action.data} 已复制到剪贴板'),
+              duration: const Duration(seconds: 2),
+            ),
+          );
+        }
+      default:
+        break;
+    }
+  }
+
   Future<void> _forwardAll() async => _doForward(true);
 
   Future<void> _doForward(bool showAnimation) async {
@@ -89,6 +147,7 @@ class _HomePageState extends State<HomePage> {
       'showAppIcon': style.showAppIcon.toString(),
       'showTimestamp': style.showTimestamp.toString(),
       'cameraAvoidanceEnabled': style.cameraAvoidanceEnabled.toString(),
+      'horizontalOffset': NotificationStyle.cameraAvoidanceOffset.toStringAsFixed(0),
       'padding': style.padding.toString(),
       'spacing': style.spacing.toString(),
       'displayDurationMs': style.displayDurationMs.toString(),
@@ -100,7 +159,11 @@ class _HomePageState extends State<HomePage> {
         styleExtras: styleMap,
       );
       if (showAnimation) {
-        await _nativeService.sendSuperIslandNotification(title: title, content: subtitle.isNotEmpty ? subtitle : content);
+        await _nativeService.sendSuperIslandNotification(
+          title: title,
+          content: subtitle.isNotEmpty ? subtitle : content,
+          iconName: _parsed?.category.name ?? 'general',
+        );
       }
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
@@ -230,12 +293,16 @@ class _HomePageState extends State<HomePage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // ── 标题 + 场景标签 ──
           Row(children: [
             Icon(Icons.auto_awesome, size: 16, color: Colors.blue.shade700),
             const SizedBox(width: 6),
             Text('解析结果', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.blue.shade700, fontSize: 13)),
+            const Spacer(),
+            _buildCategoryChip(p.category),
           ]),
           const SizedBox(height: 10),
+          // ── 标题 ──
           TextField(
             controller: _titleController,
             decoration: const InputDecoration(
@@ -244,6 +311,7 @@ class _HomePageState extends State<HomePage> {
             ),
           ),
           const SizedBox(height: 8),
+          // ── 副标题 ──
           TextField(
             controller: _subtitleController,
             decoration: const InputDecoration(
@@ -251,33 +319,99 @@ class _HomePageState extends State<HomePage> {
               contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 8), isDense: true,
             ),
           ),
+          // ── 关键信息 Chips ──
           if (p.keyInfos.isNotEmpty) ...[
             const SizedBox(height: 10),
             Wrap(
               spacing: 6, runSpacing: 6,
-              children: p.keyInfos.map((info) {
-                final MaterialColor chipColor;
-                IconData icon;
-                switch (info.type) {
-                  case KeyType.code: chipColor = Colors.orange; icon = Icons.qr_code;
-                  case KeyType.time: chipColor = Colors.purple; icon = Icons.access_time;
-                  case KeyType.order: chipColor = Colors.teal; icon = Icons.receipt_long;
-                  case KeyType.location: chipColor = Colors.indigo; icon = Icons.location_on;
-                  default: chipColor = Colors.grey; icon = Icons.label;
-                }
-                return Chip(
-                  avatar: Icon(icon, size: 16, color: chipColor),
-                  label: Text('${info.label}: ${info.value}', style: TextStyle(fontSize: 12, color: chipColor.shade700)),
-                  backgroundColor: chipColor.shade50,
-                  side: BorderSide(color: chipColor.shade200),
-                  materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                  visualDensity: VisualDensity.compact,
-                );
-              }).toList(),
+              children: p.keyInfos.map(_buildKeyInfoChip).toList(),
+            ),
+          ],
+          // ── 动作按钮 ──
+          if (p.actions.isNotEmpty) ...[
+            const Divider(height: 20),
+            Text('操作', style: TextStyle(fontSize: 12, color: Colors.grey[600], fontWeight: FontWeight.w500)),
+            const SizedBox(height: 6),
+            Wrap(
+              spacing: 8, runSpacing: 8,
+              children: p.actions.map(_buildActionButton).toList(),
             ),
           ],
         ],
       ),
+    );
+  }
+
+  Widget _buildCategoryChip(ParsedCategory category) {
+    final (color, bg, border, icon) = switch (category) {
+      ParsedCategory.express => (const Color(0xFFE65100), const Color(0xFFFFF3E0), const Color(0xFFFFE0B2), Icons.local_shipping),
+      ParsedCategory.foodDelivery => (const Color(0xFFE91E63), const Color(0xFFFCE4EC), const Color(0xFFF8BBD0), Icons.restaurant),
+      ParsedCategory.payment => (const Color(0xFF2E7D32), const Color(0xFFE8F5E9), const Color(0xFFC8E6C9), Icons.account_balance),
+      ParsedCategory.meeting => (const Color(0xFF1565C0), const Color(0xFFE3F2FD), const Color(0xFFBBDEFB), Icons.event),
+      ParsedCategory.travel => (const Color(0xFF6A1B9A), const Color(0xFFF3E5F5), const Color(0xFFE1BEE7), Icons.flight_takeoff),
+      ParsedCategory.verification => (const Color(0xFFE65100), const Color(0xFFFFF3E0), const Color(0xFFFFE0B2), Icons.enhanced_encryption),
+      ParsedCategory.bill => (const Color(0xFF37474F), const Color(0xFFECEFF1), const Color(0xFFCFD8DC), Icons.receipt),
+      ParsedCategory.order => (const Color(0xFF00838F), const Color(0xFFE0F7FA), const Color(0xFFB2EBF2), Icons.shopping_cart),
+      ParsedCategory.system => (const Color(0xFF546E7A), const Color(0xFFECEFF1), const Color(0xFFCFD8DC), Icons.settings),
+      ParsedCategory.general => (const Color(0xFF616161), const Color(0xFFF5F5F5), const Color(0xFFE0E0E0), Icons.notifications),
+    };
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        color: bg,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: border),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 12, color: color),
+          const SizedBox(width: 4),
+          Text(category.label, style: TextStyle(fontSize: 11, color: color, fontWeight: FontWeight.w500)),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildKeyInfoChip(KeyInfo info) {
+    final (color, bg, border, icon) = switch (info.type) {
+      KeyType.code => (Colors.orange.shade800, Colors.orange.shade50, Colors.orange.shade200, Icons.qr_code),
+      KeyType.time => (Colors.purple.shade700, Colors.purple.shade50, Colors.purple.shade200, Icons.access_time),
+      KeyType.order => (Colors.teal.shade800, Colors.teal.shade50, Colors.teal.shade200, Icons.receipt_long),
+      KeyType.location => (Colors.indigo.shade800, Colors.indigo.shade50, Colors.indigo.shade200, Icons.location_on),
+      KeyType.amount => (Colors.green.shade800, Colors.green.shade50, Colors.green.shade200, Icons.attach_money),
+      KeyType.phone => (Colors.blue.shade800, Colors.blue.shade50, Colors.blue.shade200, Icons.phone),
+      KeyType.link => (Colors.cyan.shade800, Colors.cyan.shade50, Colors.cyan.shade200, Icons.link),
+      KeyType.email => (Colors.red.shade800, Colors.red.shade50, Colors.red.shade200, Icons.email),
+      KeyType.name => (Colors.purple.shade800, Colors.purple.shade50, Colors.purple.shade200, Icons.person),
+      KeyType.general => (Colors.grey.shade700, Colors.grey.shade50, Colors.grey.shade300, Icons.label),
+    };
+    return Chip(
+      avatar: Icon(icon, size: 16, color: color),
+      label: Text('${info.label}: ${info.value}', style: TextStyle(fontSize: 12, color: color)),
+      backgroundColor: bg,
+      side: BorderSide(color: border),
+      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+      visualDensity: VisualDensity.compact,
+    );
+  }
+
+  Widget _buildActionButton(ActionItem action) {
+    final (icon, bg) = switch (action.type) {
+      ActionType.copy => (Icons.content_copy, Colors.orange.shade50),
+      ActionType.call => (Icons.phone, Colors.green.shade50),
+      ActionType.open => (Icons.open_in_new, Colors.blue.shade50),
+      ActionType.mail => (Icons.email, Colors.red.shade50),
+      ActionType.navigate => (Icons.directions, Colors.indigo.shade50),
+    };
+    return ActionChip(
+      avatar: Icon(icon, size: 14, color: Colors.grey.shade700),
+      label: Text(action.label, style: const TextStyle(fontSize: 12)),
+      backgroundColor: bg,
+      side: BorderSide(color: Colors.grey.shade300),
+      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+      visualDensity: VisualDensity.compact,
+      onPressed: () => _handleAction(action),
     );
   }
 

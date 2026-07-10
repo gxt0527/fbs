@@ -22,7 +22,9 @@ class BackScreenNotificationActivity : Activity() {
         private const val TAG = "BackScreenNotif"
         private const val LUX_THRESHOLD = 5.0f
         private const val AOD_DELAY_MS = 8000L
-        private const val SLEEP_TIMEOUT_MS = 300_000L
+        private const val COVER_THRESHOLD_MS = 300_000L  // 5min遮挡→最低亮度
+        private const val MIN_AOD_BRIGHTNESS = 0.02f
+        private const val MAX_AOD_BRIGHTNESS = 0.15f
     }
 
     private var renderView: NotificationRenderView? = null
@@ -33,16 +35,15 @@ class BackScreenNotificationActivity : Activity() {
     private var sensorManager: android.hardware.SensorManager? = null
     private var lastLux = -1f
     private var darkSinceMs = 0L
+    private var isUserFar = false
+    private var farSinceMs = 0L
+    private var coverSinceMs = 0L
+    private var isMinBrightness = false
     private val sensorListener = object : android.hardware.SensorEventListener {
         override fun onSensorChanged(event: android.hardware.SensorEvent) {
-            val lux = event.values[0]; lastLux = lux
-            if (lux < LUX_THRESHOLD) {
-                if (darkSinceMs == 0L) darkSinceMs = System.currentTimeMillis()
-                val dur = System.currentTimeMillis() - darkSinceMs
-                if (dur >= SLEEP_TIMEOUT_MS && !isFinishing) { finish()
-                } else if (dur >= AOD_DELAY_MS && !isInAodMode) { enterAodMode() }
-            } else {
-                if (isInAodMode) exitAodMode(); darkSinceMs = 0L
+            when (event.sensor.type) {
+                android.hardware.Sensor.TYPE_LIGHT -> onLightChanged(event.values[0])
+                android.hardware.Sensor.TYPE_PROXIMITY -> onProximityChanged(event.values[0])
             }
         }
         override fun onAccuracyChanged(s: android.hardware.Sensor?, a: Int) {}
@@ -89,18 +90,25 @@ class BackScreenNotificationActivity : Activity() {
             val cameraAvoidance = intent.getStringExtra("cameraAvoidanceEnabled")?.toBooleanStrictOrNull() ?: false
             val padding = intent.getStringExtra("padding")?.toFloatOrNull() ?: 24f
             val spacing = intent.getStringExtra("spacing")?.toFloatOrNull() ?: 12f
-            val horizontalOffset = intent.getStringExtra("horizontalOffset")?.toFloatOrNull() ?: 0f
+            val horizontalOffset = intent.getStringExtra("horizontalOffset")?.toFloatOrNull() ?: 85f
             displayDurationMs = intent.getStringExtra("displayDurationMs")?.toLongOrNull() ?: 10000L
 
-            // 摄像头避开：背屏摄像头在左侧 ~296px cutout
+            // 摄像头避开：使用样式页设置的偏移量（dp 单位，自动 ×density 转 px）
             val cameraOffsetPx = if (cameraAvoidance) {
-                try { display?.cutout?.safeInsetLeft?.toFloat() ?: 296f } catch (_: Exception) { 296f }
+                try { horizontalOffset * resources.displayMetrics.density } catch (_: Exception) { 280f }
             } else 0f
-            val contentOffset = horizontalOffset + cameraOffsetPx
+            val contentOffset = cameraOffsetPx
 
             Log.d(TAG, "Parsed: title=$title, subtitle=$subtitle, content=${content.take(30)}, "
                 + "w=$titleFontSize, h=$subtitleFontSize, c=$contentFontSize, "
                 + "bg=#$backgroundColor, dur=$displayDurationMs")
+
+            // ── 检查 dismiss 指令（通知被清除时同步关闭背屏） ──
+            if (intent.getStringExtra("dismiss")?.toBooleanStrictOrNull() == true) {
+                Log.d(TAG, "Dismiss signal received, finishing")
+                finish()
+                return
+            }
 
             // ── 创建渲染 View ──
             renderView = NotificationRenderView(
@@ -146,6 +154,15 @@ class BackScreenNotificationActivity : Activity() {
         }
     }
 
+    override fun onNewIntent(intent: android.content.Intent) {
+        super.onNewIntent(intent)
+        Log.d(TAG, "onNewIntent")
+        if (intent.getStringExtra("dismiss")?.toBooleanStrictOrNull() == true) {
+            Log.d(TAG, "onNewIntent: dismiss signal, finishing")
+            finish()
+        }
+    }
+
     override fun onConfigurationChanged(newConfig: android.content.res.Configuration) {
         super.onConfigurationChanged(newConfig)
         Log.d(TAG, "onConfigChanged: w=${newConfig.screenWidthDp}dp h=${newConfig.screenHeightDp}dp d=${newConfig.densityDpi} display=${display?.displayId}")
@@ -172,27 +189,67 @@ class BackScreenNotificationActivity : Activity() {
 
     private fun enterAodMode() {
         if (isInAodMode) return; isInAodMode = true
-        Log.d(TAG, "AOD (lux=$lastLux, dark=${System.currentTimeMillis()-darkSinceMs}ms)")
-        try { window.attributes = window.attributes.apply { screenBrightness = 0.05f } }
-        catch (e: Exception) { Log.w(TAG, "AOD enter failed: ${e.message}") }
+        Log.d(TAG, "Enter AOD (lux=$lastLux far=$isUserFar)")
+        recalcAodBrightness()
     }
     private fun exitAodMode() {
-        if (!isInAodMode) return; isInAodMode = false
+        if (!isInAodMode) return; isInAodMode = false; isMinBrightness = false
         Log.d(TAG, "Exit AOD (lux=$lastLux)")
         try { window.attributes = window.attributes.apply { screenBrightness = -1.0f } }
         catch (e: Exception) { Log.w(TAG, "AOD exit failed: ${e.message}") }
+    }
+
+    private fun onLightChanged(lux: Float) {
+        lastLux = lux
+        if (lux < LUX_THRESHOLD) {
+            if (darkSinceMs == 0L) darkSinceMs = System.currentTimeMillis()
+            val dur = System.currentTimeMillis() - darkSinceMs
+            if (dur >= AOD_DELAY_MS && !isInAodMode) enterAodMode()
+            else if (isInAodMode) recalcAodBrightness()
+        } else {
+            if (isInAodMode) recalcAodBrightness()
+            darkSinceMs = 0L
+        }
+    }
+    private fun onProximityChanged(value: Float) {
+        val maxRng = sensorManager?.getDefaultSensor(android.hardware.Sensor.TYPE_PROXIMITY)?.maximumRange ?: 5f
+        val nowFar = value >= maxRng
+        if (nowFar != isUserFar) {
+            isUserFar = nowFar; farSinceMs = if (nowFar) System.currentTimeMillis() else 0L
+            Log.d(TAG, "Proximity: ${if (nowFar) "FAR" else "NEAR"} v=$value")
+            if (!nowFar) { coverSinceMs = System.currentTimeMillis(); isMinBrightness = false }
+            if (isInAodMode) recalcAodBrightness()
+        }
+    }
+    private fun recalcAodBrightness() {
+        if (!isInAodMode) return
+        val coveredMs = if (coverSinceMs > 0L) System.currentTimeMillis() - coverSinceMs else 0L
+        val forceMin = !isUserFar && coveredMs >= COVER_THRESHOLD_MS
+        if (forceMin) {
+            if (!isMinBrightness) { isMinBrightness = true
+                Log.d(TAG, "Min AOD (covered ${coveredMs/1000}s)") }
+            setAodBrightness(MIN_AOD_BRIGHTNESS)
+        } else if (!isUserFar) {
+            val ratio = (lastLux / LUX_THRESHOLD).coerceIn(0f, 1f)
+            setAodBrightness(MIN_AOD_BRIGHTNESS + ratio * (MAX_AOD_BRIGHTNESS - MIN_AOD_BRIGHTNESS))
+        } else {
+            isMinBrightness = false
+            setAodBrightness(MIN_AOD_BRIGHTNESS)
+        }
+    }
+    private fun setAodBrightness(b: Float) {
+        try { window.attributes = window.attributes.apply { screenBrightness = b } }
+        catch (e: Exception) { Log.w(TAG, "AOD brightness set failed: ${e.message}") }
     }
     private fun registerLightSensor() {
         try {
             sensorManager = getSystemService(android.content.Context.SENSOR_SERVICE) as android.hardware.SensorManager
             val ls = sensorManager?.getDefaultSensor(android.hardware.Sensor.TYPE_LIGHT)
-            if (ls != null) {
-                sensorManager?.registerListener(sensorListener, ls, android.hardware.SensorManager.SENSOR_DELAY_NORMAL)
-                Log.d(TAG, "Light sensor registered")
-            } else {
-                Log.w(TAG, "No light sensor, 8s timer fallback")
-                dismissHandler.postDelayed({ if (!isInAodMode) enterAodMode() }, 8000)
-            }
+            if (ls != null) sensorManager?.registerListener(sensorListener, ls, android.hardware.SensorManager.SENSOR_DELAY_NORMAL)
+            else { Log.w(TAG, "No light sensor"); dismissHandler.postDelayed({ if (!isInAodMode) enterAodMode() }, 8000) }
+            val ps = sensorManager?.getDefaultSensor(android.hardware.Sensor.TYPE_PROXIMITY)
+            if (ps != null) sensorManager?.registerListener(sensorListener, ps, android.hardware.SensorManager.SENSOR_DELAY_NORMAL)
+            Log.d(TAG, "Sensors: light=${ls!=null} prox=${ps!=null}")
         } catch (e: Exception) { Log.w(TAG, "Sensor failed: ${e.message}") }
     }
 
@@ -266,22 +323,24 @@ class BackScreenNotificationActivity : Activity() {
         private val config: RenderConfig,
     ) : View(context) {
 
+        private val density = context.resources.displayMetrics.density
+
         private val titlePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
             color = config.titleColor
-            textSize = config.titleFontSize
+            textSize = config.titleFontSize * density
             typeface = Typeface.DEFAULT_BOLD
         }
         private val subtitlePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
             color = config.subtitleColor
-            textSize = config.subtitleFontSize
+            textSize = config.subtitleFontSize * density
         }
         private val contentPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
             color = config.contentColor
-            textSize = config.contentFontSize
+            textSize = config.contentFontSize * density
         }
         private val timestampPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
             color = (config.contentColor and 0x00FFFFFF) or 0x80000000.toInt()
-            textSize = config.contentFontSize * 0.65f
+            textSize = config.contentFontSize * 0.65f * density
         }
         private val bgPaint = Paint().apply {
             color = config.backgroundColor
@@ -308,8 +367,8 @@ class BackScreenNotificationActivity : Activity() {
 
             android.util.Log.d("BackScreenNotif", "onDraw: ${w}x${h}, title=${config.title.take(20)}, titleColor=#${Integer.toHexString(config.titleColor)}, bgColor=#${Integer.toHexString(config.backgroundColor)}")
 
-            val p = config.padding
-            val s = config.spacing
+            val p = config.padding * density
+            val s = config.spacing * density
 
             // ── 背景 ──
             canvas.drawRect(0f, 0f, w, h, bgPaint)

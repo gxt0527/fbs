@@ -1,131 +1,98 @@
 # FBS 项目长期记忆
 
 ## 项目概述
-- **名称**: FBS（福帮手）- Flutter Android 背屏转发工具（V3 手动转发）
+- **名称**: FBS（福帮手）- Flutter 手动转发工具（背屏 + 超级岛）
 - **包名**: `com.example.fbs`
 - **设备**: Xiaomi 2509FPN0BC（HyperOS, Android 16）
-- **语言**: Flutter + Kotlin
+- **基础版本**: `7abf320` (Flutter UI) + `20260705备份` (BackScreenController + BackScreenNotificationActivity)
 
-## Shizuku 集成要点
+---
 
-### 必需的 Manifest 声明（缺一不可）
-```xml
-<uses-permission android:name="moe.shizuku.manager.permission.API_V23" />
-<uses-permission android:name="android.permission.QUERY_ALL_PACKAGES" />
-<queries>
-    <package android:name="moe.shizuku.privileged.api" />
-</queries>
-<provider
-    android:name="rikka.shizuku.ShizukuProvider"
-    android:authorities="${applicationId}.shizuku"
-    android:permission="android.permission.INTERACT_ACROSS_USERS_FULL"
-    android:multiprocess="false"
-    android:enabled="true"
-    android:exported="true" />
-<meta-data android:name="moe.shizuku.client.V3_SUPPORT" android:value="true" />
+## ⚠️ 重要：当前功能边界（2026-07-09 定稿）
+
+### 🔴 禁止添加的功能
+1. **通知监听服务** (`FBSNotificationListenerService`) — 不需要自动监听
+2. **前台服务** (`FBSForegroundService`) — 不需要
+3. **镜像模式** (mirror) — 不自动镜像通知
+4. **窗口类型覆盖** (`TYPE_APPLICATION_OVERLAY`) — 无效
+5. **Presentation / 悬浮窗** — 无效
+6. **手势滑动切换** → 需要加回会破坏双击手势（`isClickable=true` 拦截点击）
+
+### ✅ 当前实现（已验证 2026-07-09 下午）
+
+#### 背屏 Activity 启动流程 (BackScreenController)
+```
+1. context.startActivity(BackScreenNotificationActivity)  // display 0 启动
+2. Thread.sleep(500)                                      // 等 Activity 初始化
+3. dumpsys activity activities → regex "t(\\d+)"          // 获取 taskId
+4. service call activity_task 50 i32 $taskId i32 1         // 移到 display 1
+5. am force-stop com.xiaomi.subscreencenter                // 杀系统背屏
+6. input keyevent KEYCODE_WAKEUP                           // 唤醒背屏
 ```
 
-### SDK 版本
-- Shizuku SDK: **13.1.5**
-- Shizuku Manager: 13.5.4
+#### 双击手势 (BackScreenNotificationActivity.kt)
+- **方案**: `renderView?.isClickable = false`
+- **原理**: 触摸穿透 View 到系统 TouchInteractionService（系统背屏应用的一部分）
+- **效果**: 双击正常切换 AOD/壁纸模式
+- **关键**: 不能设置 `isClickable=true`（会拦截触摸破坏双击）
 
-### build.gradle 配置
-- targetSdk = 37
-- minSdk = 24
+#### 返回手势 (BackScreenNotificationActivity.kt)
+- **方案**: `dispatchKeyEvent()` 拦截 `KEYCODE_BACK`
+- **原理**: 系统 SubScreenGestureBack（SystemUI 进程，PID 641）处理边缘滑动 → 生成 KEYCODE_BACK → 分发到背屏 Activity
+- **效果**: 背屏右边缘向左滑 → KEYCODE_BACK → finish() → Activity 关闭 → 系统自动重启 subscreencenter → 时钟壁纸恢复
+- **不需要** Shizuku 参与返回处理
 
-### 调试工具
-- adb: `D:\pcsuite\adb_41\adb.exe`
-- Android SDK: `C:\Android\Sdk`
-- 日志: `adb logcat -s BackScreenController PermissionHelper FBSNotificationListener`
+#### 超级岛 (SuperIslandHelper)
+- 发一条焦点通知到通知栏（非超级岛系统）
+- 控制转发时是否触发动画
 
-## 澎湃OS 权限适配
+#### Shizuku 集成
+- 仅用于: 启动 Activity（间接）、获取 taskId、service call 移屏、force-stop 系统背屏、唤醒背屏
+- **不用于**: 启动系统背屏、杀其他应用、写文件
 
-### 官方文档
-- 应用列表权限: https://dev.mi.com/xiaomihyperos/documentation/detail?pId=1619
-- 自启动权限: https://dev.mi.com/xiaomihyperos/documentation/detail?pId=1830
+#### 手动转发
+- 用户粘贴/输入内容 → 按钮触发 → Activity 启动到 display 1
+- 样式设置页已保留 (7abf320 UI)
 
-### 关键 Intent
-- 应用列表权限: `com.android.permission.GET_INSTALLED_APPS`
-- 自启动: `miui.intent.action.OP_AUTO_START`
-- 后台弹出: `miui.intent.action.POWER_HIDE_MODE_APP`
+#### 通知清除同步
+```
+FBSNotificationListenerService → EventChannel → Flutter → dismissBackScreen()
+→ Shizuku force-stop subscreencenter → 系统重启背屏 → Activity 被覆盖
+```
 
-### 启动权限引导
-- 入口: `lib/pages/permission_guide_page.dart`
-- 完成标志: `SharedPreferences['permission_guide_completed']`
-- 必须权限: 通知监听、POST_NOTIFICATIONS、应用列表
-- 建议权限: 自启动、后台弹出、电池优化
+---
 
-## 官方背屏应用逆向分析
+## 文件说明
 
-### 基本信息
-- **包名**: `com.xiaomi.subscreencenter`
-- **APK**: `E:\MSRR\背屏_RELEASE-1.0.2605272226.apk` (19MB)
-- **本质**: 系统应用，`SECONDARY_HOME`，platform 签名
+### Kotlin 文件 (6个)
+| 文件 | 行数 | 用途 |
+|------|------|------|
+| `MainActivity.kt` | ~320 | 方法通道处理 + 生命周期 |
+| `BackScreenController.kt` | ~470 | 背屏转发核心 (Activity 启动+移屏+force-stop) |
+| `BackScreenNotificationActivity.kt` | ~280 | 背屏渲染 Activity (Canvas 绘制+双击穿透+KEYCODE_BACK) |
+| `FBSNotificationListenerService.kt` | — | 通知监听 (保留未启用) |
+| `FBSForegroundService.kt` | — | 前台服务 (保留未启用) |
+| `PermissionHelper.kt` | ~200 | 澎湃OS 权限辅助 |
+| `SuperIslandHelper.kt` | ~120 | 超级岛通知 |
 
-### 真实可用的第三方接口
-1. **PinReceiveActivity** (`ACTION_SEND`, text/* + image/*) — 唯一公开投屏入口，不需 Shizuku
-2. 写入 `notification_widget.json` + 发 `miui.intent.action.SUB_SCREEN_ON` — 需要 Shizuku
-3. `input keyevent 26` 唤醒屏幕 — 需要 Shizuku
+### Flutter
+- `lib/` — 全部来自 `7abf320` 提交
+- 包含: 首页、设置、样式配置、内容解析、权限引导、超级岛
 
-### 屏幕控制参数（官方规范）
-- AOD 超时: **90000ms (90秒)**
-- 唤醒: `PowerManager.wakeUp()` 反射调用
-- 锁屏: `KeyguardManager$KeyguardLockedStateListener`
-- 背屏开关: `miui.intent.action.SUB_SCREEN_ON/OFF`
+---
 
-### 通知数据格式
-- 存储路径: `/data/system/theme_magic/users/0/subscreencenter/notification/notification_widget.json`
-- JSON 数组，字段: notificationId, packageName, appName, title, content, timestamp, postTime, isClearable, userId
+## 已穷尽的方案（不要再试）
 
-### FBS 转发策略
-- **无 Shizuku**: 仅 PinReceiveActivity (ACTION_SEND)
-- **有 Shizuku**: PinReceive + notification_widget.json + 屏幕唤醒 + 90秒超时
-
-## 背屏渲染注意事项（2026-07-06 修复）
-
-### 修复文件
-- `android/app/.../BackScreenNotificationActivity.kt`
-
-### 渲染规则
-- **字号单位**：Flutter 以 **sp** 发送，Kotlin 端自动乘以 `displayMetrics.density` 转 px
-- **沉浸模式**：`setupImmersiveMode()` 在 `onCreate`/`onConfigurationChanged`/`onWindowFocusChanged` 时调用，使用 `SYSTEM_UI_FLAG_IMMERSIVE_STICKY`
-- **垂直居中**：`measureContentHeight()` 预计算 → `maxOf(p, (h - contentHeight) / 2f)` 确定起始 y
-- **颜色格式**：Flutter `toARGB32().toRadixString(16)` 输出 8 位 ARGB hex，`parseColorExtra` 支持 6 位和 8 位
-- **行间距**：正文 `contentPaint.textSize * 1.45f`，`fitTextLines` 中一致
-- **折叠计数**：`showFoldCount = notificationCount > 1`
-- Paint 对象在 `init` 块中创建，`updateConfig` 中重设颜色/字号
-
-## 通知监听注意事项
-
-### 实时动态通知
-HyperOS「实时动态」通知内容可能在：
-1. `Notification.extras[EXTRA_TITLE]` / `EXTRA_TEXT`
-2. `MediaSession.Metadata` — 音乐类
-3. `EXTRA_TEXT_LINES` / `EXTRA_MESSAGES` — InboxStyle/MessagingStyle
-4. `EXTRA_BIG_TEXT` / `EXTRA_SUB_TEXT` / `EXTRA_SUMMARY_TEXT`
-5. `RemoteViews` — HyperOS 自定义 UI（第三方无法读取）
-
-### 主动查询
-`onListenerConnected` 后调用 `getActiveNotifications()` 捕获已存在的通知。
-
-### 调试
-`adb logcat -s FBSNotificationListener` 查看完整 extras。
-
-## 相关文件
-- `android/app/src/main/AndroidManifest.xml`
-- `android/app/build.gradle.kts`
-- `android/app/src/main/kotlin/com/example/fbs/service/BackScreenController.kt`
-- `android/app/src/main/kotlin/com/example/fbs/service/BackScreenNotificationActivity.kt`
-- `android/app/src/main/kotlin/com/example/fbs/service/FBSNotificationListenerService.kt`
-- `android/app/src/main/kotlin/com/example/fbs/service/PermissionHelper.kt`
-- `android/app/src/main/kotlin/com/example/fbs/MainActivity.kt`
-- `lib/main.dart`
-- `lib/services/native_service.dart`
-- `lib/models/monitor_settings.dart`
-- `lib/models/notification_item.dart`
-- `lib/widgets/notification_card.dart`
-- `lib/pages/home_page.dart`
-- `lib/pages/settings_page.dart`
-- `lib/pages/permission_guide_page.dart`
-- `doc/back_screen_analysis.md`
-- `android/app/libs/aidl-13.1.5.jar` 等 4 个 SDK jar
+| 方案 | 结果 | 原因 |
+|------|------|------|
+| `am start --display 1` | ❌ | 系统阻止 "should not allow app show on rear display" |
+| `TYPE_APPLICATION_OVERLAY` | ❌ | 无法定位 display 1 |
+| `setType(OVERLAY)` | ❌ | 系统仍杀死 Activity |
+| `Presentation` | ❌ | 窗口层级不够 |
+| 悬浮窗 (WindowManager) | ❌ | 显示在正面屏 |
+| `miui.rear.param` | ❌ | 系统只路由系统应用 |
+| 写 `notification_widget.json` | ❌ | SELinux 权限 |
+| 写 `pin/image/` 替换图片 | ❌ | SELinux 权限 |
+| Shizuku `am start` | ❌ | 创建的 Activity 无 taskId (t-1) |
+| 背屏服务助手 | ❌ | 无第三方接口 |
+| 伪装系统应用 | ❌ | 需 platform 签名 |

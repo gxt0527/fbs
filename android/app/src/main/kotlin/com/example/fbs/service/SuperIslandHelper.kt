@@ -13,6 +13,8 @@ import android.util.Log
  * 小米超级岛通知 — 核心原理:
  *   notification.extras.putBoolean("android.requestPromotedOngoing", true)
  * 系统检测到此 extras 后自动添加 FLAG_PROMOTED_ONGOING (262144) 标志。
+ *
+ * 场景图标: 根据 iconName 参数切换小图标和主题色
  */
 object SuperIslandHelper {
 
@@ -20,6 +22,20 @@ object SuperIslandHelper {
     private const val CHANNEL_ID = "fbs_island_v2"
     private const val CHANNEL_NAME = "FBS 超级岛"
     private const val NOTIFICATION_ID = 9001
+
+    /** 场景 → Android 内置 drawable 映射 */
+    private fun getIconRes(iconName: String): Int = when (iconName) {
+        "express" -> android.R.drawable.ic_menu_compass         // 包裹 / 到家
+        "foodDelivery" -> android.R.drawable.ic_menu_myplaces // 地点 / 餐厅
+        "payment" -> android.R.drawable.ic_menu_directions     // 方向 / 交易
+        "order" -> android.R.drawable.ic_menu_report_image    // 清单 / 报告
+        "meeting" -> android.R.drawable.ic_menu_today          // 日历 / 今天
+        "travel" -> android.R.drawable.ic_menu_send            // 发送 / 出发
+        "verification" -> android.R.drawable.ic_menu_compass   // 罗盘 / 安全
+        "bill" -> android.R.drawable.ic_menu_agenda            // 议程 / 账单
+        "system" -> android.R.drawable.ic_menu_preferences     // 设置
+        else -> android.R.drawable.ic_dialog_info              // 通用信息 (默认)
+    }
 
     fun getDiagnostics(context: Context): String {
         val api = Build.VERSION.SDK_INT
@@ -58,7 +74,7 @@ object SuperIslandHelper {
         }
     }
 
-    fun sendNotification(context: Context, title: String, content: String) {
+    fun sendNotification(context: Context, title: String, content: String, iconName: String = "general") {
         val nm = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
@@ -79,6 +95,8 @@ object SuperIslandHelper {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
+        val iconRes = getIconRes(iconName)
+
         val builder = (if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             Notification.Builder(context, CHANNEL_ID)
         } else {
@@ -87,7 +105,7 @@ object SuperIslandHelper {
         }).apply {
             setContentTitle(title)
             setContentText(content)
-            setSmallIcon(android.R.drawable.ic_dialog_info)
+            setSmallIcon(iconRes)
             setContentIntent(pi)
             setAutoCancel(false)
             setOngoing(true)
@@ -98,7 +116,7 @@ object SuperIslandHelper {
         val notification = builder.build()
         notification.extras.putBoolean("android.requestPromotedOngoing", true)
         nm.notify(NOTIFICATION_ID, notification)
-        Log.i(TAG, "Super Island notification: $title")
+        Log.i(TAG, "Super Island notification: $title (icon=$iconName)")
     }
 
     fun cancelNotification(context: Context) {

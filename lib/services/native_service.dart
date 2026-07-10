@@ -7,6 +7,14 @@ class NativeService {
   NativeService._internal();
 
   final MethodChannel _methodChannel = const MethodChannel('com.example.fbs/native');
+  final EventChannel _eventChannel = const EventChannel('com.example.fbs/notification_events');
+  Stream<dynamic>? _eventStream;
+
+  /// 获取通知事件流（监听清除通知）
+  Stream<dynamic> get eventStream {
+    _eventStream ??= _eventChannel.receiveBroadcastStream();
+    return _eventStream!;
+  }
 
   // Shizuku
   Future<bool> isShizukuRunning() async {
@@ -41,10 +49,11 @@ class NativeService {
   // 超级岛
   Future<void> sendSuperIslandNotification({
     required String title, required String content,
+    String iconName = 'general',
   }) async {
     try {
       await _methodChannel.invokeMethod('sendSuperIslandNotification', {
-        'title': title, 'content': content,
+        'title': title, 'content': content, 'iconName': iconName,
       });
     } catch (_) {}
   }
@@ -104,5 +113,14 @@ class NativeService {
         'title': title, 'subtitle': subtitle, 'content': content,
       }) ?? 'failed';
     } catch (e) { return 'failed'; }
+  }
+
+  // 通知监听
+  Future<bool> isNotificationListenerEnabled() async {
+    try { return await _methodChannel.invokeMethod<bool>('isNotificationListenerEnabled') ?? false; }
+    catch (e) { return false; }
+  }
+  Future<void> openNotificationListenerSettings() async {
+    try { await _methodChannel.invokeMethod('openNotificationListenerSettings'); } catch (_) {}
   }
 }

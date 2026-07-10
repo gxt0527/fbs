@@ -29,6 +29,7 @@ class FBSNotificationListenerService : NotificationListenerService() {
         private const val POLL_INTERVAL_MS = 5000L
         var eventSink: EventChannel.EventSink? = null
             private set
+        var backScreenController: com.example.fbs.service.BackScreenController? = null
 
         fun setEventSink(sink: EventChannel.EventSink?) {
             eventSink = sink
@@ -173,20 +174,13 @@ class FBSNotificationListenerService : NotificationListenerService() {
 
     override fun onNotificationRemoved(sbn: StatusBarNotification?) {
         super.onNotificationRemoved(sbn)
-        if (sbn != null) {
-            val reason = when {
-                sbn.isClearable -> "USER_OR_APP"
-                else -> "ONGOING_REMOVED"
-            }
-            Log.d(TAG, "NOTIF removed: pkg=${sbn.packageName} key=${sbn.key} id=${sbn.id} reason=$reason")
-            sendRemovedToFlutter(
-                NotifRemovedInfo(
-                    notificationId = sbn.id,
-                    packageName = sbn.packageName,
-                    notificationKey = sbn.key,
-                    reason = reason
-                )
-            )
+        if (sbn == null) return
+        // 仅当 FBS 自身通知被清除时同步关闭背屏（通知 ID = 9001）
+        if (sbn.packageName == "com.example.fbs" && sbn.id == 9001) {
+            Log.d(TAG, "FBS notification removed (id=9001), dismissing back screen")
+            backScreenController?.onNotificationRemoved(sbn.key)
+        } else {
+            Log.d(TAG, "NOTIF removed: key=${sbn.key} pkg=${sbn.packageName} id=${sbn.id} (ignored, not FBS 9001)")
         }
     }
 

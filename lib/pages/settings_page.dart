@@ -16,6 +16,7 @@ class _SettingsPageState extends State<SettingsPage> with WidgetsBindingObserver
   bool _shizukuPerm = false;
   bool _postNotifGranted = false;
   bool _promotedPerm = false;
+  bool _listenerEnabled = false;
   bool _installedAppsSupported = false;
   bool _installedAppsGranted = false;
 
@@ -39,11 +40,13 @@ class _SettingsPageState extends State<SettingsPage> with WidgetsBindingObserver
       _nativeService.isShizukuRunning(), _nativeService.hasShizukuPermission(),
       _nativeService.isPostNotificationsGranted(), _nativeService.hasPromotedPermission(),
       _nativeService.isInstalledAppsPermissionSupported(), _nativeService.isInstalledAppsPermissionGranted(),
+      _nativeService.isNotificationListenerEnabled(),
     ]);
     if (mounted) setState(() {
       _shizukuRunning = r[0] as bool; _shizukuPerm = r[1] as bool;
       _postNotifGranted = r[2] as bool; _promotedPerm = r[3] as bool;
       _installedAppsSupported = r[4] as bool; _installedAppsGranted = r[5] as bool;
+      _listenerEnabled = r[6] as bool;
     });
   }
 
@@ -59,6 +62,10 @@ class _SettingsPageState extends State<SettingsPage> with WidgetsBindingObserver
         const SizedBox(height: 16),
         _buildSection('通知权限', [
           _statusTile('通知显示', _postNotifGranted),
+          _actionTile('通知监听', _listenerEnabled,
+            onGrant: () => _nativeService.openNotificationListenerSettings(),
+            onSettings: () => _nativeService.openNotificationListenerSettings(),
+          ),
           _actionTile('超级岛权限', _promotedPerm,
             onGrant: () => _nativeService.requestPromotedPermission(),
             onSettings: () => _nativeService.openFocusNotificationSettings(),

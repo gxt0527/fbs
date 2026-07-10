@@ -29,6 +29,8 @@ class MainActivity : FlutterActivity() {
 
         backScreenController = BackScreenController(this)
         backScreenController.initialize()
+        // 通知监听服务可以通过静态引用直接访问 Controller
+        com.example.fbs.service.FBSNotificationListenerService.backScreenController = backScreenController
 
         flutterMethodChannel = MethodChannel(flutterEngine.dartExecutor.binaryMessenger, METHOD_CHANNEL)
 
@@ -106,6 +108,10 @@ class MainActivity : FlutterActivity() {
                     )
                     result.success(true)
                 }
+                "dismissBackScreen" -> {
+                    backScreenController.dismissBackScreen()
+                    result.success(true)
+                }
                 "removePinByNotificationId" -> {
                     val id = call.argument<Int>("notificationId") ?: 0
                     backScreenController.removePinByNotificationId(id)
@@ -129,6 +135,11 @@ class MainActivity : FlutterActivity() {
                     backScreenController.setBackScreenBrightness(brightness)
                     result.success(true)
                 }
+                "setSubDisplayBrightness" -> {
+                    val brightness = call.argument<Int>("brightness") ?: 46
+                    backScreenController.setSubDisplayBrightness(brightness)
+                    result.success(true)
+                }
                 "sleepBackScreen" -> {
                     backScreenController.sleepBackScreen()
                     result.success(true)
@@ -137,7 +148,8 @@ class MainActivity : FlutterActivity() {
                 "sendSuperIslandNotification" -> {
                     val title = call.argument<String>("title") ?: ""
                     val content = call.argument<String>("content") ?: ""
-                    com.example.fbs.service.SuperIslandHelper.sendNotification(this, title, content)
+                    val iconName = call.argument<String>("iconName") ?: "general"
+                    com.example.fbs.service.SuperIslandHelper.sendNotification(this, title, content, iconName)
                     result.success(true)
                 }
                 "cancelSuperIslandNotification" -> {
