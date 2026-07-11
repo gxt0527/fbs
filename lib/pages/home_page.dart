@@ -26,6 +26,7 @@ class _HomePageState extends State<HomePage> {
   bool _hasShizukuPermission = false;
   bool _isForwarding = false;
   ParsedContent? _parsed;
+  String _filteredContent = '';
 
   @override
   void initState() {
@@ -334,6 +335,8 @@ class _HomePageState extends State<HomePage> {
     final parsed = ContentParser.parse(text);
     _titleController.text = parsed.title;
     _subtitleController.text = parsed.subtitle;
+    // 计算与OCR路径一致的过滤展示内容
+    _filteredContent = _buildDisplayContent(text, parsed);
     setState(() => _parsed = parsed);
   }
 
@@ -349,6 +352,7 @@ class _HomePageState extends State<HomePage> {
     _textController.clear();
     _titleController.clear();
     _subtitleController.clear();
+    _filteredContent = '';
     setState(() => _parsed = null);
   }
 
@@ -404,9 +408,8 @@ class _HomePageState extends State<HomePage> {
 
     final title = _titleController.text.trim();
     final subtitle = _subtitleController.text.trim();
-    final content = _textController.text.trim();
+    final category = _parsed?.category.name ?? 'general';
     final style = await NotificationStyle.load();
-    // 转成背屏 Activity 期待的 key/value 格式
     final styleMap = {
       'titleFontSize': style.titleFontSize.toString(),
       'subtitleFontSize': style.subtitleFontSize.toString(),
@@ -424,26 +427,30 @@ class _HomePageState extends State<HomePage> {
       'displayDurationMs': style.displayDurationMs.toString(),
     };
 
+    // 获取码值用于 subtitle 和超级岛标题
+    final codeInfo = _parsed?.keyInfos
+        .where((k) => k.type == KeyType.code)
+        .firstOrNull;
+    final codeValue = codeInfo?.value ?? subtitle;
+
     try {
+      // 背屏和超级岛都用过滤后的统一内容
       await _nativeService.displayOnBackScreen(
-        title: title, subtitle: subtitle, content: content,
+        title: title,
+        subtitle: codeValue,
+        content: _filteredContent,
         styleExtras: styleMap,
-        category: _parsed?.category.name ?? 'general',
+        category: category,
       );
       if (showAnimation) {
-        // 超级岛标题拼接取餐码/取件码
         final parsedTitle = _parsed?.title ?? title;
-        final codeInfo = _parsed?.keyInfos
-            .where((k) => k.type == KeyType.code)
-            .firstOrNull;
         final islandTitle = codeInfo != null
-            ? '$parsedTitle · ${codeInfo.value}'
+            ? '$parsedTitle ${codeInfo.value}'
             : parsedTitle;
-        final islandContent = subtitle.isNotEmpty ? subtitle : content;
         await _nativeService.sendSuperIslandNotification(
           title: islandTitle,
-          content: islandContent,
-          category: _parsed?.category.name ?? 'general',
+          content: _filteredContent,
+          category: category,
         );
       }
       if (mounted) {
@@ -469,13 +476,44 @@ class _HomePageState extends State<HomePage> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Scaffold(
       appBar: AppBar(
-        title: const Text('FBS'),
+        title: Text('FBS', style: TextStyle(
+          fontSize: 20, fontWeight: FontWeight.w700,
+          color: isDark ? Colors.white : const Color(0xFF1A1A2E),
+          letterSpacing: -0.3,
+        )),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.settings_outlined),
-            onPressed: () => Navigator.push(context, SlideRoute(builder: (_) => const SettingsPage())).then((_) => _refreshStatus()),
+          Padding(
+            padding: const EdgeInsets.only(right: 12),
+            child: GestureDetector(
+              onTap: () => Navigator.push(context, SlideRoute(builder: (_) => const SettingsPage())).then((_) => _refreshStatus()),
+              child: Container(
+                width: 36, height: 36,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: GlassTokens.glassGradient(Theme.of(context).brightness),
+                  border: Border.all(
+                    color: isDark ? Colors.white.withValues(alpha: 0.08) : Colors.white.withValues(alpha: 0.30),
+                    width: 0.5,
+                  ),
+                  boxShadow: GlassTokens.glassShadow(Theme.of(context).brightness),
+                ),
+                child: Center(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      _dot(isDark),
+                      const SizedBox(height: 3.5),
+                      _dot(isDark),
+                      const SizedBox(height: 3.5),
+                      _dot(isDark),
+                    ],
+                  ),
+                ),
+              ),
+            ),
           ),
         ],
       ),
@@ -556,37 +594,99 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  Widget _buildInputArea() {
-    return TextField(
-      controller: _textController,
-      maxLines: 6,
-      decoration: const InputDecoration(
-        hintText: '粘贴内容，自动提取关键信息...',
-        border: OutlineInputBorder(borderRadius: BorderRadius.all(Radius.circular(GlassTokens.radiusSM))),
-        contentPadding: EdgeInsets.all(14),
+  Widget _dot(bool isDark) {
+    return Container(
+      width: 3, height: 3,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        color: isDark ? Colors.white70 : Colors.black54,
       ),
-      style: const TextStyle(fontSize: 14),
+    );
+  }
+
+  Widget _buildInputArea() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return Container(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(GlassTokens.radiusSM),
+        gradient: GlassTokens.glassGradient(Theme.of(context).brightness),
+        border: Border.all(
+          color: isDark ? Colors.white.withValues(alpha: 0.08) : Colors.white.withValues(alpha: 0.30),
+          width: 0.5,
+        ),
+        boxShadow: GlassTokens.glassShadow(Theme.of(context).brightness),
+      ),
+      child: TextField(
+        controller: _textController,
+        maxLines: 6,
+        decoration: const InputDecoration(
+          hintText: '粘贴内容，自动提取关键信息...',
+          border: InputBorder.none,
+          enabledBorder: InputBorder.none,
+          focusedBorder: InputBorder.none,
+          filled: false,
+          contentPadding: EdgeInsets.all(14),
+        ),
+        style: const TextStyle(fontSize: 14),
+      ),
     );
   }
 
   Widget _buildToolbar() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final glassDeco = BoxDecoration(
+      borderRadius: BorderRadius.circular(GlassTokens.radiusFull),
+      gradient: GlassTokens.glassGradient(Theme.of(context).brightness),
+      border: Border.all(
+        color: isDark ? Colors.white.withValues(alpha: 0.08) : Colors.white.withValues(alpha: 0.30),
+        width: 0.5,
+      ),
+      boxShadow: GlassTokens.glassShadow(Theme.of(context).brightness),
+    );
     return Row(children: [
-      OutlinedButton.icon(
-        icon: const Icon(Icons.clear, size: 16),
-        label: const Text('清空'),
-        onPressed: _textController.text.isEmpty && _parsed == null ? null : _clearAll,
+      GestureDetector(
+        onTap: _textController.text.isEmpty && _parsed == null ? null : _clearAll,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
+          decoration: glassDeco,
+          child: Row(mainAxisSize: MainAxisSize.min, children: [
+            Icon(Icons.clear, size: 16, color: isDark ? Colors.white54 : Colors.black54),
+            const SizedBox(width: 4),
+            Text('清空', style: TextStyle(fontSize: 13, color: isDark ? Colors.white70 : Colors.black87, fontWeight: FontWeight.w500)),
+          ]),
+        ),
       ),
       const SizedBox(width: GlassTokens.spaceSM),
-      Expanded(child: OutlinedButton.icon(
-        icon: const Icon(Icons.content_paste, size: 16),
-        label: const Text('从剪贴板粘贴'),
-        onPressed: _pasteFromClipboard,
-      )),
+      Expanded(
+        child: GestureDetector(
+          onTap: _pasteFromClipboard,
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
+            decoration: glassDeco,
+            child: Row(mainAxisSize: MainAxisSize.min, children: [
+              Icon(Icons.content_paste, size: 16, color: isDark ? Colors.white54 : Colors.black54),
+              const SizedBox(width: 4),
+              Text('从剪贴板粘贴', style: TextStyle(fontSize: 13, color: isDark ? Colors.white70 : Colors.black87, fontWeight: FontWeight.w500)),
+            ]),
+          ),
+        ),
+      ),
       const SizedBox(width: GlassTokens.spaceSM),
-      ElevatedButton.icon(
-        icon: const Icon(Icons.auto_fix_high, size: 16),
-        label: const Text('解析'),
-        onPressed: _parseContent,
+      GestureDetector(
+        onTap: _parseContent,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 9),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(GlassTokens.radiusFull),
+            color: GlassTokens.accent,
+            boxShadow: [BoxShadow(color: GlassTokens.accent.withValues(alpha: 0.3), blurRadius: 8, offset: const Offset(0, 2))],
+          ),
+          child: Row(mainAxisSize: MainAxisSize.min, children: [
+            const Icon(Icons.auto_fix_high, size: 16, color: Colors.white),
+            const SizedBox(width: 4),
+            const Text('解析', style: TextStyle(fontSize: 13, color: Colors.white, fontWeight: FontWeight.w600)),
+          ]),
+        ),
       ),
     ]);
   }
@@ -748,14 +848,51 @@ class _HomePageState extends State<HomePage> {
 
   Widget _buildForwardButtons() {
     final canForward = _isShizukuRunning && _hasShizukuPermission && _titleController.text.trim().isNotEmpty;
-    return SizedBox(
-      width: double.infinity, height: 52,
-      child: ElevatedButton.icon(
-        icon: _isForwarding
-            ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-            : const Icon(Icons.send_rounded),
-        label: Text(_isForwarding ? '转发中...' : '转发到背屏 + 超级岛'),
-        onPressed: canForward && !_isForwarding ? _forwardAll : null,
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return GestureDetector(
+      onTap: canForward && !_isForwarding ? _forwardAll : null,
+      child: Container(
+        width: double.infinity, height: 52,
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(GlassTokens.radiusFull),
+          gradient: canForward
+            ? const LinearGradient(colors: [GlassTokens.accent, GlassTokens.accentDark])
+            : GlassTokens.glassGradient(Theme.of(context).brightness),
+          border: Border.all(
+            color: canForward
+              ? GlassTokens.accent.withValues(alpha: 0.3)
+              : (isDark ? Colors.white.withValues(alpha: 0.08) : Colors.white.withValues(alpha: 0.30)),
+            width: 0.5,
+          ),
+          boxShadow: canForward
+            ? [BoxShadow(color: GlassTokens.accent.withValues(alpha: 0.3), blurRadius: 10, offset: const Offset(0, 4))]
+            : GlassTokens.glassShadow(Theme.of(context).brightness),
+        ),
+        child: Center(
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (_isForwarding)
+                const Padding(
+                  padding: EdgeInsets.only(right: 8),
+                  child: SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white)),
+                )
+              else
+                Padding(
+                  padding: const EdgeInsets.only(right: 6),
+                  child: Icon(Icons.send_rounded, size: 20,
+                    color: canForward ? Colors.white : (isDark ? Colors.white38 : Colors.black38)),
+                ),
+              Text(
+                _isForwarding ? '转发中...' : '转发到背屏 + 超级岛',
+                style: TextStyle(
+                  fontSize: 15, fontWeight: FontWeight.w600,
+                  color: canForward ? Colors.white : (isDark ? Colors.white38 : Colors.black38),
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -811,13 +948,12 @@ class _HomePageState extends State<HomePage> {
         padding: const EdgeInsets.symmetric(vertical: 10),
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(GlassTokens.radiusSM),
-          color: enabled
-            ? (isDark ? Colors.white.withValues(alpha: 0.04) : Colors.white.withValues(alpha: 0.35))
-            : (isDark ? Colors.white.withValues(alpha: 0.02) : Colors.white.withValues(alpha: 0.15)),
+          gradient: GlassTokens.glassGradient(Theme.of(context).brightness),
           border: Border.all(
-            color: isDark ? Colors.white.withValues(alpha: 0.08) : Colors.white.withValues(alpha: 0.22),
+            color: isDark ? Colors.white.withValues(alpha: 0.08) : Colors.white.withValues(alpha: 0.30),
             width: 0.5,
           ),
+          boxShadow: GlassTokens.glassShadow(Theme.of(context).brightness),
         ),
         child: Column(
         mainAxisSize: MainAxisSize.min,

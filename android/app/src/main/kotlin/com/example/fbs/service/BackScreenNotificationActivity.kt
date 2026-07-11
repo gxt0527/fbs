@@ -638,20 +638,25 @@ class BackScreenNotificationActivity : Activity() {
 
             var y = p
 
-            // ── 标题行（智能场景图标模式） — 与预览一致的间距 ──
+            // ── 标题行（智能场景图标模式） — 图标与标题垂直居中 ──
             if (config.showAppIcon && config.category != "general") {
                 // 图标容器 = titleFontSize + 8dp（与 preview Container 一致）
                 val iconSize = (config.titleFontSize + 8f) * d
                 val iconLeft = p + ox
-                val iconTop = y
                 // 内边距 = 16%（与 preview padding 一致）
                 val iconPad = iconSize * 0.16f
+
+                // 标题 baseline 先按原 0.85f 计算，再求文字视觉中心
+                val titleBaseline = y + config.titleFontSize * d * 0.85f
+                val fm = titlePaint.fontMetrics
+                val textCenterY = titleBaseline + (fm.ascent + fm.descent) / 2f
+                // 图标容器中心与文字视觉中心对齐
+                val iconTop = textCenterY - iconSize / 2f
                 try { drawSceneIcon(canvas, iconLeft + iconPad, iconTop + iconPad, iconSize - iconPad * 2) }
                 catch (e: Exception) { Log.w(TAG, "SceneIcon draw failed: ${e.message}") }
 
                 // 标题与图标间距 = spacing * 0.7（与 preview SizedBox 一致）
                 val titleX = iconLeft + iconSize + s * 0.7f
-                val titleBaseline = y + config.titleFontSize * d * 0.85f
                 try { canvas.drawText(config.title, titleX, titleBaseline, titlePaint) }
                 catch (e: Exception) { Log.w(TAG, "Title draw failed: ${e.message}") }
                 y += iconSize + s

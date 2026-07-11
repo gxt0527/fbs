@@ -55,7 +55,35 @@ class _SettingsPageState extends State<SettingsPage> with WidgetsBindingObserver
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('设置')),
+      appBar: AppBar(
+        leading: Center(
+          child: GestureDetector(
+            onTap: () => Navigator.maybePop(context),
+            child: Container(
+              width: 36, height: 36,
+              margin: const EdgeInsets.only(left: 8),
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                gradient: GlassTokens.glassGradient(Theme.of(context).brightness),
+                border: Border.all(
+                  color: Theme.of(context).brightness == Brightness.dark
+                    ? Colors.white.withValues(alpha: 0.08)
+                    : Colors.white.withValues(alpha: 0.30),
+                  width: 0.5,
+                ),
+                boxShadow: GlassTokens.glassShadow(Theme.of(context).brightness),
+              ),
+              child: Icon(Icons.arrow_back,
+                color: Theme.of(context).brightness == Brightness.dark
+                  ? Colors.white70
+                  : Colors.black54,
+                size: 20,
+              ),
+            ),
+          ),
+        ),
+        title: const SizedBox.shrink(),
+      ),
       body: ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 24), children: [
         _buildSectionCard('背屏样式', Icons.palette_outlined, GlassTokens.accent, [
           ListTile(
@@ -188,6 +216,7 @@ class _SettingsPageState extends State<SettingsPage> with WidgetsBindingObserver
 
   Widget _actionTile(String label, bool? status, {VoidCallback? onGrant, VoidCallback? onSettings}) {
     final ok = status == true;
+    final canCheck = status != null;
     final isDark = Theme.of(context).brightness == Brightness.dark;
     return SizedBox(
       height: 36,
@@ -196,7 +225,7 @@ class _SettingsPageState extends State<SettingsPage> with WidgetsBindingObserver
           width: 6, height: 6,
           decoration: BoxDecoration(
             shape: BoxShape.circle,
-            color: ok ? const Color(0xFF34C759) : const Color(0xFF8E8E93),
+            color: ok ? const Color(0xFF34C759) : (canCheck ? const Color(0xFF8E8E93) : const Color(0xFFFF9500)),
           ),
         ),
         const SizedBox(width: 10),
@@ -218,10 +247,19 @@ class _SettingsPageState extends State<SettingsPage> with WidgetsBindingObserver
                   padding: const EdgeInsets.symmetric(horizontal: 12),
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(GlassTokens.radiusFull),
-                    color: GlassTokens.accent.withValues(alpha: 0.12),
-                    border: Border.all(color: GlassTokens.accent.withValues(alpha: 0.25), width: 0.5),
+                    color: canCheck ? GlassTokens.accent.withValues(alpha: 0.12) : const Color(0xFFFF9500).withValues(alpha: 0.10),
+                    border: Border.all(
+                      color: canCheck ? GlassTokens.accent.withValues(alpha: 0.25) : const Color(0xFFFF9500).withValues(alpha: 0.2),
+                      width: 0.5,
+                    ),
                   ),
-                  child: const Center(child: Text('授权', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: GlassTokens.accent))),
+                  child: Center(child: Text(
+                    canCheck ? '授权' : '前往',
+                    style: TextStyle(
+                      fontSize: 12, fontWeight: FontWeight.w600,
+                      color: canCheck ? GlassTokens.accent : const Color(0xFFFF9500),
+                    ),
+                  )),
                 ),
               ),
         ),
