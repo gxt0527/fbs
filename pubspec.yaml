@@ -1,7 +1,7 @@
 name: fbs
 description: "FBS - Flutter back screen notification forwarding tool"
 publish_to: 'none'
-version: 1.0.0+1
+version: 1.0.3+3
 
 environment:
   sdk: ^3.12.0
