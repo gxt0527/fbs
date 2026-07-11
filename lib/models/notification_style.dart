@@ -20,6 +20,7 @@ class NotificationStyle {
   bool showAppIcon;
   bool showTimestamp;
   bool cameraAvoidanceEnabled;
+  bool useOfficialBackground;
 
   // ── 布局 ──
   double padding;
@@ -40,6 +41,7 @@ class NotificationStyle {
     this.showAppIcon = true,
     this.showTimestamp = true,
     this.cameraAvoidanceEnabled = true,
+    this.useOfficialBackground = false,
     this.padding = 24,
     this.spacing = 12,
     this.displayDurationMs = 10000,
@@ -59,6 +61,7 @@ class NotificationStyle {
   static const _keyShowAppIcon = 'style_showAppIcon';
   static const _keyShowTimestamp = 'style_showTimestamp';
   static const _keyCameraAvoidance = 'style_cameraAvoidance';
+  static const _keyUseOfficialBg = 'style_useOfficialBg';
   static const _keyPadding = 'style_padding';
   static const _keySpacing = 'style_spacing';
   static const _keyDisplayDurationMs = 'style_displayDurationMs';
@@ -74,6 +77,7 @@ class NotificationStyle {
         _keyShowAppIcon: showAppIcon,
         _keyShowTimestamp: showTimestamp,
         _keyCameraAvoidance: cameraAvoidanceEnabled,
+        _keyUseOfficialBg: useOfficialBackground,
         _keyPadding: padding,
         _keySpacing: spacing,
         _keyDisplayDurationMs: displayDurationMs,
@@ -91,6 +95,7 @@ class NotificationStyle {
       showAppIcon: map[_keyShowAppIcon] as bool? ?? true,
       showTimestamp: map[_keyShowTimestamp] as bool? ?? true,
       cameraAvoidanceEnabled: map[_keyCameraAvoidance] as bool? ?? true,
+      useOfficialBackground: map[_keyUseOfficialBg] as bool? ?? false,
       padding: (map[_keyPadding] as num?)?.toDouble() ?? 24,
       spacing: (map[_keySpacing] as num?)?.toDouble() ?? 12,
       displayDurationMs: map[_keyDisplayDurationMs] as int? ?? 10000,
@@ -131,7 +136,7 @@ class NotificationStyle {
     ]) {
       map[key] = prefs.getInt(key);
     }
-    for (final key in [_keyShowAppIcon, _keyShowTimestamp, _keyCameraAvoidance]) {
+    for (final key in [_keyShowAppIcon, _keyShowTimestamp, _keyCameraAvoidance, _keyUseOfficialBg]) {
       map[key] = prefs.getBool(key);
     }
     map[_keyDisplayDurationMs] = prefs.getInt(_keyDisplayDurationMs);
@@ -155,6 +160,7 @@ class NotificationStyle {
       'padding': padding.toStringAsFixed(0),
       'spacing': spacing.toStringAsFixed(0),
       'displayDurationMs': displayDurationMs.toString(),
+      'useOfficialBackground': useOfficialBackground.toString(),
     };
   }
 
@@ -169,6 +175,7 @@ class NotificationStyle {
     bool? showAppIcon,
     bool? showTimestamp,
     bool? cameraAvoidanceEnabled,
+    bool? useOfficialBackground,
     double? padding,
     double? spacing,
     int? displayDurationMs,
@@ -184,6 +191,7 @@ class NotificationStyle {
       showAppIcon: showAppIcon ?? this.showAppIcon,
       showTimestamp: showTimestamp ?? this.showTimestamp,
       cameraAvoidanceEnabled: cameraAvoidanceEnabled ?? this.cameraAvoidanceEnabled,
+      useOfficialBackground: useOfficialBackground ?? this.useOfficialBackground,
       padding: padding ?? this.padding,
       spacing: spacing ?? this.spacing,
       displayDurationMs: displayDurationMs ?? this.displayDurationMs,

@@ -120,8 +120,22 @@ class _NotificationStylePageState extends State<NotificationStylePage> {
 
           _buildSectionHeader('文本颜色', Icons.palette_outlined, const Color(0xFFAF52DE)),
           _buildColorSegmentedControl(),
-          const SizedBox(height: GlassTokens.spaceSM),
-          _buildColorWheel(),
+          if (_selectedColorTarget == ColorTarget.background) ...[
+            const SizedBox(height: GlassTokens.spaceSM),
+            _glassSwitchTile(
+              title: '使用官方背景',
+              subtitle: '背屏渐变底色，关闭后可自定义颜色',
+              value: _style.useOfficialBackground,
+              onChanged: (v) {
+                debugPrint('[FBS-TOGGLE] useOfficialBg=$v');
+                setState(() => _style.useOfficialBackground = v);
+              },
+            ),
+          ],
+          if (!(_selectedColorTarget == ColorTarget.background && _style.useOfficialBackground)) ...[
+            const SizedBox(height: GlassTokens.spaceSM),
+            _buildColorWheel(),
+          ],
           const SizedBox(height: GlassTokens.spaceMD),
 
           _buildSectionHeader('布局', Icons.grid_view_rounded, const Color(0xFF34C759)),
@@ -260,16 +274,36 @@ class _NotificationStylePageState extends State<NotificationStylePage> {
     final leftOffset =
         _style.cameraAvoidanceEnabled ? NotificationStyle.cameraAvoidanceOffset : 0.0;
 
-    return Container(
-      color: bgColor,
-      child: Stack(
-        children: [
-          // 背景全屏
-          Positioned.fill(
-            child: Container(color: bgColor),
+    debugPrint('[FBS-PREVIEW] useOfficialBg=${_style.useOfficialBackground} bgColor=${bgColor.toARGB32().toRadixString(16)}');
+
+    return Stack(
+      children: [
+        // 官方背景渐变层
+        if (_style.useOfficialBackground) ...[
+          const Positioned.fill(
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.bottomCenter,
+                  end: Alignment.topCenter,
+                  colors: const [
+                    Color(0xFFC87018),
+                    Color(0xFF8A300F),
+                    Color(0xFF7B2007),
+                    Color(0xFF571504),
+                    Color(0xFF210401),
+                    Color(0xFF000000),
+                  ],
+                  stops: [0.0, 0.30, 0.42, 0.55, 0.75, 1.0],
+                ),
+              ),
+            ),
           ),
-          // 摄像头避开区域 — 左侧阴影遮罩
-          if (_style.cameraAvoidanceEnabled)
+        ]
+        else
+          Positioned.fill(child: Container(color: bgColor)),
+        // 摄像头避开区域 — 左侧阴影遮罩
+        if (_style.cameraAvoidanceEnabled)
             Positioned(
               left: 0, top: 0, bottom: 0,
               width: NotificationStyle.cameraAvoidanceOffset,
@@ -399,8 +433,7 @@ class _NotificationStylePageState extends State<NotificationStylePage> {
         ),
       ), // Positioned end
     ], // Stack children end
-  ),
-); // Stack + Container end
+  );
 }
 
   String _formatTime(DateTime dt) {

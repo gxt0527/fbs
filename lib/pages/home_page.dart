@@ -77,9 +77,8 @@ class _HomePageState extends State<HomePage> {
           'padding': style.padding.toString(),
           'spacing': style.spacing.toString(),
           'displayDurationMs': style.displayDurationMs.toString(),
+          'useOfficialBackground': style.useOfficialBackground.toString(),
         };
-
-        // 构建展示内容 — 背屏和超级岛共用
         final displayContent = _buildDisplayContent(text, parsed);
         final codeInfo = parsed.keyInfos
             .where((k) => k.type == KeyType.code)
@@ -162,6 +161,7 @@ class _HomePageState extends State<HomePage> {
         'padding': style.padding.toString(),
         'spacing': style.spacing.toString(),
         'displayDurationMs': style.displayDurationMs.toString(),
+        'useOfficialBackground': style.useOfficialBackground.toString(),
       };
       
       // 5. 构建展示内容 — 背屏和超级岛共用
@@ -425,6 +425,7 @@ class _HomePageState extends State<HomePage> {
       'padding': style.padding.toString(),
       'spacing': style.spacing.toString(),
       'displayDurationMs': style.displayDurationMs.toString(),
+      'useOfficialBackground': style.useOfficialBackground.toString(),
     };
 
     // 获取码值用于 subtitle 和超级岛标题

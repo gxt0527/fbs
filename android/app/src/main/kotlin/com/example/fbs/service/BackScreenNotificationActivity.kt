@@ -98,6 +98,7 @@ class BackScreenNotificationActivity : Activity() {
             val spacing = intent.getStringExtra("spacing")?.toFloatOrNull() ?: 12f
             val horizontalOffset = intent.getStringExtra("horizontalOffset")?.toFloatOrNull() ?: 85f
             displayDurationMs = intent.getStringExtra("displayDurationMs")?.toLongOrNull() ?: 10000L
+            val useOfficialBg = intent.getStringExtra("useOfficialBackground")?.toBooleanStrictOrNull() ?: false
 
             // 摄像头避开：使用样式页设置的偏移量（dp 单位，自动 ×density 转 px）
             val cameraOffsetPx = if (cameraAvoidance) {
@@ -148,9 +149,10 @@ class BackScreenNotificationActivity : Activity() {
                     padding = padding,
                     spacing = spacing,
                     contentOffset = contentOffset,
+                    useOfficialBackground = useOfficialBg,
                 )
             )
-            renderView?.setBackgroundColor(backgroundColor)
+            renderView?.setBackgroundColor(if (useOfficialBg) Color.TRANSPARENT else backgroundColor)
 
             setContentView(renderView)
             Log.d(TAG, "setContentView done")
@@ -334,6 +336,7 @@ class BackScreenNotificationActivity : Activity() {
         val padding: Float,
         val spacing: Float,
         val contentOffset: Float = 0f,
+        val useOfficialBackground: Boolean = false,
     )
 
     // ═══════════════════════════════════════════
@@ -634,7 +637,30 @@ class BackScreenNotificationActivity : Activity() {
             val s = config.spacing * d
 
             // ── 背景 ──
-            canvas.drawRect(0f, 0f, w, h, bgPaint)
+            if (config.useOfficialBackground) {
+                // 官方背屏渐变: 底部橙色 → 顶部黑色（与 Flutter 预览一致）
+                val gradientShader = android.graphics.LinearGradient(
+                    0f, h,                  // x0=0, y0=bottom
+                    0f, 0f,                  // x1=0, y1=top
+                    intArrayOf(
+                        Color.parseColor("#C87018"),
+                        Color.parseColor("#8A300F"),
+                        Color.parseColor("#7B2007"),
+                        Color.parseColor("#571504"),
+                        Color.parseColor("#210401"),
+                        Color.parseColor("#000000"),
+                    ),
+                    floatArrayOf(0.0f, 0.30f, 0.42f, 0.55f, 0.75f, 1.0f),
+                    android.graphics.Shader.TileMode.CLAMP
+                )
+                val gradPaint = Paint().apply {
+                    shader = gradientShader
+                    style = Paint.Style.FILL
+                }
+                canvas.drawRect(0f, 0f, w, h, gradPaint)
+            } else {
+                canvas.drawRect(0f, 0f, w, h, bgPaint)
+            }
 
             var y = p
 
