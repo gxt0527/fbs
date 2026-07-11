@@ -46,3 +46,6 @@ app.*.map.json
 
 # FBS generated installer packages
 /tmp_install/
+
+# WorkBuddy workspace data
+.workbuddy/
