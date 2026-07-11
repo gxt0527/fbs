@@ -1,3 +1,4 @@
+// 未经用户允许禁止修改任何内容
 package com.example.fbs.service
 
 import android.content.ComponentName
@@ -197,22 +198,12 @@ class BackScreenController(private val context: Context) {
             execShizukuShell("input keyevent KEYCODE_WAKEUP; input keyevent KEYCODE_WAKEUP")
             execShizukuShell("dumpsys deviceidle disable")
 
-            // 1. 直接 startActivity（同一进程，taskId 正常分配）
-            val intent = android.content.Intent(context, Class.forName("com.example.fbs.service.BackScreenNotificationActivity")).apply {
-                putExtra("title", title)
-                putExtra("subtitle", subtitle)
-                putExtra("content", content)
-                putExtra("appName", appName)
-                putExtra("packageName", packageName)
-                putExtra("category", category)
-                // 传递全部样式参数
-                for ((k, v) in styleExtras) {
-                    putExtra(k, v)
-                }
-                addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
-            }
-            context.startActivity(intent)
-            Thread.sleep(500)
+            // 1. 用 am start 启动 Activity（走 Shizuku shell，绕过 Android 后台启动限制）
+            //    context.startActivity 在 FBS 未进入前台时会受 Android 12+ 后台限制静默失败
+            val cmd = buildLaunchCommand(title, subtitle, content, appName, packageName, styleExtras, category)
+            Log.d(TAG, "amStart cmdLen=${cmd.length} titleLen=${title.length} contentLen=${content.length}")
+            execShizukuShell(cmd)
+            Thread.sleep(600)  // 多等 100ms，am start 比 context.startActivity 慢
 
             // 2. 移到 display 1 + 杀 subscreencenter + 防AOD
             val taskId = getOurTaskId()
@@ -371,6 +362,7 @@ class BackScreenController(private val context: Context) {
         appName: String,
         packageName: String,
         styleExtras: Map<String, String>,
+        category: String = "general",
     ): String {
         val sb = StringBuilder()
         sb.append("am start")
@@ -379,11 +371,9 @@ class BackScreenController(private val context: Context) {
         sb.append(" --user 0")
 
         fun appendExtra(key: String, value: String) {
-            val escaped = value.replace("\\", "\\\\")
-                .replace("\"", "\\\"")
-                .replace("\$", "\\\$")
-                .replace("'", "\\'")
-            sb.append(" --es $key \"$escaped\"")
+            // 单引号包裹 + '\'' 转义：安全处理换行符、$、反斜杠等所有特殊字符
+            val escaped = value.replace("'", "'\\''")
+            sb.append(" --es $key '$escaped'")
         }
 
         appendExtra("title", title)
@@ -391,6 +381,7 @@ class BackScreenController(private val context: Context) {
         appendExtra("content", content)
         appendExtra("appName", appName)
         appendExtra("packageName", packageName)
+        appendExtra("category", category)
 
         for ((key, value) in styleExtras) {
             appendExtra(key, value)

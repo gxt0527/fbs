@@ -290,6 +290,13 @@ class MainActivity : FlutterActivity() {
                 "isMiuiOrHyperOS" -> {
                     result.success(PermissionHelper.isMiuiOrHyperOS())
                 }
+                "showToast" -> {
+                    val message = call.argument<String>("message") ?: ""
+                    if (message.isNotEmpty()) {
+                        android.widget.Toast.makeText(this, message, android.widget.Toast.LENGTH_SHORT).show()
+                    }
+                    result.success(true)
+                }
                 else -> {
                     result.notImplemented()
                 }

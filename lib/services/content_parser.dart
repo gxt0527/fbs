@@ -1,3 +1,5 @@
+import 'package:characters/characters.dart';
+
 // ===== Scene Category =====
 enum ParsedCategory {
   express,
@@ -83,6 +85,7 @@ class ContentParser {
     r'[\u{1F300}-\u{1F9FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}\u{FE00}-\u{FE0F}\u{200D}]',
     unicode: true,
   );
+  static final _isPureChinese = RegExp(r'^[\u4e00-\u9fa5]+$');
 
   // ═══════════════ Public API ═══════════════
 
@@ -90,11 +93,7 @@ class ContentParser {
     final raw = text.trim();
     if (raw.isEmpty) return ParsedContent(title: '', subtitle: '', body: '');
 
-    final lines = raw
-        .split(RegExp(r'\n|\r\n'))
-        .map((l) => l.trim())
-        .where((l) => l.isNotEmpty)
-        .toList();
+    final lines = _cleanLines(raw);
     if (lines.isEmpty) return ParsedContent(title: raw, subtitle: '', body: '');
 
     final category = _detectCategory(raw);
@@ -103,10 +102,25 @@ class ContentParser {
     final keyInfos = _extractKeyInfos(raw);
     final actions = _deriveActions(keyInfos);
 
+    // Build body from cleaned lines excluding title/subtitle lines, max 200 chars
+    final cleanTitle = title.replaceAll(_emojiRegex, '').trim();
+    final cleanSubtitle = subtitle.replaceAll(_emojiRegex, '').trim();
+    final bodyLines = lines.where((l) {
+      final clean = l.replaceAll(_emojiRegex, '').trim();
+      if (clean.isEmpty) return false;
+      if (clean == cleanTitle) return false;
+      if (cleanSubtitle.isNotEmpty && clean == cleanSubtitle) return false;
+      return true;
+    }).toList();
+    final joined = bodyLines.isNotEmpty ? bodyLines.join('\n') : raw;
+    // 字符级安全截断：避免 substring(0,197) 在 UTF-16 代理对中间截断产生非法字符串
+    final chars = joined.characters;
+    final body = chars.length > 200 ? '${chars.take(197)}...' : joined;
+
     return ParsedContent(
       title: title,
       subtitle: subtitle,
-      body: raw,
+      body: body,
       category: category,
       keyInfos: keyInfos,
       actions: actions,
@@ -115,6 +129,87 @@ class ContentParser {
 
   /// Strip emoji from a string.
   static String stripEmoji(String s) => s.replaceAll(_emojiRegex, '').trim();
+
+  /// OCR 文本清洗：去除控制字符、非打印字符、规范化换行
+  /// 防止 OCR 模型输出的特殊字符导致 Canvas 渲染异常
+  static String sanitizeOcrText(String text) {
+    if (text.isEmpty) return text;
+
+    var result = text;
+
+    // 1. 规范化换行符: \r\n → \n, 独立 \r → \n
+    result = result.replaceAll('\r\n', '\n');
+    result = result.replaceAll('\r', '\n');
+
+    // 2. 去除 C0 控制字符 (U+0000-U+001F)，保留 \n \t
+    //    去除 C1 控制字符 (U+007F-U+009F)
+    result = result.replaceAll(RegExp(r'[\x00-\x08\x0B\x0C\x0E-\x1F\x7F-\x9F]'), '');
+
+    // 3. 去除 Unicode 非字符 (Noncharacters)
+    result = result.replaceAll(RegExp(r'[\uFFFE\uFFFF\u{FDD0}-\u{FDEF}]', unicode: true), '');
+
+    // 4. 替换不可见零宽字符/方向标记为空白（避免影响文本布局）
+    result = result.replaceAll(RegExp(r'[\u200B-\u200F\u202A-\u202E\u2060-\u2064\uFEFF]'), '');
+
+    // 5. 去除行首行尾多余空白，合并连续空行为单个空行
+    result = result.split('\n')
+        .map((l) => l.trim())
+        .join('\n');
+    // 合并连续空行
+    result = result.replaceAll(RegExp(r'\n{3,}'), '\n\n');
+
+    return result.trim();
+  }
+
+  /// 过滤 OCR 文本中的状态栏噪音，用于背屏内容展示
+  /// 去除时间、电量、网络状态、版本号等噪音行
+  static String filterBackScreenContent(String text) {
+    if (text.isEmpty) return text;
+    return text.split('\n')
+        .map((l) => l.trim())
+        .where((l) => l.isNotEmpty && !_isStatusBarNoiseLine(l) && !_isMarketingNoiseLine(l))
+        .join('\n');
+  }
+
+  /// 营销/UI元素噪音行（"进群抽免单""长按识别二维码"等）
+  static final _marketingNoisePatterns = [
+    // 营销推广
+    RegExp(r'进群|加群|扫码|识别二维码|长按识别'),
+    RegExp(r'免单|抽奖|领券|领红包|券包|\d+张券|[兑兌]零?食'),
+    RegExp(r'支付有礼|支付完成\d*分钟后发放'),
+    RegExp(r'请在有效期内使用'),
+    RegExp(r'可获得|奖励\d*|甜蜜值'),
+    RegExp(r'^详情$'),
+    RegExp(r'再来一单'),
+    // 页面标题（非通知内容，已由 title 展示）
+    RegExp(r'^订单详情$'),
+    // UI碎片（OCR误识别）
+    RegExp(r'^[新赏优]$'),
+    RegExp(r'^[X×xX]\d*$'),
+    RegExp(r'^优惠券$'),
+  ];
+
+  static bool _isMarketingNoiseLine(String line) {
+    return _marketingNoisePatterns.any((p) => p.hasMatch(line));
+  }
+
+  /// 判断单行是否为状态栏噪音
+  static bool _isStatusBarNoiseLine(String line) {
+    // 1. 整行匹配
+    if (_statusBarLinePatterns.any((p) => p.hasMatch(line))) return true;
+    
+    // 2. 拆分令牌匹配：处理合并行如 "20:22 5G 58"
+    final tokens = line.split(RegExp(r'\s+'));
+    if (tokens.length >= 2 && tokens.every((t) => _isStatusBarToken(t))) return true;
+    
+    return false;
+  }
+  
+  /// 判断单个令牌是否为状态栏元素
+  static bool _isStatusBarToken(String token) {
+    if (token.isEmpty) return true;
+    return _statusBarLinePatterns.any((p) => p.hasMatch(token));
+  }
 
   // ═══════════════ Scene Detection ═══════════════
 
@@ -179,30 +274,56 @@ class ContentParser {
   static String _extractTitle(List<String> lines, ParsedCategory category) {
     if (lines.isEmpty) return '';
 
-    // Find the first non-empty non-emoji-only line
+    // Scan all lines and pick the most suitable title, skipping noise
     String pick(List<String> ls) {
+      String? bracketLine;
+      String? keywordLine;
+      String? fallbackLine;
+
       for (final l in ls) {
         final cleaned = l.replaceAll(_emojiRegex, '').trim();
-        if (cleaned.isNotEmpty) return cleaned;
+        if (cleaned.isEmpty) { continue; }
+
+        // Skip noise: short pure-Chinese (button labels) / decimal-only (version)
+        final isShortChineseNoise = cleaned.length <= 8 && _isPureChinese.hasMatch(cleaned) &&
+            !_containsAny(cleaned, ['取餐码', '取件码', '验证码', '订单号', '运单号', '快递单号']);
+        final isNoise = isShortChineseNoise || RegExp(r'^\d+\.\d+$').hasMatch(cleaned);
+        if (isNoise) { continue; }
+
+        bracketLine ??= (cleaned.contains('【') ? cleaned : null);
+        keywordLine ??= (_containsAny(cleaned, [
+          '取餐码', '取件码', '验证码', '订单号', '运单号', '快递单号',
+          '快递', '外卖', '包裹', '配送', '已签收', '已送达', '已取餐',
+        ]) ? cleaned : null);
+        fallbackLine ??= cleaned;
       }
-      return '';
+
+      // keywordLine (通知关键词) 优先于 bracketLine (来源名)，避免整行过长
+      return keywordLine ?? bracketLine ?? fallbackLine ?? '';
     }
 
     var first = pick(lines);
     if (first.isEmpty) return '';
 
-    // If it has 【】 brackets, keep it
-    if (first.contains('【')) return _truncate(first, 60);
-
     // Category-specific: try to form a meaningful title
     switch (category) {
       case ParsedCategory.express:
+        {
+          final label = _extractCodeLabel(lines,
+            RegExp(r'(取件码|取货码|提货码)\s*[:：]?\s*[\d\-]{3,15}'));
+          if (label != null) return label;
+        }
         return _match(lines, [
           RegExp(r'【[^】]+】.*?(?:包裹|快递|快件|物流).*'),
           RegExp(r'.*(?:已签收|已到达|派送中|即将派送|待取件).*'),
         ]) ?? first;
 
       case ParsedCategory.foodDelivery:
+        {
+          final label = _extractCodeLabel(lines,
+            RegExp(r'(取餐码|取餐号)\s*[:：]?\s*[A-Za-z0-9]{4,10}'));
+          if (label != null) return label;
+        }
         return _match(lines, [
           RegExp(r'【[^】]+】.*?(?:外卖|配送).*'),
           RegExp(r'.*(?:已接单|已取餐|配送中|已送达).*'),
@@ -215,6 +336,11 @@ class ContentParser {
         ]) ?? first;
 
       case ParsedCategory.verification:
+        {
+          final label = _extractCodeLabel(lines,
+            RegExp(r'(验证码|校验码|动态码)\s*[:：]?\s*[A-Za-z0-9]{4,12}'));
+          if (label != null) return label;
+        }
         return _match(lines, [
           RegExp(r'【([^】]+)】.*验证码'),
           RegExp(r'.*验证码.*'),
@@ -249,8 +375,24 @@ class ContentParser {
     return null;
   }
 
-  static String _truncate(String s, int max) =>
-      s.length > max ? '${s.substring(0, max - 3)}...' : s;
+  /// 从匹配行中只提取标签（不含码值），如 "取件码 3-2-8188" → "取件码"
+  static String? _extractCodeLabel(List<String> lines, RegExp pattern) {
+    for (final line in lines) {
+      final clean = line.replaceAll(_emojiRegex, '').trim();
+      if (clean.isEmpty) continue;
+      final m = pattern.firstMatch(clean);
+      if (m != null && m.groupCount >= 1) {
+        return _truncate(m.group(1)!, 60);  // 只返回 group 1 (标签名)
+      }
+    }
+    return null;
+  }
+
+  static String _truncate(String s, int max) {
+    if (s.length <= max) return s;
+    final chars = s.characters;
+    return chars.length > max ? '${chars.take(max - 3)}...' : s;
+  }
 
   // ═══════════════ Subtitle ═══════════════
 
@@ -286,8 +428,9 @@ class ContentParser {
     for (var i = 1; i < lines.length; i++) {
       final candidate = lines[i].replaceAll(_emojiRegex, '').trim();
       if (candidate.isEmpty || candidate == title) continue;
-      // Skip lines that are code/phone/URL/address-only
+      // Skip lines that are code/phone/URL/address-only / single-char Chinese (OCR noise)
       if (RegExp(r'^(1[3-9]\d{9}|https?://|[京津沪]|验证码|取件码)\s*').hasMatch(candidate)) continue;
+      if (_isPureChinese.hasMatch(candidate) && candidate.length <= 1) continue;
       second = candidate;
       break;
     }
@@ -296,9 +439,41 @@ class ContentParser {
 
   // ═══════════════ Key Infos ═══════════════
 
+  /// Lines that are status bar noise (time, battery, network, etc.)
+  static final _statusBarLinePatterns = [
+    RegExp(r'^\d{1,2}[:：]\d{2}(\s*\d{1,2}%?)?$'),         // 20:22 / 14:25 50%
+    RegExp(r'^\d{1,2}%?$'),                                  // 58 / 58%  (battery)
+    RegExp(r'^[A-Za-z]{2,3}\s*,?\s*\d{1,2}[:：]\d{2}$'),   // Mon 14:25
+    RegExp(r'^(周一|周二|周三|周四|周五|周六|周日)\s*\d{1,2}[:：]\d{2}'),
+    RegExp(r'^\d{4}[-/]\d{1,2}[-/]\d{1,2}$'),              // 2026-07-11
+    RegExp(r'^[45]G$', caseSensitive: false),                // 5G / 4G
+    RegExp(r'^WIFI$', caseSensitive: false),                 // WIFI
+    RegExp(r'^\d+\.\d+$'),                                   // 2.0 (version numbers)
+  ];
+
+  /// Remove status-bar noise lines from text (used by both title and key info)
+  static String _filterStatusBarNoise(String text) {
+    final lines = text.split('\n');
+    final filtered = lines.where((line) {
+      final trimmed = line.trim();
+      if (trimmed.isEmpty) return false;
+      return !_statusBarLinePatterns.any((p) => p.hasMatch(trimmed));
+    }).join('\n');
+    return filtered;
+  }
+
+  /// Filter noise lines AND return clean lines list for title/subtitle
+  static List<String> _cleanLines(String text) {
+    return _filterStatusBarNoise(text)
+        .split('\n')
+        .map((l) => l.trim())
+        .where((l) => l.isNotEmpty)
+        .toList();
+  }
+
   static List<KeyInfo> _extractKeyInfos(String text) {
     final infos = <KeyInfo>[];
-    final clean = text.replaceAll(_emojiRegex, '');
+    final clean = _filterStatusBarNoise(text.replaceAll(_emojiRegex, ''));
 
     void add(KeyInfo v) {
       if (!infos.any((i) => i.label == v.label && i.value == v.value)) {
@@ -306,9 +481,9 @@ class ContentParser {
       }
     }
 
-    // 1. 取件码（驿站/快递柜）- 4-8位数字，常见格式
+    // 1. 取件码（驿站/快递柜）- 支持数字+横杠组合，如 3-2-8188
     for (final m in RegExp(
-      r'(取件码|取件号|取货码|提货码|货架号|柜号|箱号)\s*[:：]?\s*(\d{4,8})',
+      r'(取件码|取件号|取货码|提货码|货架号|柜号|箱号)\s*[:：]?\s*([\d\-]{3,15})',
     ).allMatches(clean)) {
       add(KeyInfo(label: m.group(1)!, value: m.group(2)!, type: KeyType.code));
     }
@@ -453,9 +628,12 @@ class ContentParser {
         add(KeyInfo(label: '时间', value: full, type: KeyType.time));
       }
     }
-    // 短时间（HH:mm 范围）
+    // 短时间（HH:mm 范围）- 必须有上下文前缀，排除状态栏独立时间
     for (final m in RegExp(
-      r'(预计|约)?\s*[:：]?\s*'
+      r'(预计[送达]?|提醒|取件[时间]?|截止|到期|开始|出发|到达|'
+      r'配送[时间]?|送达[时间]?|营业[时间]?|服务[时间]?|'
+      r'约)'
+      r'\s*[:：]?\s*'
       r'(\d{1,2}[:：]\d{2})'
       r'\s*(?:[~—\-至到]\s*(\d{1,2}[:：]\d{2}))?',
     ).allMatches(clean)) {

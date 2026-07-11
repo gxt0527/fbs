@@ -108,6 +108,17 @@ class BackScreenNotificationActivity : Activity() {
             Log.d(TAG, "Parsed: title=$title, subtitle=$subtitle, content=${content.take(30)}, "
                 + "w=$titleFontSize, h=$subtitleFontSize, c=$contentFontSize, "
                 + "bg=#$backgroundColor, dur=$displayDurationMs")
+            
+            // 调试日志：检测内容中的特殊字符
+            val contentLen = content.length
+            val hasControlChars = content.any { it.code in 0x00..0x1F && it !in "\n\t\r" }
+            val hasHighControl = content.any { it.code in 0x7F..0x9F }
+            val hasBidiOrZW = content.any { it.code in 0x200B..0x200F || it.code in 0x202A..0x202E || it.code == 0xFEFF }
+            if (hasControlChars || hasHighControl || hasBidiOrZW) {
+                Log.w(TAG, "CONTENT HAS SPECIAL CHARS: control=$hasControlChars highCtrl=$hasHighControl bidi=$hasBidiOrZW, len=$contentLen")
+            } else {
+                Log.d(TAG, "Content clean: len=$contentLen, no special chars detected")
+            }
 
             // ── 检查 dismiss 指令（通知被清除时同步关闭背屏） ──
             if (intent.getStringExtra("dismiss")?.toBooleanStrictOrNull() == true) {
@@ -635,50 +646,69 @@ class BackScreenNotificationActivity : Activity() {
                 val iconTop = y
                 // 内边距 = 16%（与 preview padding 一致）
                 val iconPad = iconSize * 0.16f
-                drawSceneIcon(canvas, iconLeft + iconPad, iconTop + iconPad, iconSize - iconPad * 2)
+                try { drawSceneIcon(canvas, iconLeft + iconPad, iconTop + iconPad, iconSize - iconPad * 2) }
+                catch (e: Exception) { Log.w(TAG, "SceneIcon draw failed: ${e.message}") }
 
                 // 标题与图标间距 = spacing * 0.7（与 preview SizedBox 一致）
                 val titleX = iconLeft + iconSize + s * 0.7f
                 val titleBaseline = y + config.titleFontSize * d * 0.85f
-                canvas.drawText(config.title, titleX, titleBaseline, titlePaint)
+                try { canvas.drawText(config.title, titleX, titleBaseline, titlePaint) }
+                catch (e: Exception) { Log.w(TAG, "Title draw failed: ${e.message}") }
                 y += iconSize + s
             } else {
-                canvas.drawText(config.title, p + ox, y + config.titleFontSize * d, titlePaint)
+                try { canvas.drawText(config.title, p + ox, y + config.titleFontSize * d, titlePaint) }
+                catch (e: Exception) { Log.w(TAG, "Title draw failed: ${e.message}") }
                 y += config.titleFontSize * d + s
             }
 
             // ── 副标题 ──
             if (config.subtitle.isNotEmpty()) {
-                canvas.drawText(config.subtitle, p + ox, y + config.subtitleFontSize * d, subtitlePaint)
+                try { canvas.drawText(config.subtitle, p + ox, y + config.subtitleFontSize * d, subtitlePaint) }
+                catch (e: Exception) { Log.w(TAG, "Subtitle draw failed: ${e.message}") }
                 y += config.subtitleFontSize * d + s
             }
 
             // ── 正文（自动换行） ──
             val contentWidth = w - p * 2 - ox
             if (config.content.isNotEmpty() && contentWidth > 0) {
-                val tp = TextPaint(contentPaint)
-                val layout = if (android.os.Build.VERSION.SDK_INT >= 23) {
-                    StaticLayout.Builder.obtain(config.content, 0, config.content.length, tp, contentWidth.toInt())
-                        .setAlignment(Layout.Alignment.ALIGN_NORMAL)
-                        .setLineSpacing(0f, 1.2f)
-                        .setIncludePad(false)
-                        .setMaxLines(((h - y - p) / (config.contentFontSize * d * 1.3f)).toInt().coerceAtLeast(1))
-                        .build()
-                } else {
-                    @Suppress("DEPRECATION")
-                    StaticLayout(config.content, tp, contentWidth.toInt(), Layout.Alignment.ALIGN_NORMAL, 1.2f, 0f, false)
+                try {
+                    val tp = TextPaint(contentPaint)
+                    val layout = if (android.os.Build.VERSION.SDK_INT >= 23) {
+                        StaticLayout.Builder.obtain(config.content, 0, config.content.length, tp, contentWidth.toInt())
+                            .setAlignment(Layout.Alignment.ALIGN_NORMAL)
+                            .setLineSpacing(0f, 1.2f)
+                            .setIncludePad(false)
+                            .setMaxLines(((h - y - p) / (config.contentFontSize * d * 1.3f)).toInt().coerceAtLeast(1))
+                            .build()
+                    } else {
+                        @Suppress("DEPRECATION")
+                        StaticLayout(config.content, tp, contentWidth.toInt(), Layout.Alignment.ALIGN_NORMAL, 1.2f, 0f, false)
+                    }
+                    canvas.save()
+                    canvas.translate(p + ox, y)
+                    layout.draw(canvas)
+                    canvas.restore()
+                } catch (e: Exception) {
+                    Log.w(TAG, "Content layout/draw failed: ${e.message}, contentLen=${config.content.length}")
+                    // 降级：只绘制首行文本（保证背屏有内容可看）
+                    try {
+                        val safeLen = config.content.length.coerceAtMost(200)
+                        val fallbackText = if (config.content.length > safeLen)
+                            config.content.substring(0, safeLen) else config.content
+                        canvas.drawText(fallbackText, p + ox, y + config.contentFontSize * d, contentPaint)
+                    } catch (_: Exception) {
+                        Log.w(TAG, "Content fallback draw also failed")
+                    }
                 }
-                canvas.save()
-                canvas.translate(p + ox, y)
-                layout.draw(canvas)
-                canvas.restore()
             }
 
             // ── 时间戳 ──
             if (config.showTimestamp) {
-                val now = timeFormat.format(Date())
-                val timeTextWidth = timestampPaint.measureText(now)
-                canvas.drawText(now, w - p - timeTextWidth, h - p, timestampPaint)
+                try {
+                    val now = timeFormat.format(Date())
+                    val timeTextWidth = timestampPaint.measureText(now)
+                    canvas.drawText(now, w - p - timeTextWidth, h - p, timestampPaint)
+                } catch (e: Exception) { Log.w(TAG, "Timestamp draw failed: ${e.message}") }
             }
         }
     }

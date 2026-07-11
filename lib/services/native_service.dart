@@ -226,6 +226,13 @@ class NativeService {
     }
   }
 
+  /// 显示原生 Android Toast
+  Future<void> showToast(String message) async {
+    try {
+      await _methodChannel.invokeMethod('showToast', {'message': message});
+    } catch (_) {}
+  }
+
   void dispose() {
     _sharedContentController.close();
   }

@@ -27,11 +27,6 @@ class _HomePageState extends State<HomePage> {
   bool _isForwarding = false;
   ParsedContent? _parsed;
 
-  String _now() {
-    final t = DateTime.now();
-    return '${t.hour.toString().padLeft(2, '0')}:${t.minute.toString().padLeft(2, '0')}:${t.second.toString().padLeft(2, '0')}';
-  }
-
   @override
   void initState() {
     super.initState();
@@ -83,34 +78,34 @@ class _HomePageState extends State<HomePage> {
           'displayDurationMs': style.displayDurationMs.toString(),
         };
 
-        // 转发到背屏
-        await _nativeService.displayOnBackScreen(
-          title: parsed.title,
-          subtitle: parsed.subtitle,
-          content: text,
-          styleExtras: styleMap,
-          category: parsed.category.name,
-        );
-        // 转发到超级岛 — 取餐码/取件码拼接到标题
+        // 构建展示内容 — 背屏和超级岛共用
+        final displayContent = _buildDisplayContent(text, parsed);
         final codeInfo = parsed.keyInfos
             .where((k) => k.type == KeyType.code)
             .firstOrNull;
+        final codeValue = codeInfo?.value ?? parsed.subtitle;
         final islandTitle = codeInfo != null
-            ? '${parsed.title} · ${codeInfo.value}'
+            ? '${parsed.title} ${codeInfo.value}'
             : parsed.title;
-        final islandContent = parsed.subtitle.isNotEmpty ? parsed.subtitle : text;
+
+        // 先发超级岛
         await _nativeService.sendSuperIslandNotification(
           title: islandTitle,
-          content: islandContent,
+          content: displayContent,
           category: parsed.category.name,
         );
 
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-            content: Text('已转发: ${parsed.title} [${_now()}]'),
-            duration: const Duration(seconds: 2),
-          ));
-        }
+        // 延迟100ms再发背屏 — 内容与超级岛一致，subtitle用码值
+        await Future.delayed(const Duration(milliseconds: 100));
+        await _nativeService.displayOnBackScreen(
+          title: parsed.title,
+          subtitle: codeValue,
+          content: displayContent,
+          styleExtras: styleMap,
+          category: parsed.category.name,
+        );
+
+        _nativeService.showToast('已转发: ${parsed.title}');
       }
     });
   }
@@ -119,34 +114,37 @@ class _HomePageState extends State<HomePage> {
   Future<void> _processSharedImage(String imageUri) async {
     if (!mounted) return;
     
-    // 显示加载提示
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('正在识别图片文字... [${_now()}]'),
-        duration: const Duration(seconds: 3),
-      ),
-    );
+    _nativeService.showToast('正在识别图片文字...');
     
     try {
       // 1. 调用原生OCR识别图片文字
       final ocrResult = await _nativeService.recognizeImageText(imageUri);
       
       if (!ocrResult.success || ocrResult.text.trim().isEmpty) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('识别失败: ${ocrResult.errorMessage} [${_now()}]'),
-              duration: const Duration(seconds: 2),
-            ),
-          );
-        }
+        _nativeService.showToast('识别失败: ${ocrResult.errorMessage}');
         return;
       }
       
-      // 2. 使用ContentParser解析识别结果
-      final parsed = ContentParser.parse(ocrResult.text);
+      // 2. 清洗 OCR 原始文本：去除控制字符、非打印字符、规范化换行
+      //    防止 OCR 模型输出的特殊字符导致背屏 Canvas 渲染异常
+      final sanitizedText = ContentParser.sanitizeOcrText(ocrResult.text);
       
-      // 3. 获取背屏样式
+      // 调试日志：记录 OCR 文本与清洗后的对比
+      debugPrint('[FBS-OCR] raw=${ocrResult.text.length}chars/${ocrResult.lineCount}lines, '
+          'sanitized=${sanitizedText.length}chars');
+      // 检测是否包含特殊字符
+      final controlChars = RegExp(r'[\x00-\x08\x0B\x0C\x0E-\x1F\x7F-\x9F]');
+      final specialChars = RegExp(r'[\u200B-\u200F\u202A-\u202E\uFEFF\uFFFE\uFFFF]');
+      final rawHasControl = ocrResult.text.contains(controlChars);
+      final rawHasSpecial = ocrResult.text.contains(specialChars);
+      if (rawHasControl || rawHasSpecial) {
+        debugPrint('[FBS-OCR] WARNING: raw text has control=$rawHasControl special=$rawHasSpecial');
+      }
+      
+      // 3. 使用 ContentParser 解析清洗后的文本
+      final parsed = ContentParser.parse(sanitizedText);
+      
+      // 4. 获取背屏样式
       final style = await NotificationStyle.load();
       final styleMap = {
         'titleFontSize': style.titleFontSize.toString(),
@@ -165,47 +163,156 @@ class _HomePageState extends State<HomePage> {
         'displayDurationMs': style.displayDurationMs.toString(),
       };
       
-      // 4. 转发到背屏
+      // 5. 构建展示内容 — 背屏和超级岛共用
+      final displayContent = _buildDisplayContent(sanitizedText, parsed);
+      final codeInfo = parsed.keyInfos
+          .where((k) => k.type == KeyType.code)
+          .firstOrNull;
+      final codeValue = codeInfo?.value ?? parsed.subtitle;
+      final islandTitle = codeInfo != null
+          ? '${parsed.title} ${codeInfo.value}'
+          : parsed.title;
+
+      // 6. 先发超级岛
+      await _nativeService.sendSuperIslandNotification(
+        title: islandTitle,
+        content: displayContent,
+        category: parsed.category.name,
+      );
+
+      // 7. 延迟100ms再发背屏 — 内容与超级岛一致，subtitle用码值
+      await Future.delayed(const Duration(milliseconds: 100));
       await _nativeService.displayOnBackScreen(
         title: parsed.title,
-        subtitle: parsed.subtitle,
-        content: parsed.body,
+        subtitle: codeValue,
+        content: displayContent,
         styleExtras: styleMap,
         category: parsed.category.name,
       );
       
-      // 5. 转发到超级岛 — 优先显示提取到的关键码值
-      final codeInfo = parsed.keyInfos
-          .where((k) => k.type == KeyType.code)
-          .firstOrNull;
-      final islandTitle = codeInfo != null
-          ? '${parsed.title} · ${codeInfo.value}'
-          : parsed.title;
-      final islandContent = parsed.subtitle.isNotEmpty ? parsed.subtitle : parsed.body;
-      await _nativeService.sendSuperIslandNotification(
-        title: islandTitle,
-        content: islandContent,
-        category: parsed.category.name,
-      );
-      
-      // 6. 显示成功提示
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text('已识别并转发: ${parsed.title} [${_now()}]'),
-          duration: const Duration(seconds: 2),
-        ));
-      }
+      // 8. 显示成功提示
+      _nativeService.showToast('已识别并转发: ${parsed.title}');
       
     } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('处理失败: $e [${_now()}]'),
-            duration: const Duration(seconds: 2),
-          ),
-        );
+      _nativeService.showToast('处理失败: $e');
+    }
+  }
+
+  /// 构建统一展示内容（背屏和超级岛共用）
+  /// 外卖=产品|店名，快递=取件地址，其他=首行
+  String _buildDisplayContent(String sourceText, ParsedContent parsed) {
+    final filtered = ContentParser.filterBackScreenContent(sourceText);
+    final lines = filtered.split('\n')
+        .where((l) => l.trim().isNotEmpty)
+        .map((l) => l.trim())
+        .toList();
+    switch (parsed.category) {
+      case ParsedCategory.express:
+        return _extractExpressAddress(lines);
+      case ParsedCategory.foodDelivery:
+        return _extractProductAndShop(lines);
+      default:
+        return lines.isNotEmpty ? lines.first : '';
+    }
+  }
+
+  /// 快递场景: 提取 快递品牌 | 取件点
+  String _extractExpressAddress(List<String> lines) {
+    final expressBrands = {'菜鸟驿站', '菜鸟', '妈妈驿站', '丰巢', '京东快递',
+      '圆通', '中通', '韵达', '申通', '顺丰', '极兔', '邮政'};
+    
+    // 找快递品牌
+    String? brand;
+    for (final l in lines) {
+      for (final b in expressBrands) {
+        if (l.contains(b)) { brand = b == '菜鸟' ? '菜鸟驿站' : b; break; }
+      }
+      if (brand != null) break;
+    }
+    
+    // ── 策略1: "已到"/"已到达" 拼接多行地址（妈妈驿站场景） ──
+    String? address;
+    for (var i = 0; i < lines.length; i++) {
+      if (lines[i].contains('已到') || lines[i].contains('已到达') || lines[i].contains('请到')) {
+        final buf = StringBuffer(lines[i]);
+        for (var j = i + 1; j < lines.length; j++) {
+          final next = lines[j];
+          if (next.isEmpty || next.length <= 1) break;
+          if (RegExp(r'^(提醒|查看|更多|详情|电话|订单)').hasMatch(next)) break;
+          buf.write(next);
+        }
+        address = buf.toString();
+        break;
       }
     }
+    if (address != null) {
+      final addr = address.length > 24 ? '${address.characters.take(22)}...' : address;
+      return brand != null ? '$brand | $addr' : addr;
+    }
+    
+    // ── 策略2: 品牌 + 干净位置行（菜鸟驿站场景） ──
+    String? cleanLocation;
+    for (final l in lines) {
+      // 必须是位置行: 含"店"/"柜"/"驿站"
+      if (!l.contains('店') && !l.contains('柜') && !l.contains('驿站')) continue;
+      // 跳过非位置行: 含手机号、标题标记、取件码
+      if (RegExp(r'1[3-9]\d{9}').hasMatch(l)) continue;
+      if (l.contains('【') || l.contains('】')) continue;
+      if (l.contains('取件码') || l.contains('取货码')) continue;
+      if (l.contains('送达') || l.contains('签收') || l.contains('已取')) continue;
+      if (cleanLocation == null || l.length > cleanLocation.length) cleanLocation = l;
+    }
+    if (brand != null && cleanLocation != null) {
+      final loc = cleanLocation.length > 16 ? '${cleanLocation.characters.take(14)}...' : cleanLocation;
+      return '$brand | $loc';
+    }
+    
+    // ── 策略3: 兜底 ──
+    if (address != null) return address;
+    if (brand != null && cleanLocation != null) return '$brand | $cleanLocation';
+    var longest = '';
+    for (final l in lines) { if (l.length > longest.length && l.length > 4) longest = l; }
+    return longest.length > 24 ? '${longest.characters.take(22)}...' : longest;
+  }
+
+  /// 外卖场景: 产品名 | 店名
+  String _extractProductAndShop(List<String> lines) {
+    final brands = {'蜜雪冰城', '美团', '饿了么', '饿了吗', '星巴克', '瑞幸', '肯德基', '麦当劳'};
+    
+    // 产品名: 2-12字中文/字母，不由品牌名组成，优先选择后面跟价格的行
+    String? product;
+    for (var i = 0; i < lines.length; i++) {
+      final t = lines[i].trim();
+      if (t.length < 2 || t.length > 12) continue;
+      if (!RegExp(r'^[\u4e00-\u9fff\w\s]+$').hasMatch(t)) continue;
+      if (t.contains('店') || t.contains('详情')) continue;
+      if (brands.contains(t)) continue;  // 跳过品牌名
+      
+      // 检查下一行是否为价格（优先选）
+      if (i + 1 < lines.length) {
+        final next = lines[i + 1].trim();
+        if (RegExp(r'^[¥￥]\s*\d').hasMatch(next)) {
+          product = t;
+          break;  // 找到产品+价格组合，直接确定
+        }
+      }
+      product ??= t;  // 兜底: 第一个符合条件的行
+    }
+    
+    // 店名: 包含"店"字的最长行（截取20字），排除营销文案
+    String? shop;
+    for (final l in lines) {
+      if (l.contains('店') && !l.contains('免单') && !l.contains('抽奖')) {
+        if (shop == null || l.length > shop.length) {
+          shop = l.length > 20 ? '${l.characters.take(18)}...' : l;
+        }
+      }
+    }
+    
+    if (product != null && shop != null) return '$product | $shop';
+    if (product != null) return product;
+    if (shop != null) return shop;
+    return lines.isNotEmpty ? lines.first : '';
   }
 
   Future<void> _refreshStatus() async {
