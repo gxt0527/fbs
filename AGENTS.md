@@ -1,7 +1,7 @@
 # FBS 开发环境 — 完整搭建清单
 
 > 项目: FBS (Flutter Back Screen) — 通知转发工具
-> 最后验证: 2026-07-06, `flutter build apk --debug` 编译成功，通知监听+应用列表过滤功能正常
+> 最后验证: 2026-07-14, 超级岛光效+按钮已成功显示，图标修复中
 
 ---
 
@@ -10,7 +10,7 @@
 | 组件 | 版本 | 用途 |
 |------|------|------|
 | Flutter SDK | 3.44.4 (Dart 3.12.2) | 框架 |
-| JDK | **17** (OpenJDK 17.0.2) | Gradle/Android 编译 (**不能用 JDK 26，jlink 不兼容**) |
+| JDK | **17** (Microsoft JDK 17.0.19+10) | Gradle/Android 编译 (**不能用 JDK 26，jlink 不兼容**) |
 | Android SDK cmdline-tools | latest | sdkmanager |
 | Android SDK Platform | android-36, android-37 | 编译目标 |
 | Android Build Tools | 37.0.0 | APK 构建 |
@@ -36,7 +36,7 @@ C:\Android\Sdk\                      ← Android SDK
   platform-tools\                    ← adb
   tools\bin\avdmanager.bat           ← 从 cmdline-tools 复制（修复 VS Code 警告）
 D:\MSRR\fbs\                         ← 项目根目录
-D:\jdk17\jdk-17.0.2\                ← OpenJDK 17.0.2（给 Gradle 用）
+C:\Program Files\Microsoft\jdk-17.0.19.10-hotspot\    ← Microsoft JDK 17.0.19+10（给 Gradle 用）
 C:\Users\Admin\.gradle\              ← Gradle 缓存（自动创建）
 ```
 
@@ -49,24 +49,25 @@ C:\Users\Admin\.gradle\              ← Gradle 缓存（自动创建）
 | 软件 | 下载地址 |
 |------|----------|
 | Flutter 3.44.4 | `https://storage.googleapis.com/flutter_infra_release/releases/stable/windows/flutter_windows_3.44.4-stable.zip` |
-| OpenJDK 17.0.2 | `https://download.java.net/java/GA/jdk17.0.2/dfd4a8d0985749f896bed50d7138ee7f/8/GPL/openjdk-17.0.2_windows-x64_bin.zip` |
+| Microsoft JDK 17.0.19+10 | `https://aka.ms/download-jdk/microsoft-jdk-17.0.19-windows-x64.msi` |
 | Android cmdline-tools | `https://dl.google.com/android/repository/commandlinetools-win-11076708_latest.zip` |
 
 ### 3.2 安装顺序
 
 ```powershell
 # 1. 解压 Flutter 到 C:\flutter
-# 2. 解压 JDK 17 到 D:\jdk17\jdk-17.0.2
+# 2. 安装 Microsoft JDK 17.0.19+10 (msi，默认路径 C:\Program Files\Microsoft\jdk-17.0.19.10-hotspot)
 # 3. 解压 cmdline-tools 到 C:\Android\Sdk\cmdline-tools\latest\
 
 # 4. 设置环境变量（管理员 PowerShell）
-[Environment]::SetEnvironmentVariable("JAVA_HOME", "D:\jdk17\jdk-17.0.2", "Machine")
+[Environment]::SetEnvironmentVariable("JAVA_HOME", "C:\Program Files\Microsoft\jdk-17.0.19.10-hotspot", "Machine")
+
 [Environment]::SetEnvironmentVariable("ANDROID_HOME", "C:\Android\Sdk", "Machine")
 [Environment]::SetEnvironmentVariable("ANDROID_SDK_ROOT", "C:\Android\Sdk", "Machine")
 
 # 5. 添加 PATH
 $currentPath = [Environment]::GetEnvironmentVariable("PATH", "Machine")
-$newPath = "$currentPath;C:\flutter\bin;C:\flutter\bin\mingit\mingw64\bin;D:\jdk17\jdk-17.0.2\bin;C:\Android\Sdk\platform-tools;C:\Android\Sdk\cmdline-tools\latest\bin"
+$newPath = "$currentPath;C:\flutter\bin;C:\flutter\bin\mingit\mingw64\bin;C:\Program Files\Microsoft\jdk-17.0.19.10-hotspot\bin;C:\Android\Sdk\platform-tools;C:\Android\Sdk\cmdline-tools\latest\bin"
 [Environment]::SetEnvironmentVariable("PATH", $newPath, "Machine")
 
 # 6. 配置 Flutter
@@ -86,7 +87,7 @@ code --install-extension dart-code.flutter
 
 # 10. 验证
 flutter doctor
-java -version   # 应显示 openjdk 17.0.2
+java -version   # 应显示 openjdk 17.0.19
 ```
 
 ---
@@ -109,7 +110,7 @@ android.useAndroidX=true
 android.newDsl=false
 android.builtInKotlin=false
 kotlin.incremental=false
-org.gradle.java.home=D:\\jdk17\\jdk-17.0.2
+org.gradle.java.home=C:\\Program Files\\Microsoft\\jdk-17.0.19.10-hotspot
 ```
 
 > **注意**: `org.gradle.java.home` 路径指向 JDK 17，如果 JDK 解压到不同位置需要修改。
@@ -175,8 +176,8 @@ distributionUrl=https\://services.gradle.org/distributions/gradle-9.1.0-all.zip
 
 ```powershell
 # 每次打开终端需设置（或写入系统环境变量）
-$env:JAVA_HOME = "D:\jdk17\jdk-17.0.2"
-$env:Path = "D:\jdk17\jdk-17.0.2\bin;C:\flutter\bin;C:\Android\Sdk\cmdline-tools\latest\bin;C:\Android\Sdk\platform-tools;" + $env:Path
+$env:JAVA_HOME = "C:\Program Files\Microsoft\jdk-17.0.19.10-hotspot"
+$env:Path = "C:\Program Files\Microsoft\jdk-17.0.19.10-hotspot\bin;C:\flutter\bin;C:\Android\Sdk\cmdline-tools\latest\bin;C:\Android\Sdk\platform-tools;" + $env:Path
 
 # 获取依赖
 flutter pub get
@@ -222,7 +223,7 @@ flutter devices                  # 确认设备已识别
 
 ```powershell
 flutter --version          # 应显示 3.44.4
-java -version              # 应显示 openjdk 17.0.2
+java -version              # 应显示 openjdk 17.0.19
 flutter doctor             # 除 Chrome/VS 外全绿
 adb devices                # 显示已连接设备
 flutter pub get            # 成功无报错
@@ -259,6 +260,50 @@ monitorAll == false → 仅焦点/实时动态通知转发
 **验证结果（2026-07-06）：**
 - `monitorAll=false enabled=0 apps` → `Skip: com.xiaomi.finddevice regular=true` 过滤正常
 - 应用列表加载：485 个应用（用户 484 + 系统 1）
+
+### 2026-07-14 超级岛光效+按钮突破
+
+**核心发现：必须与第三方 app（com.binge.misuperisland）的通知 JSON 格式完全一致**
+
+第三方 app dumpsys 对比分析得出的关键差异（dumpsys 命令：`adb shell dumpsys notification --noredact | Select-String "miui.focus.param"`）：
+
+| 差异项 | 第三方 app | 我们（之前） | 结果 |
+|--------|-----------|-------------|------|
+| 文本信息 key | `baseInfo` (type=2) | `iconTextInfo` + `animIconInfo` | **必须用 baseInfo** |
+| 通知 flags | `ONLY_ALERT_ONCE` | `ONGOING_EVENT\|PROMOTED_ONGOING` | **不能设 setOngoing(true)** |
+| channel importance | 4 (HIGH) | 3 (DEFAULT 被锁定) | **必须用新 channel ID** |
+| android.requestPromotedOngoing | 不设 | 设为 true | **不能设** |
+| category | 无 | `status` | **不能设** |
+| vis | PRIVATE | PUBLIC | **必须 PRIVATE** |
+| 小图标 key | 场景图标 | `ic_action_confirm` 硬编码 | **用 iconRes** |
+
+**最终生效的代码（SuperIslandHelper.kt）：**
+```kotlin
+// Notification builder — 不设 setOngoing, 不设 category, 不设 requestPromotedOngoing
+setSmallIcon(iconRes)
+setOnlyAlertOnce(true)
+setVisibility(Notification.VISIBILITY_PRIVATE)
+
+// Focus V3 extras — 用 baseInfo 而非 iconTextInfo
+baseInfo = BaseInfo().apply {
+    title = tit; content = ctt; type = 2
+}
+picInfo = PicInfo().apply { type = 1; pic = createPicture("global_light", icon); picDark = createPicture("global_dark", icon) }
+outEffectSrc = "outer_glow"  // 光效
+textButton = arrayListOf(...)  // 按钮
+
+// 小图标用场景图标，不用硬编码
+val icon = Icon.createWithResource(context, iconRes)
+```
+
+**当前状态：**
+- ✅ 光效（outer_glow）显示
+- ✅ 按钮（打开/删除）显示
+- ✅ baseInfo + type=2 格式匹配
+- ✅ 通知栏小图标用场景图标
+- ✅ channel importance=4 (HIGH)
+- ❌ 上岛动画（暂不加）
+- ⚠️ 岛上小图标待验证是否正确显示场景图标
 
 ### 2026-07-06 之前的工作
 

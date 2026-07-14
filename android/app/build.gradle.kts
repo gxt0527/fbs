@@ -19,7 +19,7 @@ android {
         applicationId = "com.example.fbs"
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.
-        minSdk = 26
+        minSdk = 27
         targetSdk = 37
         versionCode = flutter.versionCode
         versionName = flutter.versionName
@@ -52,6 +52,10 @@ dependencies {
     implementation("com.microsoft.onnxruntime:onnxruntime-android:1.21.1")
     implementation("org.opencv:opencv:4.13.0")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.9.0")
+
+    // Focus Notification API (HyperOS 焦点通知逆向库)
+    implementation(files("libs/focus-api-debug.aar"))
+    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.10.0")
 }
 
 kotlin {

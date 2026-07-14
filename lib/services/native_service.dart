@@ -85,12 +85,24 @@ class NativeService {
   Future<void> sendSuperIslandNotification({
     required String title, required String content,
     String category = 'general',
+    String? bgColorHex,
+    bool glow = false,
+    String? glowColorHex,
+    bool callAnimation = false,
+    bool iconBitmap = false,
   }) async {
     try {
       await _methodChannel.invokeMethod('sendSuperIslandNotification', {
         'title': title, 'content': content, 'iconName': category,
+        if (bgColorHex != null) 'bgColor': bgColorHex,
+        'glow': glow,
+        if (glowColorHex != null) 'glowColor': glowColorHex,
+        'callAnimation': callAnimation,
+        'iconBitmap': iconBitmap,
       });
-    } catch (_) {}
+    } catch (e) {
+      print('[FBS] sendSuperIslandNotification error: $e');
+    }
   }
   Future<void> cancelSuperIslandNotification() async {
     try { await _methodChannel.invokeMethod('cancelSuperIslandNotification'); } catch (_) {}

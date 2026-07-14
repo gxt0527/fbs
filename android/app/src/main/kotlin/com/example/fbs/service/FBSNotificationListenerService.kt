@@ -169,6 +169,30 @@ class FBSNotificationListenerService : NotificationListenerService() {
         super.onNotificationPosted(sbn)
         if (sbn == null) return
 
+        // 🔍 捕获第三方超级岛的通知 extras（用于分析按钮/动画格式）
+        if (sbn.packageName == "com.binge.misuperisland") {
+            Log.w(TAG, "=== 3RD PARTY NOTIFICATION ===")
+            Log.w(TAG, "ID=${sbn.id} key=${sbn.key} chan=${sbn.notification.channelId}")
+            val extras = sbn.notification.extras
+            if (extras != null) {
+                Log.w(TAG, "Extras keys: ${extras.keySet().joinToString(", ")}")
+                for (key in extras.keySet()) {
+                    val value = extras.get(key)
+                    if (value is Bundle) {
+                        Log.w(TAG, "  Bundle[$key]: keys=${value.keySet()}")
+                        for (k2 in value.keySet()) {
+                            Log.w(TAG, "    Bundle[$key][$k2]=${value.get(k2)}")
+                        }
+                    } else if (value is String && value.length < 2000) {
+                        Log.w(TAG, "  String[$key]=$value")
+                    } else {
+                        Log.w(TAG, "  $key=${value?.toString()?.take(500)}")
+                    }
+                }
+            }
+            Log.w(TAG, "=== END 3RD PARTY ===")
+        }
+
         seenKeys.add(sbn.key)
         processAndSendNotification(sbn, "posted")
     }
