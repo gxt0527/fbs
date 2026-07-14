@@ -46,3 +46,8 @@ app.*.map.json
 
 # WorkBuddy workspace data
 .workbuddy/
+
+# Reverse engineering temp outputs
+tmp_pronto/
+tmp_focus/
+tmp_apk_extract/
