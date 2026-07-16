@@ -220,22 +220,14 @@ class MainActivity : FlutterActivity() {
                     backScreenController.sleepBackScreen()
                     result.success(true)
                 }
-                // 超级岛
+                // 超级岛 (HyperIsland-ToolKit)
                 "sendSuperIslandNotification" -> {
                     val title = call.argument<String>("title") ?: ""
                     val content = call.argument<String>("content") ?: ""
                     val iconName = call.argument<String>("iconName") ?: "general"
-                    val bgColorStr = call.argument<String>("bgColor")
-                    val glow = call.argument<Boolean>("glow") ?: false
-                    val glowColorStr = call.argument<String>("glowColor")
-                    val callAnimation = call.argument<Boolean>("callAnimation") ?: false
-                    val iconBitmap = call.argument<Boolean>("iconBitmap") ?: false
-                    val bgColor = bgColorStr?.let { parseColorHex(it) }
-                    val glowColor = glowColorStr?.let { parseColorHex(it) } ?: 0
+
                     com.example.fbs.service.SuperIslandHelper.sendNotification(
-                        this, title, content, iconName,
-                        bgColor = bgColor, glow = glow, glowColor = glowColor,
-                        callAnimation = callAnimation, iconBitmap = iconBitmap,
+                        this, title, content, iconName
                     )
                     result.success(true)
                 }
@@ -305,6 +297,14 @@ class MainActivity : FlutterActivity() {
                     val message = call.argument<String>("message") ?: ""
                     if (message.isNotEmpty()) {
                         android.widget.Toast.makeText(this, message, android.widget.Toast.LENGTH_SHORT).show()
+                    }
+                    result.success(true)
+                }
+                "launchHyperIslandTest" -> {
+                    try {
+                        startActivity(Intent(this, com.example.fbs.hyperisland.HyperIslandTestActivity::class.java))
+                    } catch (e: Exception) {
+                        android.util.Log.e("FBS", "launchHyperIslandTest failed", e)
                     }
                     result.success(true)
                 }
@@ -496,17 +496,6 @@ class MainActivity : FlutterActivity() {
         } catch (e: Exception) {
             Log.e("MainActivity", "fallback also failed", e)
         }
-    }
-
-    private fun parseColorHex(hex: String): Int? {
-        return try {
-            val h = hex.removePrefix("#")
-            when (h.length) {
-                6 -> android.graphics.Color.parseColor("#FF$h")
-                8 -> android.graphics.Color.parseColor("#$h")
-                else -> null
-            }
-        } catch (_: Exception) { null }
     }
 
     override fun onDestroy() {

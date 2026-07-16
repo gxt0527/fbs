@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import '../services/native_service.dart';
 import '../services/content_parser.dart';
 import '../services/scene_icons.dart';
@@ -29,26 +28,12 @@ class _HomePageState extends State<HomePage> {
   ParsedContent? _parsed;
   String _filteredContent = '';
 
-  // ── 超级岛设置 ──
-  bool _islandGlow = true;
-
-  // ── 测试面板 ──
-  bool _testEnabled = false;
-  bool _testCallAnimation = true;
-  bool _testIconBitmap = false;
-
   @override
   void initState() {
     super.initState();
     _refreshStatus();
     _listenNotificationEvents();
     _listenSharedContent();
-    _loadIslandSettings();
-  }
-
-  void _loadIslandSettings() async {
-    final prefs = await SharedPreferences.getInstance();
-    if (mounted) setState(() => _islandGlow = prefs.getBool('island_glow') ?? true);
   }
 
   /// 监听通知移除事件 — 通知被清除时同步关闭背屏
@@ -108,10 +93,6 @@ class _HomePageState extends State<HomePage> {
           title: islandTitle,
           content: displayContent,
           category: parsed.category.name,
-          bgColorHex: _colorToHex6(const Color(0xFFFF9500)),
-          glow: _islandGlow,
-          callAnimation: _testEnabled && _testCallAnimation,
-          iconBitmap: _testEnabled && _testIconBitmap,
         );
 
         // 延迟100ms再发背屏 — 内容与超级岛一致，subtitle用码值
@@ -198,10 +179,6 @@ class _HomePageState extends State<HomePage> {
         title: islandTitle,
         content: displayContent,
         category: parsed.category.name,
-        bgColorHex: _colorToHex6(const Color(0xFFFF9500)),
-        glow: _islandGlow,
-        callAnimation: _testEnabled && _testCallAnimation,
-        iconBitmap: _testEnabled && _testIconBitmap,
       );
 
       // 7. 延迟100ms再发背屏 — 内容与超级岛一致，subtitle用码值
@@ -222,11 +199,6 @@ class _HomePageState extends State<HomePage> {
     }
   }
 
-  /// Color → "#RRGGBB" 大写
-  String _colorToHex6(Color c) =>
-      '#${((c.value >> 16) & 0xFF).toRadixString(16).padLeft(2, '0')}'
-      '${((c.value >> 8) & 0xFF).toRadixString(16).padLeft(2, '0')}'
-      '${(c.value & 0xFF).toRadixString(16).padLeft(2, '0')}'.toUpperCase();
 
   /// 构建统一展示内容（背屏和超级岛共用）
   /// 外卖=产品|店名，快递=取件地址，其他=首行
@@ -473,8 +445,6 @@ class _HomePageState extends State<HomePage> {
         category: category,
       );
       if (showAnimation) {
-        final prefs = await SharedPreferences.getInstance();
-        final glow = prefs.getBool('island_glow') ?? true;
         final parsedTitle = _parsed?.title ?? title;
         final islandTitle = codeInfo != null
             ? '$parsedTitle ${codeInfo.value}'
@@ -483,10 +453,6 @@ class _HomePageState extends State<HomePage> {
           title: islandTitle,
           content: _filteredContent,
           category: category,
-          bgColorHex: _colorToHex6(const Color(0xFFFF9500)),
-          glow: _islandGlow,
-          callAnimation: _testEnabled && _testCallAnimation,
-          iconBitmap: _testEnabled && _testIconBitmap,
         );
       }
       if (mounted) {
@@ -521,6 +487,27 @@ class _HomePageState extends State<HomePage> {
           letterSpacing: -0.3,
         )),
         actions: [
+          // HyperIsland 测试工具入口
+          Padding(
+            padding: const EdgeInsets.only(right: 4),
+            child: GestureDetector(
+              onTap: () => _nativeService.launchHyperIslandTest(),
+              child: Container(
+                width: 36, height: 36,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: GlassTokens.glassGradient(Theme.of(context).brightness),
+                  border: Border.all(
+                    color: isDark ? Colors.white.withValues(alpha: 0.08) : Colors.white.withValues(alpha: 0.30),
+                    width: 0.5,
+                  ),
+                  boxShadow: GlassTokens.glassShadow(Theme.of(context).brightness),
+                ),
+                child: Center(child: Icon(Icons.science_outlined, size: 18,
+                  color: isDark ? Colors.white70 : const Color(0xFF6200EE))),
+              ),
+            ),
+          ),
           Padding(
             padding: const EdgeInsets.only(right: 12),
             child: GestureDetector(
@@ -935,40 +922,7 @@ class _HomePageState extends State<HomePage> {
 
   Widget _buildSecondaryActions() {
     return Column(children: [
-      // ── 测试面板 ──
-      if (_testEnabled) Container(
-        margin: const EdgeInsets.only(bottom: 8),
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(GlassTokens.radiusSM),
-          color: Colors.orange.withValues(alpha: 0.1),
-          border: Border.all(color: Colors.orange.withValues(alpha: 0.3)),
-        ),
-        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text('测试面板', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.orange)),
-          const SizedBox(height: 8),
-          Row(children: [
-            Text('光环动画', style: TextStyle(fontSize: 12, color: Colors.white70)),
-            const Spacer(),
-            Switch(value: _testCallAnimation, onChanged: (v) => setState(() => _testCallAnimation = v),
-              activeColor: Colors.orange),
-          ]),
-          Row(children: [
-            Text('小图标发光烘焙', style: TextStyle(fontSize: 12, color: Colors.white70)),
-            const Spacer(),
-            Switch(value: _testIconBitmap, onChanged: (v) => setState(() => _testIconBitmap = v),
-              activeColor: Colors.orange),
-          ]),
-        ]),
-      ),
       Row(children: [
-        Expanded(child: _buildGlassAction(
-          icon: Icons.science_outlined,
-          label: _testEnabled ? '🧪 ON' : '🧪',
-          color: _testEnabled ? Colors.orange : null,
-          onTap: () => setState(() => _testEnabled = !_testEnabled),
-        )),
-        const SizedBox(width: 8),
         Expanded(child: _buildGlassAction(
           icon: Icons.cleaning_services,
           label: '清除',

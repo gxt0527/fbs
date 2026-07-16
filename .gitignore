@@ -51,3 +51,13 @@ app.*.map.json
 tmp_pronto/
 tmp_focus/
 tmp_apk_extract/
+
+# 超级岛攻关联分析报告（含反编译结论，不可公开）
+*攻坚总结*.md
+*攻关联*.md
+*分析报告*.md
+*反编译*.md
+*课程表分析*.md
+*实现总结*.md
+*模板规范*.md
+*最终实现方案*.md

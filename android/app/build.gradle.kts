@@ -4,10 +4,21 @@ plugins {
     id("dev.flutter.flutter-gradle-plugin")
 }
 
+import java.util.Properties
+val keystoreProperties = Properties()
+val keystorePropertiesFile = rootProject.file("key.properties")
+if (keystorePropertiesFile.exists()) {
+    keystoreProperties.load(keystorePropertiesFile.inputStream())
+}
+
 android {
     namespace = "com.example.fbs"
     compileSdk = flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion
+
+    buildFeatures {
+        aidl = true
+    }
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
@@ -19,8 +30,8 @@ android {
         applicationId = "com.example.fbs"
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.
-        minSdk = 27
-        targetSdk = 37
+        minSdk = 35
+        targetSdk = 36
         versionCode = flutter.versionCode
         versionName = flutter.versionName
         ndk {
@@ -28,9 +39,18 @@ android {
         }
     }
 
+    signingConfigs {
+        create("release") {
+            keyAlias = keystoreProperties["keyAlias"] as String?
+            keyPassword = keystoreProperties["keyPassword"] as String?
+            storeFile = keystoreProperties["storeFile"]?.let { rootProject.file(it) }
+            storePassword = keystoreProperties["storePassword"] as String?
+        }
+    }
+
     buildTypes {
         release {
-            signingConfig = signingConfigs.getByName("debug")
+            signingConfig = signingConfigs.getByName("release")
         }
     }
 
@@ -53,9 +73,8 @@ dependencies {
     implementation("org.opencv:opencv:4.13.0")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.9.0")
 
-    // Focus Notification API (HyperOS 焦点通知逆向库)
-    implementation(files("libs/focus-api-debug.aar"))
-    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.10.0")
+    // HyperIsland-ToolKit (HyperOS Dynamic Island / Focus Notification 正式实现)
+    implementation("io.github.d4viddf:hyperisland_kit:0.4.3")
 }
 
 kotlin {

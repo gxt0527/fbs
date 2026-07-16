@@ -1,6 +1,9 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
+    <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
     <uses-permission android:name="android.permission.POST_PROMOTED_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.QUERY_ALL_PACKAGES" />
@@ -81,9 +84,33 @@
             android:exported="false"
             android:foregroundServiceType="dataSync" />
 
+        <!-- ─── HyperIsland 独立测试（独立于 FBS 核心） ─── -->
+        <activity
+            android:name=".hyperisland.HyperIslandTestActivity"
+            android:exported="true"
+            android:theme="@android:style/Theme.Material.Light.NoActionBar"
+            android:excludeFromRecents="true" />
+
+        <receiver
+            android:name=".hyperisland.TestBroadcastReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="com.example.fbs.TEST_SUPER_ISLAND" />
+            </intent-filter>
+        </receiver>
+
         <receiver
             android:name=".service.DismissReceiver"
             android:exported="false" />
+
+        <!-- 调试：adb broadcast 一键触发 ToolKit 路径发送岛的最小用例 -->
+        <receiver
+            android:name=".service.TestIslandTriggerReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="com.example.fbs.TEST_SUPER_ISLAND" />
+            </intent-filter>
+        </receiver>
 
         <provider
             android:name="androidx.core.content.FileProvider"
