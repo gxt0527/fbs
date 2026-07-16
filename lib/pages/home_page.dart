@@ -25,6 +25,7 @@ class _HomePageState extends State<HomePage> {
   bool _isShizukuRunning = false;
   bool _hasShizukuPermission = false;
   bool _isForwarding = false;
+  bool _isBypassing = false;
   ParsedContent? _parsed;
   String _filteredContent = '';
 
@@ -403,6 +404,56 @@ class _HomePageState extends State<HomePage> {
 
   Future<void> _forwardAll() async => _doForward(true);
 
+  /// 网络阻断转发（已验证稳定）
+  Future<void> _sendWithNetworkBypass() async {
+    if (_isBypassing) return;
+    setState(() => _isBypassing = true);
+    final category = _parsed?.category.name ?? 'general';
+    // 提取结构化字段
+    final codeInfo = _parsed?.keyInfos
+        .where((k) => k.type == KeyType.code)
+        .firstOrNull;
+    final codeValue = codeInfo?.value ?? '';
+    final amountInfo = _parsed?.keyInfos
+        .where((k) => k.type == KeyType.amount)
+        .firstOrNull;
+    final itemsInfo = _parsed?.keyInfos
+        .where((k) => k.label == '件数')
+        .firstOrNull;
+    final locationInfo = _parsed?.keyInfos
+        .where((k) => k.type == KeyType.location)
+        .firstOrNull;
+    // 展开岛标题：只显示"取餐码: 7656"（标签+码值）
+    final label = _parsed?.title.isNotEmpty == true ? _parsed!.title : '';
+    final title = '$label: $codeValue';
+    // 展开岛内容：只传门店/地址（不做拼接，避免重复）
+    final content = locationInfo?.value ?? _subtitleController.text.trim();
+    // 副标题：留空
+    const subtitle = '';
+    try {
+      await _nativeService.sendFocusWithNetworkBypass(
+        title: title,
+        content: content,
+        subtitle: subtitle,
+        codeValue: codeValue,
+        category: category,
+      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('已发送网络阻断转发'), duration: Duration(seconds: 2)),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('转发失败: $e')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isBypassing = false);
+    }
+  }
+
   Future<void> _doForward(bool showAnimation) async {
     if (_isForwarding) return;
     setState(() => _isForwarding = true);
@@ -556,6 +607,8 @@ class _HomePageState extends State<HomePage> {
             ],
             const SizedBox(height: 16),
             _buildForwardButtons(),
+            const SizedBox(height: 8),
+            _buildNetworkBypassButton(),
             const SizedBox(height: 10),
             _buildSecondaryActions(),
           ],
@@ -913,6 +966,60 @@ class _HomePageState extends State<HomePage> {
                   color: canForward ? Colors.white : (isDark ? Colors.white38 : Colors.black38),
                 ),
               ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildNetworkBypassButton() {
+    final canForward = _isShizukuRunning && _hasShizukuPermission && _titleController.text.trim().isNotEmpty;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return GestureDetector(
+      onTap: canForward && !_isBypassing ? _sendWithNetworkBypass : null,
+      child: Container(
+        width: double.infinity, height: 46,
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(GlassTokens.radiusFull),
+          gradient: canForward
+            ? const LinearGradient(colors: [Color(0xFF00BCD4), Color(0xFF0097A7)])
+            : GlassTokens.glassGradient(Theme.of(context).brightness),
+          border: Border.all(
+            color: canForward
+              ? const Color(0xFF00BCD4).withValues(alpha: 0.3)
+              : (isDark ? Colors.white.withValues(alpha: 0.08) : Colors.white.withValues(alpha: 0.30)),
+            width: 0.5,
+          ),
+          boxShadow: canForward
+            ? [BoxShadow(color: const Color(0xFF00BCD4).withValues(alpha: 0.3), blurRadius: 10, offset: const Offset(0, 4))]
+            : GlassTokens.glassShadow(Theme.of(context).brightness),
+        ),
+        child: Center(
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (_isBypassing)
+                const Padding(
+                  padding: EdgeInsets.only(right: 8),
+                  child: SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white)),
+                )
+              else
+                Padding(
+                  padding: const EdgeInsets.only(right: 6),
+                  child: Icon(Icons.shield_outlined, size: 18,
+                    color: canForward ? Colors.white : (isDark ? Colors.white38 : Colors.black38)),
+                ),
+              Text(
+                _isBypassing ? '阻断转发中...' : '网络阻断转发',
+                style: TextStyle(
+                  fontSize: 14, fontWeight: FontWeight.w600,
+                  color: canForward ? Colors.white : (isDark ? Colors.white38 : Colors.black38),
+                ),
+              ),
+              const SizedBox(width: 4),
+              Icon(Icons.bolt, size: 14,
+                color: canForward ? const Color(0xFFFFD700) : (isDark ? Colors.white24 : Colors.black26)),
             ],
           ),
         ),

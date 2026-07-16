@@ -235,6 +235,18 @@ class MainActivity : FlutterActivity() {
                     com.example.fbs.service.SuperIslandHelper.cancelNotification(this)
                     result.success(true)
                 }
+                // 网络阻断转发（已验证稳定的方案）
+                "sendFocusWithNetworkBypass" -> {
+                    val title = call.argument<String>("title") ?: ""
+                    val content = call.argument<String>("content") ?: ""
+                    val subtitle = call.argument<String>("subtitle") ?: ""
+                    val codeValue = call.argument<String>("codeValue") ?: ""
+                    val category = call.argument<String>("category") ?: "general"
+                    com.example.fbs.hyperisland.FocusForwarder.send(
+                        this, title, content, subtitle, codeValue, category
+                    )
+                    result.success(true)
+                }
                 "hasPromotedNotificationPermission" -> {
                     result.success(com.example.fbs.service.SuperIslandHelper.hasPromotedPermission(this))
                 }

@@ -97,6 +97,27 @@ class NativeService {
       print('[FBS] sendSuperIslandNotification error: $e');
     }
   }
+
+  // 网络阻断转发（已验证稳定的方案）
+  Future<void> sendFocusWithNetworkBypass({
+    required String title,
+    required String content,
+    String subtitle = '',
+    String codeValue = '',
+    String category = 'general',
+  }) async {
+    try {
+      await _methodChannel.invokeMethod('sendFocusWithNetworkBypass', {
+        'title': title,
+        'content': content,
+        'subtitle': subtitle,
+        'codeValue': codeValue,
+        'category': category,
+      });
+    } catch (e) {
+      print('[FBS] sendFocusWithNetworkBypass error: $e');
+    }
+  }
   Future<void> cancelSuperIslandNotification() async {
     try { await _methodChannel.invokeMethod('cancelSuperIslandNotification'); } catch (_) {}
   }

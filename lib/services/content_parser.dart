@@ -550,6 +550,20 @@ class ContentParser {
       add(KeyInfo(label: '金额', value: amount, type: KeyType.amount));
     }
 
+    // 门店名称
+    for (final m in RegExp(
+      r'(门店|店铺|餐厅|店)[：:]\s*(.+)',
+    ).allMatches(clean)) {
+      add(KeyInfo(label: m.group(1)!, value: m.group(2)!.trim(), type: KeyType.location));
+    }
+
+    // 件数（如 "件数：1杯" "共1件" "1杯"）
+    for (final m in RegExp(
+      r'(?:件数|共)\s*[：:]?\s*(\d+)\s*(杯|件|份|单|箱|袋|瓶|盒|个)',
+    ).allMatches(clean)) {
+      add(KeyInfo(label: '件数', value: '${m.group(1)!}${m.group(2)!}', type: KeyType.general));
+    }
+
     // 7. 手机号（兼容带空格/横杠）
     for (final m in RegExp(
       r'(?:[电話电话联系方式][：:]?\s*)?(1[3-9]\d[\s\-]?\d[\s\-]?\d[\s\-]?\d[\s\-]?\d[\s\-]?\d[\s\-]?\d[\s\-]?\d)',

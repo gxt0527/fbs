@@ -60,7 +60,7 @@ class TestNotificationHelper(private val ctx: Context) {
                 "\"sequence\":$seq," +
                 "\"baseInfo\":{\"type\":2,\"title\":\"高等数学\",\"content\":\"第1-2节｜A301｜08:00\",\"subTitle\":\"\",\"extraTitle\":\"\",\"specialTitle\":\"\",\"subContent\":\"\",\"picFunction\":\"\",\"showDivider\":true,\"showContentDivider\":false,\"colorTitle\":\"#111111\",\"colorTitleDark\":\"#ffffff\",\"colorContent\":\"#333333\",\"colorContentDark\":\"#cccccc\"}," +
                 "\"picInfo\":{\"type\":1,\"pic\":\"\"}," +
-                "\"hintInfo\":{\"type\":2,\"content\":\"即将上课\",\"title\":\"\",\"timerInfo\":{\"timerType\":0,\"timerWhen\":0,\"timerTotal\":0,\"timerSystemCurrent\":0},\"subContent\":\"地点\",\"subTitle\":\"A301\",\"colorContent\":\"#666666\",\"colorContentDark\":\"#aaaaaa\",\"colorTitle\":\"#222222\",\"colorTitleDark\":\"#eeeeee\",\"colorSubContent\":\"#666666\",\"colorSubContentDark\":\"#aaaaaa\",\"colorSubTitle\":\"#222222\",\"colorSubTitleDark\":\"#eeeeee\",\"actionInfo\":{\"actionTitle\":\"查看课表\",\"actionIntentType\":1,\"actionIntent\":\"intent:#Intent;component=com.example.fbs/.hyperisland.HyperIslandTestActivity;end\"}}," +
+                "\"hintInfo\":{\"type\":2,\"content\":\"即将上课\",\"title\":\"\",\"subContent\":\"地点\",\"subTitle\":\"A301\",\"colorContent\":\"#666666\",\"colorContentDark\":\"#aaaaaa\",\"colorTitle\":\"#222222\",\"colorTitleDark\":\"#eeeeee\",\"colorSubContent\":\"#666666\",\"colorSubContentDark\":\"#aaaaaa\",\"colorSubTitle\":\"#222222\",\"colorSubTitleDark\":\"#eeeeee\",\"actionInfo\":{\"actionTitle\":\"查看课表\",\"actionIntentType\":1,\"actionIntent\":\"intent:#Intent;component=com.example.fbs/.hyperisland.HyperIslandTestActivity;end\"}}," +
                 "\"param_island\":{\"islandProperty\":1,\"islandTimeout\":3600," +
                 "\"bigIslandArea\":{\"templateNo\":2,\"imageTextInfoLeft\":{\"type\":1,\"textInfo\":{\"title\":\"高等数学\",\"content\":\"\",\"showHighlightColor\":false,\"narrowFont\":false}},\"textInfo\":{\"frontTitle\":\"\",\"title\":\"A301\",\"content\":\"\",\"showHighlightColor\":false,\"narrowFont\":false}}," +
                 "\"smallIslandArea\":{\"picInfo\":{\"type\":1,\"pic\":\"miui.focus.pic_small\",\"picDark\":\"miui.focus.pic_small_dark\"}}}" +
@@ -149,7 +149,6 @@ class TestNotificationHelper(private val ctx: Context) {
             val sourcePkg = "com.example.fbs"
             val sourceIcon = Icon.createWithResource(ctx, com.example.fbs.R.drawable.ic_scene_food)
             val sourceIntent = ctx.packageManager.getLaunchIntentForPackage(sourcePkg)
-
             // 构建 JSON — 小米官方格式，展示取餐信息
             val islandParams = "{\"param_v2\":{" +
                 "\"business\":\"course_reminder\"," +
@@ -160,7 +159,7 @@ class TestNotificationHelper(private val ctx: Context) {
                 "\"sequence\":$bypassCounter," +
                 "\"baseInfo\":{\"type\":2,\"title\":\"取餐码: 7656\",\"content\":\"门店：新乡工商职业学院店\",\"subTitle\":\"金额：¥8 ｜ 件数：1杯\",\"extraTitle\":\"\",\"specialTitle\":\"\",\"subContent\":\"\",\"picFunction\":\"\",\"showDivider\":true,\"showContentDivider\":false,\"colorTitle\":\"#D32F2F\",\"colorTitleDark\":\"#EF5350\",\"colorContent\":\"#333333\",\"colorContentDark\":\"#cccccc\",\"colorSubTitle\":\"#666666\",\"colorSubTitleDark\":\"#aaaaaa\"}," +
                 "\"picInfo\":{\"type\":1,\"pic\":\"\"}," +
-                "\"hintInfo\":{\"type\":2,\"content\":\"智能分类：美食\",\"subContent\":\"\",\"subTitle\":\"\",\"actionInfo\":{\"actionTitle\":\"查看\",\"actionIntentType\":1,\"actionIntent\":\"intent:#Intent;component=com.example.fbs/.MainActivity;end\"}}," +
+                "\"hintInfo\":{\"type\":2,\"content\":\"智能分类：美食\",\"title\":\"\",\"subContent\":\"\",\"subTitle\":\"\",\"actionInfo\":{\"actionTitle\":\"查看\",\"actionIntentType\":1,\"actionIntent\":\"intent:#Intent;component=com.example.fbs/.MainActivity;end\"}}," +
                 "\"param_island\":{\"islandProperty\":1,\"islandTimeout\":3600," +
                 "\"bigIslandArea\":{\"templateNo\":2,\"imageTextInfoLeft\":{\"type\":1,\"picInfo\":{\"type\":1,\"pic\":\"miui.focus.pic_small\"},\"textInfo\":{\"title\":\"取餐码\",\"content\":\"新乡工商职业学院店\",\"showHighlightColor\":false,\"narrowFont\":false}},\"textInfo\":{\"frontTitle\":\"\",\"title\":\"7656 ｜ 1杯\",\"content\":\"\",\"showHighlightColor\":false,\"narrowFont\":false}}," +
                 "\"smallIslandArea\":{\"picInfo\":{\"type\":1,\"pic\":\"miui.focus.pic_small\",\"picDark\":\"miui.focus.pic_small_dark\"}}}" +
