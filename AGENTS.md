@@ -305,6 +305,16 @@ val icon = Icon.createWithResource(context, iconRes)
 - ❌ 上岛动画（暂不加）
 - ⚠️ 岛上小图标待验证是否正确显示场景图标
 
+### 2026-07-17 模板#9 超级岛展开显示件数+金额修复
+
+**问题：** 超级岛展开后不显示件数和金额。
+
+**根因：** `buildIslandJsonTemplate9` 中件数/金额文本只放在 `bigIslandArea.textInfo.content`，但 HyperOS 模板 9 展开布局不渲染该字段。
+
+**方案：** 将件数+金额拼接到店名前，作为 `baseInfo.content` 的值，这样 HyperOS 展开时会在左侧区域显示完整文本（"件数：1杯  金额：¥8  门店名"）。
+
+**改动文件：** `FocusForwarder.kt` — `buildIslandJsonTemplate9()` 新增 `contentText` 变量，将 `subTitleText`（件数/金额）和 `storeName` 拼接后作为 `baseInfo.content`。
+
 ### 2026-07-06 之前的工作
 
 详见 git commit 历史。主要功能：

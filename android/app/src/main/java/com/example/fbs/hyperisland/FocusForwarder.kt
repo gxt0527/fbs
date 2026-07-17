@@ -178,10 +178,14 @@ object FocusForwarder {
             "}}}"
     }
 
-    // ═══════════════════════════════════════════════════════
+    // ═════════════════════════════════════════════════════════
     // 🆕 模板 #9 — 文本组件2 + 识别图形组件1 + 按钮组件2
     // 适用于：取餐码、电影票等场景
-    // ═══════════════════════════════════════════════════════
+    //
+    // ⚠️ 禁止任何对模板的修改，只能通过调用字段更换显示的内容！
+    //    模板 JSON 字段（baseInfo/bigIslandArea/hintInfo）不可增删改结构，
+    //    如需调整显示内容，请修改调用方传入的参数值。
+    // ═════════════════════════════════════════════════════════
 
     /**
      * 模板 #9 网络阻断转发 — 适用于取餐码场景。
@@ -327,6 +331,13 @@ object FocusForwarder {
             if (amount.isNotEmpty()) { append("金额：¥$amount") }
         }
 
+        // 把件数+金额拼接到店名前面作为 content 字段
+        val contentText = buildString {
+            if (subTitleText.isNotEmpty()) { append(subTitleText) }
+            if (subTitleText.isNotEmpty() && storeName.isNotEmpty()) { append("  ") }
+            if (storeName.isNotEmpty()) { append(storeName) }
+        }
+
         val safeLabel = label.ifEmpty { "取餐码" }
 
         return "{\"param_v2\":{" +
@@ -339,8 +350,8 @@ object FocusForwarder {
             "\"baseInfo\":{" +
                 "\"type\":2," +
                 "\"title\":\"${escape(safeLabel)}\"," +
-                "\"content\":\"${escape(storeName)}\"," +
-                "\"extraTitle\":\"${escape(codeValue)}\"," +
+            "\"content\":\"${escape(contentText)}\"," +
+            "\"extraTitle\":\"${escape(codeValue)}\"," +
                 "\"specialTitle\":\"\"," +
                 "\"subContent\":\"\"," +
                 "\"picFunction\":\"\"," +

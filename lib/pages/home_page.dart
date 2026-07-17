@@ -24,7 +24,6 @@ class _HomePageState extends State<HomePage> {
 
   bool _isShizukuRunning = false;
   bool _hasShizukuPermission = false;
-  bool _isForwarding = false;
   bool _isBypassing = false;
   ParsedContent? _parsed;
   String _filteredContent = '';
@@ -59,53 +58,12 @@ class _HomePageState extends State<HomePage> {
         // 新流程：图片分享 → OCR识别 → 解析 → 转发到超级岛+背屏
         await _processSharedImage(shared.imageUri!);
       } else if (shared.text != null && shared.text!.trim().isNotEmpty) {
-        // 文本：自动解析 → 转发到背屏 + 超级岛
+        // 文本：自动解析 → #9 超级岛 + 背屏
         final text = shared.text!.trim();
         final parsed = ContentParser.parse(text);
-        final style = await NotificationStyle.load();
-        final styleMap = {
-          'titleFontSize': style.titleFontSize.toString(),
-          'subtitleFontSize': style.subtitleFontSize.toString(),
-          'contentFontSize': style.contentFontSize.toString(),
-          'titleColor': '#${style.titleColor.toARGB32().toRadixString(16).padLeft(8, '0')}',
-          'subtitleColor': '#${style.subtitleColor.toARGB32().toRadixString(16).padLeft(8, '0')}',
-          'contentColor': '#${style.contentColor.toARGB32().toRadixString(16).padLeft(8, '0')}',
-          'backgroundColor': '#${style.backgroundColor.toARGB32().toRadixString(16).padLeft(8, '0')}',
-          'showAppIcon': style.showAppIcon.toString(),
-          'showTimestamp': style.showTimestamp.toString(),
-          'cameraAvoidanceEnabled': style.cameraAvoidanceEnabled.toString(),
-          'horizontalOffset': NotificationStyle.cameraAvoidanceOffset.toStringAsFixed(0),
-          'padding': style.padding.toString(),
-          'spacing': style.spacing.toString(),
-          'displayDurationMs': style.displayDurationMs.toString(),
-          'useOfficialBackground': style.useOfficialBackground.toString(),
-        };
         final displayContent = _buildDisplayContent(text, parsed);
-        final codeInfo = parsed.keyInfos
-            .where((k) => k.type == KeyType.code)
-            .firstOrNull;
-        final codeValue = codeInfo?.value ?? parsed.subtitle;
-        final islandTitle = codeInfo != null
-            ? '${parsed.title} ${codeInfo.value}'
-            : parsed.title;
 
-        // 先发超级岛
-        await _nativeService.sendSuperIslandNotification(
-          title: islandTitle,
-          content: displayContent,
-          category: parsed.category.name,
-        );
-
-        // 延迟100ms再发背屏 — 内容与超级岛一致，subtitle用码值
-        await Future.delayed(const Duration(milliseconds: 100));
-        await _nativeService.displayOnBackScreen(
-          title: parsed.title,
-          subtitle: codeValue,
-          content: displayContent,
-          styleExtras: styleMap,
-          category: parsed.category.name,
-        );
-
+        await _forwardViaTemplate9(parsed, displayContent, parsed.category.name);
         _nativeService.showToast('已转发: ${parsed.title}');
       }
     });
@@ -145,54 +103,12 @@ class _HomePageState extends State<HomePage> {
       // 3. 使用 ContentParser 解析清洗后的文本
       final parsed = ContentParser.parse(sanitizedText);
       
-      // 4. 获取背屏样式
-      final style = await NotificationStyle.load();
-      final styleMap = {
-        'titleFontSize': style.titleFontSize.toString(),
-        'subtitleFontSize': style.subtitleFontSize.toString(),
-        'contentFontSize': style.contentFontSize.toString(),
-        'titleColor': '#${style.titleColor.toARGB32().toRadixString(16).padLeft(8, '0')}',
-        'subtitleColor': '#${style.subtitleColor.toARGB32().toRadixString(16).padLeft(8, '0')}',
-        'contentColor': '#${style.contentColor.toARGB32().toRadixString(16).padLeft(8, '0')}',
-        'backgroundColor': '#${style.backgroundColor.toARGB32().toRadixString(16).padLeft(8, '0')}',
-        'showAppIcon': style.showAppIcon.toString(),
-        'showTimestamp': style.showTimestamp.toString(),
-        'cameraAvoidanceEnabled': style.cameraAvoidanceEnabled.toString(),
-        'horizontalOffset': NotificationStyle.cameraAvoidanceOffset.toStringAsFixed(0),
-        'padding': style.padding.toString(),
-        'spacing': style.spacing.toString(),
-        'displayDurationMs': style.displayDurationMs.toString(),
-        'useOfficialBackground': style.useOfficialBackground.toString(),
-      };
-      
-      // 5. 构建展示内容 — 背屏和超级岛共用
+      // 4. 构建展示内容
       final displayContent = _buildDisplayContent(sanitizedText, parsed);
-      final codeInfo = parsed.keyInfos
-          .where((k) => k.type == KeyType.code)
-          .firstOrNull;
-      final codeValue = codeInfo?.value ?? parsed.subtitle;
-      final islandTitle = codeInfo != null
-          ? '${parsed.title} ${codeInfo.value}'
-          : parsed.title;
 
-      // 6. 先发超级岛
-      await _nativeService.sendSuperIslandNotification(
-        title: islandTitle,
-        content: displayContent,
-        category: parsed.category.name,
-      );
-
-      // 7. 延迟100ms再发背屏 — 内容与超级岛一致，subtitle用码值
-      await Future.delayed(const Duration(milliseconds: 100));
-      await _nativeService.displayOnBackScreen(
-        title: parsed.title,
-        subtitle: codeValue,
-        content: displayContent,
-        styleExtras: styleMap,
-        category: parsed.category.name,
-      );
+      // 5. 转发到 #9 超级岛 + 背屏（统一 helper）
+      await _forwardViaTemplate9(parsed, displayContent, parsed.category.name);
       
-      // 8. 显示成功提示
       _nativeService.showToast('已识别并转发: ${parsed.title}');
       
     } catch (e) {
@@ -402,87 +318,43 @@ class _HomePageState extends State<HomePage> {
     }
   }
 
-  Future<void> _forwardAll() async => _doForward(true);
 
-  /// 网络阻断转发（已验证稳定）
-  Future<void> _sendWithNetworkBypass() async {
+  /// 统一转发入口：#9 超级岛 + 背屏同步转发
+  /// 由图片OCR、分享文本、按钮三个入口统一调用
+  Future<void> _forwardViaTemplate9(ParsedContent parsed, String displayContent, String category) async {
     if (_isBypassing) return;
     setState(() => _isBypassing = true);
-    final category = _parsed?.category.name ?? 'general';
-    // 提取结构化字段
-    final codeInfo = _parsed?.keyInfos
-        .where((k) => k.type == KeyType.code)
-        .firstOrNull;
-    final codeValue = codeInfo?.value ?? '';
-    final amountInfo = _parsed?.keyInfos
-        .where((k) => k.type == KeyType.amount)
-        .firstOrNull;
-    final itemsInfo = _parsed?.keyInfos
-        .where((k) => k.label == '件数')
-        .firstOrNull;
-    final locationInfo = _parsed?.keyInfos
-        .where((k) => k.type == KeyType.location)
-        .firstOrNull;
-    // 展开岛标题：只显示"取餐码: 7656"（标签+码值）
-    final label = _parsed?.title.isNotEmpty == true ? _parsed!.title : '';
-    final title = '$label: $codeValue';
-    // 展开岛内容：只传门店/地址（不做拼接，避免重复）
-    final content = locationInfo?.value ?? _subtitleController.text.trim();
-    // 副标题：留空
-    const subtitle = '';
-    try {
-      await _nativeService.sendFocusWithNetworkBypass(
-        title: title,
-        content: content,
-        subtitle: subtitle,
-        codeValue: codeValue,
-        category: category,
-      );
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('已发送网络阻断转发'), duration: Duration(seconds: 2)),
-        );
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('转发失败: $e')),
-        );
-      }
-    } finally {
-      if (mounted) setState(() => _isBypassing = false);
-    }
-  }
 
-  /// 网络阻断转发 #9 — 模板9（取餐码场景）
-  Future<void> _sendWithNetworkBypassTemplate9() async {
-    if (_isBypassing) return;
-    setState(() => _isBypassing = true);
-    final category = _parsed?.category.name ?? 'foodDelivery';
     // 标签/主要文本1
-    final label = _parsed?.title.isNotEmpty == true ? _parsed!.title : '取餐码';
+    final label = parsed.title.isNotEmpty ? parsed.title : '取餐码';
     // 码值/主要文本2
-    final codeInfo = _parsed?.keyInfos
+    final codeInfo = parsed.keyInfos
         .where((k) => k.type == KeyType.code)
         .firstOrNull;
     final codeValue = codeInfo?.value ?? '';
     // 件数
-    final itemsInfo = _parsed?.keyInfos
+    final itemsInfo = parsed.keyInfos
         .where((k) => k.label == '件数')
         .firstOrNull;
     final items = itemsInfo?.value ?? '';
-    // 金额
-    final amountInfo = _parsed?.keyInfos
+    // 金额（原始数字，不含 ¥，#9 的 Kotlin 层会加）
+    final amountInfo = parsed.keyInfos
         .where((k) => k.type == KeyType.amount)
         .firstOrNull;
     final amount = amountInfo?.value ?? '';
     // 店名/地址/次要文本2
-    final locationInfo = _parsed?.keyInfos
+    final locationInfo = parsed.keyInfos
         .where((k) => k.type == KeyType.location)
         .firstOrNull;
-    final storeName = locationInfo?.value ?? _subtitleController.text.trim();
+    final storeName = locationInfo?.value ?? '';
 
+    debugPrint('[FBS-T9] forwardViaTemplate9:'
+        ' label=$label code=$codeValue'
+        ' items=$items amount=$amount store=$storeName'
+        ' category=$category');
+    debugPrint('[FBS-T9] all KeyInfos:${parsed.keyInfos.map((k) => "\n  [${k.label}](${k.type.name}) = ${k.value}").join()}');
     try {
+      // 第一步：#9 网络阻断转发（超级岛）
       await _nativeService.sendFocusWithNetworkBypassTemplate9(
         label: label,
         codeValue: codeValue,
@@ -491,86 +363,85 @@ class _HomePageState extends State<HomePage> {
         amount: amount,
         category: category,
       );
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('已发送模板#9网络阻断转发'), duration: Duration(seconds: 2)),
-        );
-      }
+
+      // 第二步：背屏显示（结构化内容，剔除重复字段）
+      final style = await NotificationStyle.load();
+      final styleMap = {
+        'titleFontSize': style.titleFontSize.toString(),
+        'subtitleFontSize': style.subtitleFontSize.toString(),
+        'contentFontSize': style.contentFontSize.toString(),
+        'titleColor': '#${style.titleColor.toARGB32().toRadixString(16).padLeft(8, '0')}',
+        'subtitleColor': '#${style.subtitleColor.toARGB32().toRadixString(16).padLeft(8, '0')}',
+        'contentColor': '#${style.contentColor.toARGB32().toRadixString(16).padLeft(8, '0')}',
+        'backgroundColor': '#${style.backgroundColor.toARGB32().toRadixString(16).padLeft(8, '0')}',
+        'showAppIcon': style.showAppIcon.toString(),
+        'showTimestamp': style.showTimestamp.toString(),
+        'cameraAvoidanceEnabled': style.cameraAvoidanceEnabled.toString(),
+        'horizontalOffset': NotificationStyle.cameraAvoidanceOffset.toStringAsFixed(0),
+        'padding': style.padding.toString(),
+        'spacing': style.spacing.toString(),
+        'displayDurationMs': style.displayDurationMs.toString(),
+        'useOfficialBackground': style.useOfficialBackground.toString(),
+      };
+      await _nativeService.displayOnBackScreen(
+        title: label,
+        subtitle: codeValue,
+        content: _buildTemplate9BackScreenContent(parsed, displayContent, label, codeValue, items, amount, storeName),
+        styleExtras: styleMap,
+        category: category,
+      );
     } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('转发失败: $e')),
-        );
-      }
+      debugPrint('[FBS] forwardViaTemplate9 error: $e');
     } finally {
       if (mounted) setState(() => _isBypassing = false);
     }
   }
 
-  Future<void> _doForward(bool showAnimation) async {
-    if (_isForwarding) return;
-    setState(() => _isForwarding = true);
+  /// 构建 #9 转发的背屏正文 — 件数+金额+店名等一行显示，剔除主标题/码值/重复件数金额
+  String _buildTemplate9BackScreenContent(
+    ParsedContent parsed,
+    String displayContent,
+    String label,
+    String codeValue,
+    String items,
+    String amount,
+    String storeName,
+  ) {
+    final parts = <String>[];
+    if (items.isNotEmpty) parts.add('件数：$items');
+    if (amount.isNotEmpty) parts.add('金额：¥$amount');
+    if (parts.isNotEmpty && storeName.isNotEmpty) {
+      // 如果 storeName 已含件数/金额描述，用 storeName 替代
+      if (storeName.contains('件数') || storeName.contains('金额')) {
+        // storeName 包含了这些信息，直接用它
+        return storeName;
+      }
+      return '${parts.join('  ')}  $storeName';
+    }
+    if (storeName.isNotEmpty) return storeName;
+    if (parts.isNotEmpty) return parts.join('  ');
+    // 兜底：从 displayContent 剔除标题和码值
+    var fallback = displayContent;
+    if (label.isNotEmpty) fallback = fallback.replaceFirst(label, '').trim();
+    if (codeValue.isNotEmpty) fallback = fallback.replaceFirst(codeValue, '').trim();
+    fallback = fallback.replaceAll(RegExp(r'\s*金额[：:]\s*[¥￥]?\s*\d+(\.\d+)?'), '')
+        .replaceAll(RegExp(r'\s*件数[：:]\s*\S+'), '')
+        .replaceAll(RegExp(r'^[：:\s，]+'), '')
+        .trim();
+    return fallback.isNotEmpty ? fallback : displayContent;
+  }
 
-    final title = _titleController.text.trim();
-    final subtitle = _subtitleController.text.trim();
-    final category = _parsed?.category.name ?? 'general';
-    final style = await NotificationStyle.load();
-    final styleMap = {
-      'titleFontSize': style.titleFontSize.toString(),
-      'subtitleFontSize': style.subtitleFontSize.toString(),
-      'contentFontSize': style.contentFontSize.toString(),
-      'titleColor': '#${style.titleColor.toARGB32().toRadixString(16).padLeft(8, '0')}',
-      'subtitleColor': '#${style.subtitleColor.toARGB32().toRadixString(16).padLeft(8, '0')}',
-      'contentColor': '#${style.contentColor.toARGB32().toRadixString(16).padLeft(8, '0')}',
-      'backgroundColor': '#${style.backgroundColor.toARGB32().toRadixString(16).padLeft(8, '0')}',
-      'showAppIcon': style.showAppIcon.toString(),
-      'showTimestamp': style.showTimestamp.toString(),
-      'cameraAvoidanceEnabled': style.cameraAvoidanceEnabled.toString(),
-      'horizontalOffset': NotificationStyle.cameraAvoidanceOffset.toStringAsFixed(0),
-      'padding': style.padding.toString(),
-      'spacing': style.spacing.toString(),
-      'displayDurationMs': style.displayDurationMs.toString(),
-      'useOfficialBackground': style.useOfficialBackground.toString(),
-    };
-
-    // 获取码值用于 subtitle 和超级岛标题
-    final codeInfo = _parsed?.keyInfos
-        .where((k) => k.type == KeyType.code)
-        .firstOrNull;
-    final codeValue = codeInfo?.value ?? subtitle;
-
-    try {
-      // 背屏和超级岛都用过滤后的统一内容
-      await _nativeService.displayOnBackScreen(
-        title: title,
-        subtitle: codeValue,
-        content: _filteredContent,
-        styleExtras: styleMap,
-        category: category,
+  /// 网络阻断转发 #9 — 按钮入口，调用统一 helper
+  Future<void> _sendWithNetworkBypassTemplate9() async {
+    if (_parsed == null) return;
+    await _forwardViaTemplate9(_parsed!, _filteredContent, _parsed!.category.name);
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('已转发到背屏 + 模板#9超级岛'), duration: Duration(seconds: 2)),
       );
-      if (showAnimation) {
-        final parsedTitle = _parsed?.title ?? title;
-        final islandTitle = codeInfo != null
-            ? '$parsedTitle ${codeInfo.value}'
-            : parsedTitle;
-        await _nativeService.sendSuperIslandNotification(
-          title: islandTitle,
-          content: _filteredContent,
-          category: category,
-        );
-      }
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text(showAnimation ? '已转发到背屏 + 超级岛' : '已静默更新背屏'),
-          duration: const Duration(seconds: 2),
-        ));
-      }
-    } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('转发失败: $e')));
-    } finally {
-      if (mounted) setState(() => _isForwarding = false);
     }
   }
+
 
   @override
   void dispose() {
@@ -659,10 +530,6 @@ class _HomePageState extends State<HomePage> {
               _buildParsedResult(),
             ],
             const SizedBox(height: 16),
-            _buildForwardButtons(),
-            const SizedBox(height: 8),
-            _buildNetworkBypassButton(),
-            const SizedBox(height: 8),
             _buildNetworkBypassTemplate9Button(),
             const SizedBox(height: 10),
             _buildSecondaryActions(),
@@ -863,14 +730,7 @@ class _HomePageState extends State<HomePage> {
                   contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 8), isDense: true,
                 ),
               ),
-              const SizedBox(height: GlassTokens.spaceSM),
-              TextField(
-                controller: _subtitleController,
-                decoration: const InputDecoration(
-                  labelText: '副标题', border: OutlineInputBorder(),
-                  contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 8), isDense: true,
-                ),
-              ),
+              const SizedBox(height: 12),
               if (p.keyInfos.isNotEmpty) ...[
                 const SizedBox(height: 12),
                 Wrap(
@@ -977,113 +837,6 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  Widget _buildForwardButtons() {
-    final canForward = _isShizukuRunning && _hasShizukuPermission && _titleController.text.trim().isNotEmpty;
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    return GestureDetector(
-      onTap: canForward && !_isForwarding ? _forwardAll : null,
-      child: Container(
-        width: double.infinity, height: 52,
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(GlassTokens.radiusFull),
-          gradient: canForward
-            ? const LinearGradient(colors: [GlassTokens.accent, GlassTokens.accentDark])
-            : GlassTokens.glassGradient(Theme.of(context).brightness),
-          border: Border.all(
-            color: canForward
-              ? GlassTokens.accent.withValues(alpha: 0.3)
-              : (isDark ? Colors.white.withValues(alpha: 0.08) : Colors.white.withValues(alpha: 0.30)),
-            width: 0.5,
-          ),
-          boxShadow: canForward
-            ? [BoxShadow(color: GlassTokens.accent.withValues(alpha: 0.3), blurRadius: 10, offset: const Offset(0, 4))]
-            : GlassTokens.glassShadow(Theme.of(context).brightness),
-        ),
-        child: Center(
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              if (_isForwarding)
-                const Padding(
-                  padding: EdgeInsets.only(right: 8),
-                  child: SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white)),
-                )
-              else
-                Padding(
-                  padding: const EdgeInsets.only(right: 6),
-                  child: Icon(Icons.send_rounded, size: 20,
-                    color: canForward ? Colors.white : (isDark ? Colors.white38 : Colors.black38)),
-                ),
-              Text(
-                _isForwarding ? '转发中...' : '转发到背屏 + 超级岛',
-                style: TextStyle(
-                  fontSize: 15, fontWeight: FontWeight.w600,
-                  color: canForward ? Colors.white : (isDark ? Colors.white38 : Colors.black38),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildNetworkBypassButton() {
-    final canForward = _isShizukuRunning && _hasShizukuPermission && _titleController.text.trim().isNotEmpty;
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    return GestureDetector(
-      onTap: canForward && !_isBypassing ? _sendWithNetworkBypass : null,
-      child: Container(
-        width: double.infinity, height: 46,
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(GlassTokens.radiusFull),
-          gradient: canForward
-            ? const LinearGradient(colors: [Color(0xFF00BCD4), Color(0xFF0097A7)])
-            : GlassTokens.glassGradient(Theme.of(context).brightness),
-          border: Border.all(
-            color: canForward
-              ? const Color(0xFF00BCD4).withValues(alpha: 0.3)
-              : (isDark ? Colors.white.withValues(alpha: 0.08) : Colors.white.withValues(alpha: 0.30)),
-            width: 0.5,
-          ),
-          boxShadow: canForward
-            ? [BoxShadow(color: const Color(0xFF00BCD4).withValues(alpha: 0.3), blurRadius: 10, offset: const Offset(0, 4))]
-            : GlassTokens.glassShadow(Theme.of(context).brightness),
-        ),
-        child: Center(
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              if (_isBypassing)
-                const Padding(
-                  padding: EdgeInsets.only(right: 8),
-                  child: SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white)),
-                )
-              else
-                Padding(
-                  padding: const EdgeInsets.only(right: 6),
-                  child: Icon(Icons.shield_outlined, size: 18,
-                    color: canForward ? Colors.white : (isDark ? Colors.white38 : Colors.black38)),
-                ),
-              Text(
-                _isBypassing ? '阻断转发中...' : '网络阻断转发',
-                style: TextStyle(
-                  fontSize: 14, fontWeight: FontWeight.w600,
-                  color: canForward ? Colors.white : (isDark ? Colors.white38 : Colors.black38),
-                ),
-              ),
-              const SizedBox(width: 4),
-              Icon(Icons.bolt, size: 14,
-                color: canForward ? const Color(0xFFFFD700) : (isDark ? Colors.white24 : Colors.black26)),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  /// 模板#9 网络阻断转发按钮 — 取餐码场景
-  /// 布局：文本组件2 + 识别图形组件1 + 按钮组件2
   Widget _buildNetworkBypassTemplate9Button() {
     final canForward = _isShizukuRunning && _hasShizukuPermission && _titleController.text.trim().isNotEmpty;
     final isDark = Theme.of(context).brightness == Brightness.dark;

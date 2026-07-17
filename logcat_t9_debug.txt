@@ -1,0 +1,49 @@
+--------- beginning of main
+07-17 15:26:09.839 D/MainActivity(19293): >>> methodCallHandler: isNotificationListenerEnabled
+07-17 15:26:09.839 D/MainActivity(19293): >>> methodCallHandler: isPostNotificationsGranted
+07-17 15:26:09.840 D/MainActivity(19293): >>> methodCallHandler: isShizukuRunning
+07-17 15:26:09.840 D/MainActivity(19293): >>> methodCallHandler: hasShizukuPermission
+07-17 15:26:09.894 D/MainActivity(19293): >>> methodCallHandler: isShizukuRunning
+07-17 15:26:09.895 D/MainActivity(19293): EventChannel onListen
+07-17 15:26:09.915 D/MainActivity(19293): >>> methodCallHandler: hasShizukuPermission
+07-17 15:26:43.363 D/MainActivity(19293): >>> methodCallHandler: sendFocusWithNetworkBypassTemplate9
+07-17 15:26:43.364 I/FocusForwarder(19293): [T9] 开始 bindUserService...
+07-17 15:26:43.397 D/MainActivity(19293): >>> methodCallHandler: displayOnBackScreenV2
+07-17 15:26:44.163 I/FocusForwarder(19293): [T9] 已连接，阻断 XMSF...
+07-17 15:26:44.163 I/HITest/Bypass(28148): connectivity Binder: android.os.BinderProxy@9780200
+07-17 15:26:44.164 I/HITest/Bypass(28148): ==== 设置 XMSF 网络: enabled=false ====
+07-17 15:26:44.165 I/HITest/Bypass(28148): ✅ setFirewallChainEnabled(9, true)
+07-17 15:26:44.165 I/HITest/Bypass(28148): ✅ setUidFirewallRule(9, 10215, 2)
+07-17 15:26:44.165 I/HITest/Bypass(28148): ==== 操作成功: enabled=false ====
+07-17 15:26:44.469 I/FocusForwarder(19293): [T9] ✅ 通知已发送 id=9100
+07-17 15:26:44.569 I/HITest/Bypass(28148): ==== 设置 XMSF 网络: enabled=true ====
+07-17 15:26:44.574 I/HITest/Bypass(28148): ✅ setFirewallChainEnabled(9, true)
+07-17 15:26:44.574 I/HITest/Bypass(28148): ✅ setUidFirewallRule(9, 10215, 0)
+07-17 15:26:44.574 I/HITest/Bypass(28148): ✅ setFirewallChainEnabled(9, false)
+07-17 15:26:44.574 I/HITest/Bypass(28148): ==== 操作成功: enabled=true ====
+07-17 15:26:44.574 I/FocusForwarder(19293): [T9] ✅ 流程完成
+07-17 15:26:44.580 D/BackScreenNotif(19293): onCreate start, display=1
+07-17 15:26:44.580 D/BackScreenNotif(19293): Parsed: title=取餐码, subtitle=7656, content=件数：1杯  金额：¥8  新乡工商职业学院店, w=28.0, h=20.0, c=16.0, bg=#-15066578, dur=10000
+07-17 15:26:44.580 D/BackScreenNotif(19293): Content clean: len=23, no special chars detected
+07-17 15:26:44.588 D/BackScreenNotif(19293): setContentView done
+07-17 15:26:44.591 D/BackScreenNotif(19293): Sensors: light=true prox=true
+07-17 15:26:44.591 D/BackScreenNotif(19293): onCreate complete
+07-17 15:26:44.592 W/BackScreenNotif(19293): WakeLock failed: Neither user 10411 nor current process has android.permission.WAKE_LOCK.
+07-17 15:26:44.613 D/BackScreenNotif(19293): Proximity: FAR v=5.0
+07-17 15:26:47.801 D/BackScreenNotif(19293): Back gesture received via KEYCODE_BACK, finishing
+07-17 15:26:47.861 D/BackScreenNotif(19293): onDestroy (lastLux=184.0)
+07-17 15:26:51.200 D/MainActivity(19293): >>> methodCallHandler: sendFocusWithNetworkBypass
+07-17 15:26:51.201 I/FocusForwarder(19293): 开始 bindUserService...
+07-17 15:26:51.497 I/FocusForwarder(19293): 已连接，阻断 XMSF...
+07-17 15:26:51.498 I/HITest/Bypass(28495): connectivity Binder: android.os.BinderProxy@80c802b
+07-17 15:26:51.499 I/HITest/Bypass(28495): ==== 设置 XMSF 网络: enabled=false ====
+07-17 15:26:51.502 I/HITest/Bypass(28495): ✅ setFirewallChainEnabled(9, true)
+07-17 15:26:51.503 I/HITest/Bypass(28495): ✅ setUidFirewallRule(9, 10215, 2)
+07-17 15:26:51.503 I/HITest/Bypass(28495): ==== 操作成功: enabled=false ====
+07-17 15:26:51.808 I/FocusForwarder(19293): ✅ 通知已发送 id=9101
+07-17 15:26:51.909 I/HITest/Bypass(28495): ==== 设置 XMSF 网络: enabled=true ====
+07-17 15:26:51.917 I/HITest/Bypass(28495): ✅ setFirewallChainEnabled(9, true)
+07-17 15:26:51.917 I/HITest/Bypass(28495): ✅ setUidFirewallRule(9, 10215, 0)
+07-17 15:26:51.918 I/HITest/Bypass(28495): ✅ setFirewallChainEnabled(9, false)
+07-17 15:26:51.918 I/HITest/Bypass(28495): ==== 操作成功: enabled=true ====
+07-17 15:26:51.918 I/FocusForwarder(19293): ✅ 流程完成

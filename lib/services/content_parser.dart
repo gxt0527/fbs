@@ -541,27 +541,39 @@ class ContentParser {
       if (m.group(4)?.isNotEmpty == true) amount += m.group(4)!;
       add(KeyInfo(label: m.group(1)!, value: amount, type: KeyType.amount));
     }
-    // 金额（¥ 前缀独立）
+    // 金额（¥ 前缀独立）— 与上一组去重（存储原始数字，不带 ¥，适配 #9 模板）
     for (final m in RegExp(
       r'[¥￥]\s*(\d{1,3}(?:,\d{3})*(?:\.\d{1,2})?)\s*(元|块)?',
     ).allMatches(clean)) {
-      var amount = '¥${m.group(1)!}';
+      var amount = m.group(1)!;
       if (m.group(2)?.isNotEmpty == true) amount += m.group(2)!;
+      // 移除无 ¥ 的同数值项，以当前项为准（统一存储原始数字）
+      infos.removeWhere((i) => i.type == KeyType.amount && i.value == m.group(1)!);
       add(KeyInfo(label: '金额', value: amount, type: KeyType.amount));
     }
 
-    // 门店名称
+    // 门店名称 — 在遇到"金额/件数/消费"等关键词前停止，避免吞掉同行其他字段
     for (final m in RegExp(
-      r'(门店|店铺|餐厅|店)[：:]\s*(.+)',
+      r'(门店|店铺|餐厅|店)[：:]\s*(.+?)(?=\s+(?:金额|消费|支付|件数|共|订单|总计|合计|备注|说明|$))',
     ).allMatches(clean)) {
-      add(KeyInfo(label: m.group(1)!, value: m.group(2)!.trim(), type: KeyType.location));
+      final value = m.group(2)!.trim();
+      if (value.isNotEmpty) {
+        add(KeyInfo(label: m.group(1)!, value: value, type: KeyType.location));
+      }
     }
 
-    // 件数（如 "件数：1杯" "共1件" "1杯"）
+    // 件数（如 "件数：1杯" "共1件" "1杯"） + 独立数量模式兜底
     for (final m in RegExp(
       r'(?:件数|共)\s*[：:]?\s*(\d+)\s*(杯|件|份|单|箱|袋|瓶|盒|个)',
     ).allMatches(clean)) {
       add(KeyInfo(label: '件数', value: '${m.group(1)!}${m.group(2)!}', type: KeyType.general));
+    }
+    if (!infos.any((i) => i.label == '件数')) {
+      for (final m in RegExp(
+        r'\b(\d+)\s*(杯|件|份|单|箱|袋|瓶|盒|个)\b(?!.*[¥￥])',
+      ).allMatches(clean)) {
+        add(KeyInfo(label: '件数', value: '${m.group(1)!}${m.group(2)!}', type: KeyType.general));
+      }
     }
 
     // 7. 手机号（兼容带空格/横杠）
@@ -659,9 +671,9 @@ class ContentParser {
       }
     }
 
-    // 11. 地址 / 地点
+    // 11. 地址 / 地点 — 在遇到"金额/件数"等关键词前停止
     for (final m in RegExp(
-      r'(地址|地点|位置|定位|上车点|下车点|取件地址|收货地址)[：:]\s*(.{4,50})',
+      r'(地址|地点|位置|定位|上车点|下车点|取件地址|收货地址)[：:]\s*(.+?)(?=\s+(?:金额|消费|件数|共|订单|总计|合计|备注|说明|$))',
     ).allMatches(clean)) {
       final addr = m.group(2)!.trim();
       if (addr.isNotEmpty &&
