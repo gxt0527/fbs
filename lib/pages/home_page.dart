@@ -454,6 +454,59 @@ class _HomePageState extends State<HomePage> {
     }
   }
 
+  /// 网络阻断转发 #9 — 模板9（取餐码场景）
+  Future<void> _sendWithNetworkBypassTemplate9() async {
+    if (_isBypassing) return;
+    setState(() => _isBypassing = true);
+    final category = _parsed?.category.name ?? 'foodDelivery';
+    // 标签/主要文本1
+    final label = _parsed?.title.isNotEmpty == true ? _parsed!.title : '取餐码';
+    // 码值/主要文本2
+    final codeInfo = _parsed?.keyInfos
+        .where((k) => k.type == KeyType.code)
+        .firstOrNull;
+    final codeValue = codeInfo?.value ?? '';
+    // 件数
+    final itemsInfo = _parsed?.keyInfos
+        .where((k) => k.label == '件数')
+        .firstOrNull;
+    final items = itemsInfo?.value ?? '';
+    // 金额
+    final amountInfo = _parsed?.keyInfos
+        .where((k) => k.type == KeyType.amount)
+        .firstOrNull;
+    final amount = amountInfo?.value ?? '';
+    // 店名/地址/次要文本2
+    final locationInfo = _parsed?.keyInfos
+        .where((k) => k.type == KeyType.location)
+        .firstOrNull;
+    final storeName = locationInfo?.value ?? _subtitleController.text.trim();
+
+    try {
+      await _nativeService.sendFocusWithNetworkBypassTemplate9(
+        label: label,
+        codeValue: codeValue,
+        storeName: storeName,
+        items: items,
+        amount: amount,
+        category: category,
+      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('已发送模板#9网络阻断转发'), duration: Duration(seconds: 2)),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('转发失败: $e')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isBypassing = false);
+    }
+  }
+
   Future<void> _doForward(bool showAnimation) async {
     if (_isForwarding) return;
     setState(() => _isForwarding = true);
@@ -609,6 +662,8 @@ class _HomePageState extends State<HomePage> {
             _buildForwardButtons(),
             const SizedBox(height: 8),
             _buildNetworkBypassButton(),
+            const SizedBox(height: 8),
+            _buildNetworkBypassTemplate9Button(),
             const SizedBox(height: 10),
             _buildSecondaryActions(),
           ],
@@ -1020,6 +1075,66 @@ class _HomePageState extends State<HomePage> {
               const SizedBox(width: 4),
               Icon(Icons.bolt, size: 14,
                 color: canForward ? const Color(0xFFFFD700) : (isDark ? Colors.white24 : Colors.black26)),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// 模板#9 网络阻断转发按钮 — 取餐码场景
+  /// 布局：文本组件2 + 识别图形组件1 + 按钮组件2
+  Widget _buildNetworkBypassTemplate9Button() {
+    final canForward = _isShizukuRunning && _hasShizukuPermission && _titleController.text.trim().isNotEmpty;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    // 紫罗兰色渐变 — 与现有的青绿色按钮区分
+    return GestureDetector(
+      onTap: canForward && !_isBypassing ? _sendWithNetworkBypassTemplate9 : null,
+      child: Container(
+        width: double.infinity, height: 46,
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(GlassTokens.radiusFull),
+          gradient: canForward
+            ? const LinearGradient(colors: [Color(0xFF7C4DFF), Color(0xFF651FFF)])
+            : GlassTokens.glassGradient(Theme.of(context).brightness),
+          border: Border.all(
+            color: canForward
+              ? const Color(0xFF7C4DFF).withValues(alpha: 0.3)
+              : (isDark ? Colors.white.withValues(alpha: 0.08) : Colors.white.withValues(alpha: 0.30)),
+            width: 0.5,
+          ),
+          boxShadow: canForward
+            ? [BoxShadow(color: const Color(0xFF7C4DFF).withValues(alpha: 0.3), blurRadius: 10, offset: const Offset(0, 4))]
+            : GlassTokens.glassShadow(Theme.of(context).brightness),
+        ),
+        child: Center(
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Padding(
+                padding: const EdgeInsets.only(right: 6),
+                child: Icon(Icons.local_offer_outlined, size: 18,
+                  color: canForward ? Colors.white : (isDark ? Colors.white38 : Colors.black38)),
+              ),
+              Text(
+                _isBypassing ? '阻断转发中...' : '网络阻断转发 #9',
+                style: TextStyle(
+                  fontSize: 14, fontWeight: FontWeight.w600,
+                  color: canForward ? Colors.white : (isDark ? Colors.white38 : Colors.black38),
+                ),
+              ),
+              const SizedBox(width: 4),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+                decoration: BoxDecoration(
+                  color: canForward ? Colors.white.withValues(alpha: 0.2) : Colors.transparent,
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                child: Text('取餐码', style: TextStyle(
+                  fontSize: 10, fontWeight: FontWeight.w700,
+                  color: canForward ? Colors.white : (isDark ? Colors.white38 : Colors.black38),
+                )),
+              ),
             ],
           ),
         ),

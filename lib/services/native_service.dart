@@ -118,6 +118,29 @@ class NativeService {
       print('[FBS] sendFocusWithNetworkBypass error: $e');
     }
   }
+
+  // 网络阻断转发 #9（模板9 — 文本组件2 + 识别图形组件1 + 按钮组件2）
+  Future<void> sendFocusWithNetworkBypassTemplate9({
+    required String label,
+    required String codeValue,
+    String storeName = '',
+    String items = '',
+    String amount = '',
+    String category = 'foodDelivery',
+  }) async {
+    try {
+      await _methodChannel.invokeMethod('sendFocusWithNetworkBypassTemplate9', {
+        'label': label,
+        'codeValue': codeValue,
+        'storeName': storeName,
+        'items': items,
+        'amount': amount,
+        'category': category,
+      });
+    } catch (e) {
+      print('[FBS] sendFocusWithNetworkBypassTemplate9 error: $e');
+    }
+  }
   Future<void> cancelSuperIslandNotification() async {
     try { await _methodChannel.invokeMethod('cancelSuperIslandNotification'); } catch (_) {}
   }

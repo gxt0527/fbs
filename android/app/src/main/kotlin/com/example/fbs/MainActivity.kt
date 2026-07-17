@@ -247,6 +247,19 @@ class MainActivity : FlutterActivity() {
                     )
                     result.success(true)
                 }
+                // 网络阻断转发 #9（模板9 — 文本组件2 + 识别图形组件1 + 按钮组件2）
+                "sendFocusWithNetworkBypassTemplate9" -> {
+                    val label = call.argument<String>("label") ?: ""
+                    val codeValue = call.argument<String>("codeValue") ?: ""
+                    val storeName = call.argument<String>("storeName") ?: ""
+                    val items = call.argument<String>("items") ?: ""
+                    val amount = call.argument<String>("amount") ?: ""
+                    val category = call.argument<String>("category") ?: "foodDelivery"
+                    com.example.fbs.hyperisland.FocusForwarder.sendTemplate9(
+                        this, label, codeValue, storeName, items, amount, category
+                    )
+                    result.success(true)
+                }
                 "hasPromotedNotificationPermission" -> {
                     result.success(com.example.fbs.service.SuperIslandHelper.hasPromotedPermission(this))
                 }

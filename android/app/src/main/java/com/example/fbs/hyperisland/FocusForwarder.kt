@@ -104,6 +104,7 @@ object FocusForwarder {
                         .setSmallIcon(smallIcon)
                         .setContentTitle(shortTitle)
                         .setContentText(content)
+                        .setWhen(System.currentTimeMillis())
                         .setAutoCancel(true)
 
                     val notif = builder.build()
@@ -158,6 +159,219 @@ object FocusForwarder {
             "\"param_island\":{\"islandProperty\":1,\"islandTimeout\":3600," +
             "\"bigIslandArea\":{\"templateNo\":2,\"imageTextInfoLeft\":{\"type\":1,\"picInfo\":{\"type\":1,\"pic\":\"\"},\"textInfo\":{\"title\":\"${escape(leftTitle)}\",\"content\":\"${escape(content)}\",\"showHighlightColor\":false,\"narrowFont\":false}},\"textInfo\":{\"frontTitle\":\"\",\"title\":\"${escape(rightTitle)}\",\"content\":\"\",\"showHighlightColor\":false,\"narrowFont\":false}}" +
             "}}}"
+    }
+
+    // ═══════════════════════════════════════════════════════
+    // 🆕 模板 #9 — 文本组件2 + 识别图形组件1 + 按钮组件2
+    // 适用于：取餐码、电影票等场景
+    // ═══════════════════════════════════════════════════════
+
+    /**
+     * 模板 #9 网络阻断转发 — 适用于取餐码场景。
+     *
+     * 布局：文本组件2（主要文本1/"取餐码"+ 次要文本1/"件数 金额"）
+     *      + 识别图形组件1（默认桌面图标）
+     *      + 按钮组件2（前置文本1/"到店自取"+ 主要小文本1/"请留意大屏信息"+ 按钮文本/"查看"）
+     *
+     * 小岛：A区 = 图标 + "取餐码"，B区 = "码值"
+     *
+     * @param context 应用 Context
+     * @param label 主要文本1（如"取餐码"）
+     * @param codeValue 主要文本2/码值（如"7656"）
+     * @param storeName 次要文本2/店名地址（如"新乡工商职业学院店"）
+     * @param items 件数描述（如"1杯"）
+     * @param amount 金额（如"¥8"）
+     * @param category 场景分类
+     */
+    fun sendTemplate9(
+        context: Context,
+        label: String,
+        codeValue: String,
+        storeName: String,
+        items: String,
+        amount: String,
+        category: String
+    ) {
+        if (!Shizuku.pingBinder()) {
+            Log.w(TAG, "Shizuku 不可用")
+            return
+        }
+        if (Shizuku.checkSelfPermission() != android.content.pm.PackageManager.PERMISSION_GRANTED) {
+            Log.w(TAG, "Shizuku 无权限")
+            return
+        }
+
+        val notifId = NOTIFICATION_ID + (notificationIdCounter % 100)
+        notificationIdCounter++
+
+        val sceneName = when (category) {
+            "foodDelivery", "food" -> "智能分类：美食"
+            "express" -> "智能分类：快递"
+            "payment", "bill" -> "智能分类：支付"
+            "scan" -> "智能分类：扫码"
+            "order" -> "智能分类：订单"
+            "verification" -> "智能分类：验证"
+            "meeting" -> "智能分类：会议"
+            "travel" -> "智能分类：出行"
+            else -> "智能分类：通用"
+        }
+
+        val islandParams = buildIslandJsonTemplate9(label, codeValue, storeName, items, amount, sceneName)
+
+        val component = ComponentName(context, NetworkBypassService::class.java)
+        val args = UserServiceArgs(component)
+            .processNameSuffix("fwd_svc")
+            .daemon(false)
+            .tag("focus_forward_t9")
+
+        Log.i(TAG, "[T9] 开始 bindUserService...")
+        Shizuku.bindUserService(args, object : ServiceConnection {
+            override fun onServiceConnected(component: ComponentName, binder: IBinder) {
+                try {
+                    val service = com.example.fbs.INetworkBypass.Stub.asInterface(binder)
+                    Log.i(TAG, "[T9] 已连接，阻断 XMSF...")
+
+                    // 1. 阻断 XMSF
+                    service.disableXmsfNetworking()
+                    try { Thread.sleep(300) } catch (_: Exception) {}
+
+                    // 2. 构建通知
+                    val nm = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+                    if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+                        nm.createNotificationChannel(
+                            NotificationChannel(CHANNEL_ID, CHANNEL_NAME, NotificationManager.IMPORTANCE_HIGH)
+                        )
+                    }
+
+                    val smallIcon = android.R.drawable.ic_dialog_info
+                    val builder = Notification.Builder(context, CHANNEL_ID)
+                        .setSmallIcon(smallIcon)
+                        .setContentTitle("$label: $codeValue")
+                        .setContentText(storeName.ifEmpty { "请留意大屏信息" })
+                        .setWhen(System.currentTimeMillis())
+                        .setAutoCancel(true)
+
+                    val notif = builder.build()
+                    notif.extras.putString("miui.focus.param", islandParams)
+
+                    nm.notify(notifId, notif)
+                    Log.i(TAG, "[T9] ✅ 通知已发送 id=$notifId")
+
+                    // 3. 短暂等待后恢复
+                    try { Thread.sleep(100) } catch (_: Exception) {}
+                    service.enableXmsfNetworking()
+                    Log.i(TAG, "[T9] ✅ 流程完成")
+                } catch (e: Exception) {
+                    Log.e(TAG, "[T9] 执行失败", e)
+                }
+                try {
+                    Shizuku.unbindUserService(args, this, true)
+                } catch (_: Exception) {}
+            }
+
+            override fun onServiceDisconnected(component: ComponentName) {
+                Log.w(TAG, "[T9] disconnected")
+            }
+        })
+    }
+
+    /** 构建模板 #9 岛屿 JSON */
+    private fun buildIslandJsonTemplate9(
+        label: String,
+        codeValue: String,
+        storeName: String,
+        items: String,
+        amount: String,
+        sceneName: String
+    ): String {
+        val subTitleText = buildString {
+            if (items.isNotEmpty()) { append("件数：$items") }
+            if (items.isNotEmpty() && amount.isNotEmpty()) { append("  ") }
+            if (amount.isNotEmpty()) { append("金额：¥$amount") }
+        }
+
+        val safeLabel = label.ifEmpty { "取餐码" }
+        // 次要文本1 + 次要文本2 → 拼接合并
+        val mergedContent = buildString {
+            if (subTitleText.isNotEmpty()) append(subTitleText)
+            if (subTitleText.isNotEmpty() && storeName.isNotEmpty()) append("  ")
+            if (storeName.isNotEmpty()) append(storeName)
+        }
+
+        return "{\"param_v2\":{" +
+            "\"business\":\"course_reminder\"," +
+            "\"protocol\":1," +
+            "\"enableFloat\":true," +
+            "\"updatable\":true," +
+            "\"reopen\":\"reopen\"," +
+            "\"sequence\":$notificationIdCounter," +
+            "\"baseInfo\":{" +
+                "\"type\":2," +
+                "\"title\":\"${escape(safeLabel)}\"," +
+                "\"content\":\"${escape(mergedContent)}\"," +
+                "\"extraTitle\":\"${escape(codeValue)}\"," +
+                "\"specialTitle\":\"\"," +
+                "\"subContent\":\"\"," +
+                "\"picFunction\":\"\"," +
+                "\"showDivider\":false," +
+                "\"showContentDivider\":false," +
+                "\"colorTitle\":\"#D32F2F\"," +
+                "\"colorExtraTitle\":\"#D32F2F\"," +
+                "\"colorExtraTitleDark\":\"#EF5350\"," +
+                "\"colorTitleDark\":\"#EF5350\"," +
+                "\"colorContent\":\"#333333\"," +
+                "\"colorContentDark\":\"#cccccc\"," +
+                "\"colorSubTitle\":\"#666666\"," +
+                "\"colorSubTitleDark\":\"#aaaaaa\"" +
+            "}," +
+            "\"picInfo\":{\"type\":1,\"pic\":\"\"}," +
+            "\"hintInfo\":{" +
+                "\"type\":2," +
+                "\"content\":\"到店自取\"," +
+                "\"title\":\"请留意大屏信息\"," +
+                "\"subContent\":\"\"," +
+                "\"subTitle\":\"\"," +
+                "\"colorContent\":\"#666666\"," +
+                "\"colorContentDark\":\"#aaaaaa\"," +
+                "\"colorTitle\":\"#222222\"," +
+                "\"colorTitleDark\":\"#eeeeee\"," +
+                "\"colorSubContent\":\"#666666\"," +
+                "\"colorSubContentDark\":\"#aaaaaa\"," +
+                "\"colorSubTitle\":\"#222222\"," +
+                "\"colorSubTitleDark\":\"#eeeeee\"," +
+                "\"actionInfo\":{" +
+                    "\"actionTitle\":\"查看\"," +
+                    "\"actionIntentType\":1," +
+                    "\"actionIntent\":\"intent:#Intent;component=com.example.fbs/.MainActivity;end\"" +
+                "}" +
+            "}," +
+            "\"param_island\":{" +
+                "\"islandProperty\":1," +
+                "\"islandTimeout\":3600," +
+                "\"bigIslandArea\":{" +
+                    "\"templateNo\":9," +
+                    "\"imageTextInfoLeft\":{" +
+                        "\"type\":1," +
+                        "\"picInfo\":{\"type\":1,\"pic\":\"miui.focus.pic_small\"}," +
+                        "\"textInfo\":{" +
+                            "\"title\":\"${escape(safeLabel)}\"," +
+                            "\"showHighlightColor\":false," +
+                            "\"narrowFont\":false" +
+                        "}" +
+                    "}," +
+                    "\"textInfo\":{" +
+                        "\"frontTitle\":\"\"," +
+                        "\"title\":\"${escape(codeValue)}\"," +
+                        "\"content\":\"${escape(subTitleText)}\"," +
+                        "\"showHighlightColor\":false," +
+                        "\"narrowFont\":false" +
+                    "}" +
+                "}," +
+                "\"smallIslandArea\":{" +
+                    "\"picInfo\":{\"type\":1,\"pic\":\"miui.focus.pic_small\",\"picDark\":\"miui.focus.pic_small_dark\"}" +
+                "}" +
+            "}" +
+        "}}"
     }
 
     /** JSON 字符转义（防 break JSON） */

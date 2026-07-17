@@ -22,7 +22,6 @@ class _SettingsPageState extends State<SettingsPage> with WidgetsBindingObserver
   bool _listenerEnabled = false;
   bool _installedAppsSupported = false;
   bool _installedAppsGranted = false;
-  bool _islandGlow = false;
 
   @override
   void initState() {
@@ -52,7 +51,6 @@ class _SettingsPageState extends State<SettingsPage> with WidgetsBindingObserver
       _postNotifGranted = r[2] as bool; _promotedPerm = r[3] as bool;
       _installedAppsSupported = r[4] as bool; _installedAppsGranted = r[5] as bool;
       _listenerEnabled = r[6] as bool;
-      _islandGlow = prefs.getBool('island_glow') ?? false;
     });
   }
 
@@ -109,28 +107,6 @@ class _SettingsPageState extends State<SettingsPage> with WidgetsBindingObserver
               Navigator.push(context,
                 SlideRoute(builder: (_) => NotificationStylePage(initialStyle: style)));
             },
-          ),
-        ]),
-        const SizedBox(height: GlassTokens.spaceMD),
-        _buildSectionCard('超级岛', Icons.notifications_active_outlined, const Color(0xFFFF9500), [
-          SwitchListTile(
-            contentPadding: EdgeInsets.zero,
-            title: const Text('光效', style: TextStyle(fontSize: 14)),
-            subtitle: const Text('通知上岛时显示外发光效果', style: TextStyle(fontSize: 12)),
-            value: _islandGlow,
-            onChanged: (v) async {
-              final prefs = await SharedPreferences.getInstance();
-              await prefs.setBool('island_glow', v);
-              setState(() => _islandGlow = v);
-            },
-            secondary: Container(
-              width: 36, height: 36,
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(GlassTokens.radiusSM),
-                color: const Color(0xFFFF9500).withValues(alpha: 0.10),
-              ),
-              child: const Icon(Icons.notifications_active_outlined, color: Color(0xFFFF9500), size: 20),
-            ),
           ),
         ]),
         const SizedBox(height: GlassTokens.spaceMD),
