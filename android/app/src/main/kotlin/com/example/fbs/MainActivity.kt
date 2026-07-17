@@ -233,6 +233,7 @@ class MainActivity : FlutterActivity() {
                 }
                 "cancelSuperIslandNotification" -> {
                     com.example.fbs.service.SuperIslandHelper.cancelNotification(this)
+                    com.example.fbs.hyperisland.FocusForwarder.cancelAll(this)
                     result.success(true)
                 }
                 // 网络阻断转发（已验证稳定的方案）

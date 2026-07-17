@@ -200,7 +200,8 @@ class BackScreenController(private val context: Context) {
 
             // 1. 用 am start 启动 Activity（走 Shizuku shell，绕过 Android 后台启动限制）
             //    context.startActivity 在 FBS 未进入前台时会受 Android 12+ 后台限制静默失败
-            val cmd = buildLaunchCommand(title, subtitle, content, appName, packageName, styleExtras, category)
+            val notifId = com.example.fbs.hyperisland.FocusForwarder.lastBackScreenNotifId
+            val cmd = buildLaunchCommand(title, subtitle, content, appName, packageName, styleExtras, category, notifId)
             Log.d(TAG, "amStart cmdLen=${cmd.length} titleLen=${title.length} contentLen=${content.length}")
             execShizukuShell(cmd)
             Thread.sleep(600)  // 多等 100ms，am start 比 context.startActivity 慢
@@ -363,6 +364,7 @@ class BackScreenController(private val context: Context) {
         packageName: String,
         styleExtras: Map<String, String>,
         category: String = "general",
+        notifId: Int = -1,
     ): String {
         val sb = StringBuilder()
         sb.append("am start")
@@ -371,7 +373,6 @@ class BackScreenController(private val context: Context) {
         sb.append(" --user 0")
 
         fun appendExtra(key: String, value: String) {
-            // 单引号包裹 + '\'' 转义：安全处理换行符、$、反斜杠等所有特殊字符
             val escaped = value.replace("'", "'\\''")
             sb.append(" --es $key '$escaped'")
         }
@@ -382,6 +383,11 @@ class BackScreenController(private val context: Context) {
         appendExtra("appName", appName)
         appendExtra("packageName", packageName)
         appendExtra("category", category)
+
+        // 传入关联的通知 ID，供背屏销毁时精确清除
+        if (notifId >= 0) {
+            sb.append(" --ei notifId $notifId")
+        }
 
         for ((key, value) in styleExtras) {
             appendExtra(key, value)

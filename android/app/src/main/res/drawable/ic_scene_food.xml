@@ -1,45 +1,10 @@
-<!-- 取餐码 — 奶茶杯 + 取餐号牌 -->
+<!-- 取餐码 — 饭碗 -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="24dp"
     android:height="24dp"
-    android:viewportWidth="24"
-    android:viewportHeight="24">
-    <!-- Cup body -->
+    android:viewportWidth="1024"
+    android:viewportHeight="1024">
     <path
-        android:strokeColor="#FFFFFF"
-        android:strokeWidth="1.75"
-        android:strokeLineCap="round"
-        android:strokeLineJoin="round"
-        android:pathData="M6,9 l-1.3,12 c-0.2,1,0.5,1.8,1.5,1.6 l11.6,-1.6 c1,-0.2,1.4,-1.1,1.1,-2 l-1.4,-9"/>
-    <!-- Lid dome -->
-    <path
-        android:strokeColor="#FFFFFF"
-        android:strokeWidth="1.75"
-        android:strokeLineCap="round"
-        android:strokeLineJoin="round"
-        android:pathData="M5.5,9 Q12,5 18.5,9"/>
-    <!-- Straw -->
-    <path
-        android:strokeColor="#FFFFFF"
-        android:strokeWidth="1.75"
-        android:strokeLineCap="round"
-        android:strokeLineJoin="round"
-        android:pathData="M14,7.5 L18,3"/>
-    <!-- Pickup code tag (rounded rect + lines) -->
-    <path
-        android:strokeColor="#FFFFFF"
-        android:strokeWidth="1.75"
-        android:strokeLineCap="round"
-        android:strokeLineJoin="round"
-        android:pathData="M16.5,14 a1,1 0 0,1 1,-1 h3.5 a1,1 0 0,1 1,1 v4 a1,1 0 0,1 -1,1 h-3.5 a1,1 0 0,1 -1,-1 Z"/>
-    <path
-        android:strokeColor="#FFFFFF"
-        android:strokeWidth="1.75"
-        android:strokeLineCap="round"
-        android:pathData="M15.5,16 L20.5,16"/>
-    <path
-        android:strokeColor="#FFFFFF"
-        android:strokeWidth="1.75"
-        android:strokeLineCap="round"
-        android:pathData="M16.5,18 L19.5,18"/>
+        android:fillColor="#FFFFFF"
+        android:pathData="M879.872 437.0944L859.648 343.04a44.2368 44.2368 0 0 0-43.6224-34.048h-6.4512L793.6 239.6672a43.9296 43.9296 0 0 0-43.4688-33.28h-215.9616V141.568a2.2016 2.2016 0 0 1 0.9216-0.9728l122.4192-78.1824a20.48 20.48 0 1 0-22.0672-34.5088L513.024 106.0864a42.1888 42.1888 0 0 0-19.8144 35.4816v64.8192H278.4256a43.8784 43.8784 0 0 0-43.8784 35.328L222.4128 308.736h-5.7344A44.1856 44.1856 0 0 0 173.056 343.04l-20.48 94.3104a41.3184 41.3184 0 0 0 8.3968 34.7136 44.9024 44.9024 0 0 0 35.2256 16.5376h48.6912l40.448 451.5328a43.52 43.52 0 0 0 44.3904 39.0144h370.944a44.032 44.032 0 0 0 44.3904-39.2192l38.2976-451.584h52.992a44.9024 44.9024 0 0 0 35.2256-16.5376 41.3184 41.3184 0 0 0 8.2944-34.7136zM274.8416 249.0368a3.7376 3.7376 0 0 1 3.584-1.6896h471.552a3.9424 3.9424 0 0 1 3.584 1.6896l13.9264 59.6992H264.0384z m426.0352 688.896H329.9328c-2.3552 0-3.584-1.3312-3.584-1.6896L299.008 631.296a10.752 10.752 0 0 0 1.1264-1.536c1.3824-2.304 33.8944-56.0128 94.3104-56.0128 29.696 0 54.5792 13.7728 83.3536 29.7472 33.6384 18.6368 71.68 39.7824 123.5456 39.7824a238.848 238.848 0 0 0 131.328-41.728l-28.2112 334.6944c0 0.3584-1.1776 1.6896-3.584 1.6896z m36.4032-392.2432c-0.4096 0.4096-0.9216 0.7168-1.3312 1.1264s-55.3984 55.5008-134.656 55.5008c-40.96 0-71.68-16.8448-103.68-34.6624-30.72-17.152-62.9248-34.8672-103.2192-34.8672a146.5344 146.5344 0 0 0-100.5568 41.2672L286.208 488.3456H742.4z m98.9184-98.304h-640c-2.4064 0-3.4816-1.28-3.5328-1.6896l20.224-94.3104a3.7888 3.7888 0 0 1 3.584-1.6896h599.552a3.6864 3.6864 0 0 1 3.5328 1.6896l20.48 94.3104a3.6864 3.6864 0 0 1-3.7888 1.6896z"/>
 </vector>

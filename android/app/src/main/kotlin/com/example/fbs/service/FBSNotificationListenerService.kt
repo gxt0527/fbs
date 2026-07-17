@@ -11,6 +11,7 @@ import android.os.Looper
 import android.service.notification.NotificationListenerService
 import android.service.notification.StatusBarNotification
 import android.util.Log
+import com.example.fbs.hyperisland.FocusForwarder
 import io.flutter.plugin.common.EventChannel
 
 enum class NotifEventType { POSTED, REMOVED }
@@ -200,8 +201,20 @@ class FBSNotificationListenerService : NotificationListenerService() {
     override fun onNotificationRemoved(sbn: StatusBarNotification?) {
         super.onNotificationRemoved(sbn)
         if (sbn == null) return
-        if (sbn.packageName == "com.example.fbs" && sbn.id == 9001) {
-            Log.d(TAG, "FBS notification removed (id=9001), dismissing back screen")
+        if (sbn.packageName == "com.example.fbs" &&
+            (sbn.id == SuperIslandHelper.NOTIFICATION_ID || FocusForwarder.isActiveId(sbn.id))
+        ) {
+            Log.d(TAG, "FBS notification removed (id=${sbn.id}), dismissing back screen")
+            FocusForwarder.removeActiveId(sbn.id)
+            // 通知 Flutter 层同步清除
+            sendRemovedToFlutter(
+                NotifRemovedInfo(
+                    notificationId = sbn.id,
+                    packageName = sbn.packageName,
+                    notificationKey = sbn.key,
+                    reason = "notification_removed"
+                )
+            )
             // 方式1: 直接 finish Activity（同一进程，最可靠）
             val act = com.example.fbs.service.BackScreenNotificationActivity.instance
             if (act != null && !act.isFinishing) {

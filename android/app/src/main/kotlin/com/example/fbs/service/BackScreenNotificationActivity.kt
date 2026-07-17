@@ -1,6 +1,8 @@
 package com.example.fbs.service
 
 import android.app.Activity
+import android.app.NotificationManager
+import android.content.Context
 import android.graphics.*
 import android.os.*
 import android.text.Layout
@@ -9,6 +11,7 @@ import android.text.TextPaint
 import android.util.Log
 import android.view.View
 import android.view.WindowManager
+import com.example.fbs.hyperisland.FocusForwarder
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -37,6 +40,7 @@ class BackScreenNotificationActivity : Activity() {
     private var isInAodMode = false
     private var dismissHandler = Handler(Looper.getMainLooper())
     private var displayDurationMs = 10000L
+    private var notificationIdToCancel: Int = -1
     private var sensorManager: android.hardware.SensorManager? = null
     private var lastLux = -1f
     private var darkSinceMs = 0L
@@ -99,6 +103,9 @@ class BackScreenNotificationActivity : Activity() {
             val horizontalOffset = intent.getStringExtra("horizontalOffset")?.toFloatOrNull() ?: 85f
             displayDurationMs = intent.getStringExtra("displayDurationMs")?.toLongOrNull() ?: 10000L
             val useOfficialBg = intent.getStringExtra("useOfficialBackground")?.toBooleanStrictOrNull() ?: false
+
+            // 关联的通知 ID（精确清除用，不触发其他通知）
+            notificationIdToCancel = intent.getIntExtra("notifId", -1)
 
             // 摄像头避开：使用样式页设置的偏移量（dp 单位，自动 ×density 转 px）
             val cameraOffsetPx = if (cameraAvoidance) {
@@ -297,6 +304,18 @@ class BackScreenNotificationActivity : Activity() {
             sensorManager?.unregisterListener(sensorListener)
             wakeLock?.let { if (it.isHeld) it.release() }
         } catch (_: Exception) {}
+        // 背屏销毁时只取消关联的那条通知（不触及其他通知）
+        try {
+            val nm = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+            nm.cancel(SuperIslandHelper.NOTIFICATION_ID)
+            if (notificationIdToCancel >= 0) {
+                nm.cancel(notificationIdToCancel)
+                com.example.fbs.hyperisland.FocusForwarder.removeActiveId(notificationIdToCancel)
+                Log.d(TAG, "Cancelled notification id=$notificationIdToCancel on back screen dismiss")
+            }
+        } catch (e: Exception) {
+            Log.w(TAG, "Failed to cancel notification on dismiss", e)
+        }
         Log.d(TAG, "onDestroy (lastLux=$lastLux)")
         super.onDestroy()
     }

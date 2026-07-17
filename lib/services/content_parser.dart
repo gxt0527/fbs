@@ -310,7 +310,7 @@ class ContentParser {
       case ParsedCategory.express:
         {
           final label = _extractCodeLabel(lines,
-            RegExp(r'(取件码|取货码|提货码)\s*[:：]?\s*[\d\-]{3,15}'));
+            RegExp(r'(取件码|取货码|提货码)\s*[:：为]?\s*[\d\-]{3,15}'));
           if (label != null) return label;
         }
         return _match(lines, [
@@ -481,9 +481,9 @@ class ContentParser {
       }
     }
 
-    // 1. 取件码（驿站/快递柜）- 支持数字+横杠组合，如 3-2-8188
+    // 1. 取件码（驿站/快递柜）- 支持数字+横杠组合，如 3-2-8188 / 取件码为11-4-9476
     for (final m in RegExp(
-      r'(取件码|取件号|取货码|提货码|货架号|柜号|箱号)\s*[:：]?\s*([\d\-]{3,15})',
+      r'(取件码|取件号|取货码|提货码|货架号|柜号|箱号)\s*[:：为]?\s*([\d\-]{3,15})',
     ).allMatches(clean)) {
       add(KeyInfo(label: m.group(1)!, value: m.group(2)!, type: KeyType.code));
     }
@@ -554,7 +554,7 @@ class ContentParser {
 
     // 门店名称 — 在遇到"金额/件数/消费"等关键词前停止，避免吞掉同行其他字段
     for (final m in RegExp(
-      r'(门店|店铺|餐厅|店)[：:]\s*(.+?)(?=\s+(?:金额|消费|支付|件数|共|订单|总计|合计|备注|说明|$))',
+      r'(门店|店铺|餐厅|店)[：:]\s*(.+?)(?=\s+(?:金额|消费|支付|件数|共|订单|总计|合计|备注|说明)|$)',
     ).allMatches(clean)) {
       final value = m.group(2)!.trim();
       if (value.isNotEmpty) {
@@ -671,9 +671,9 @@ class ContentParser {
       }
     }
 
-    // 11. 地址 / 地点 — 在遇到"金额/件数"等关键词前停止
+    // 11. 地址 / 地点 — 在遇到"金额/件数"等关键词前停止，或行尾
     for (final m in RegExp(
-      r'(地址|地点|位置|定位|上车点|下车点|取件地址|收货地址)[：:]\s*(.+?)(?=\s+(?:金额|消费|件数|共|订单|总计|合计|备注|说明|$))',
+      r'(地址|地点|位置|定位|上车点|下车点|取件地址|收货地址)[：:]\s*(.+?)(?=\s+(?:金额|消费|件数|共|订单|总计|合计|备注|说明)|$)',
     ).allMatches(clean)) {
       final addr = m.group(2)!.trim();
       if (addr.isNotEmpty &&

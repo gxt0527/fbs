@@ -27,6 +27,42 @@ object FocusForwarder {
     private const val NOTIFICATION_ID = 9100
 
     private var notificationIdCounter = 0
+    private val activeIds = mutableSetOf<Int>()
+
+    /** 最近一次发送的、与背屏关联的通知 ID */
+    @Volatile
+    var lastBackScreenNotifId: Int = -1
+        private set
+
+    @Synchronized
+    fun addActiveId(id: Int) { activeIds.add(id) }
+
+    @Synchronized
+    fun removeActiveId(id: Int) { activeIds.remove(id) }
+
+    @Synchronized
+    fun isActiveId(id: Int): Boolean = id in activeIds
+
+    /** 取消所有活跃通知（供"清除"按钮使用） */
+    @Synchronized
+    fun cancelAll(context: Context) {
+        val nm = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        for (id in activeIds) {
+            nm.cancel(id)
+        }
+        activeIds.clear()
+    }
+
+    /** 取消最近一次与背屏关联的通知（供返回手势使用，不触及其它通知） */
+    @Synchronized
+    fun cancelLastBackScreen(context: Context) {
+        if (lastBackScreenNotifId >= 0) {
+            val nm = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+            nm.cancel(lastBackScreenNotifId)
+            activeIds.remove(lastBackScreenNotifId)
+            lastBackScreenNotifId = -1
+        }
+    }
 
     /** 场景分类 → 智能图标资源 ID 映射 */
     private fun sceneIconRes(category: String): Int {
@@ -70,7 +106,7 @@ object FocusForwarder {
             return
         }
 
-        val notifId = NOTIFICATION_ID + (notificationIdCounter % 100)
+        val notifId = NOTIFICATION_ID + notificationIdCounter
         notificationIdCounter++
 
         // 构建 JSON（复用已验证成功的 course_reminder 模板）
@@ -128,6 +164,8 @@ object FocusForwarder {
                     notif.extras.putString("miui.focus.param", islandParams)
 
                     nm.notify(notifId, notif)
+                    addActiveId(notifId)
+                    lastBackScreenNotifId = notifId
                     Log.i(TAG, "✅ 通知已发送 id=$notifId")
 
                     // 3. 短暂等待后恢复
@@ -222,7 +260,7 @@ object FocusForwarder {
             return
         }
 
-        val notifId = NOTIFICATION_ID + (notificationIdCounter % 100)
+        val notifId = NOTIFICATION_ID + notificationIdCounter
         notificationIdCounter++
 
         val sceneName = when (category) {
@@ -237,7 +275,7 @@ object FocusForwarder {
             else -> "智能分类：通用"
         }
 
-        val islandParams = buildIslandJsonTemplate9(label, codeValue, storeName, items, amount, sceneName)
+        val islandParams = buildIslandJsonTemplate9(label, codeValue, storeName, items, amount, sceneName, category)
 
         val component = ComponentName(context, NetworkBypassService::class.java)
         val args = UserServiceArgs(component)
@@ -268,7 +306,19 @@ object FocusForwarder {
                     val builder = Notification.Builder(context, CHANNEL_ID)
                         .setSmallIcon(sceneIconDrawable)
                         .setContentTitle("$label: $codeValue")
-                        .setContentText(storeName.ifEmpty { "请留意大屏信息" })
+                        .setContentText(storeName.ifEmpty {
+                            when (category) {
+                                "foodDelivery", "food" -> "请留意大屏信息"
+                                "express" -> "请核对收件人信息"
+                                "payment" -> "注意账户安全"
+                                "verification" -> "验证码仅限本人使用"
+                                "meeting" -> "会议即将开始"
+                                "travel" -> "您的行程已安排"
+                                "bill" -> "账单已出"
+                                "order" -> "订单已生成"
+                                else -> "新消息提醒"
+                            }
+                        })
                         .setWhen(System.currentTimeMillis())
                         .setAutoCancel(true)
 
@@ -281,6 +331,8 @@ object FocusForwarder {
                     notif.extras.putString("miui.focus.param", islandParams)
 
                     nm.notify(notifId, notif)
+                    addActiveId(notifId)
+                    lastBackScreenNotifId = notifId
                     Log.i(TAG, "[T9] ✅ 通知已发送 id=$notifId")
 
                     // 3. 短暂等待后恢复
@@ -323,7 +375,8 @@ object FocusForwarder {
         storeName: String,
         items: String,
         amount: String,
-        sceneName: String
+        sceneName: String,
+        category: String
     ): String {
         val subTitleText = buildString {
             if (items.isNotEmpty()) { append("件数：$items") }
@@ -339,6 +392,19 @@ object FocusForwarder {
         }
 
         val safeLabel = label.ifEmpty { "取餐码" }
+
+        // 根据不同场景调整展开提示文案
+        val (hintContent, hintTitle) = when (category) {
+            "foodDelivery", "food" -> "到店自取" to "请留意大屏信息"
+            "express" -> "请及时取件" to "请核对收件人信息"
+            "payment" -> "请核对金额" to "注意账户安全"
+            "verification" -> "请勿泄露" to "验证码仅限本人使用"
+            "meeting" -> "准时参加" to "会议即将开始"
+            "travel" -> "注意行程变动" to "您的行程已安排"
+            "bill" -> "请及时缴费" to "账单已出"
+            "order" -> "查看订单详情" to "订单已生成"
+            else -> "查看详情" to "新消息提醒"
+        }
 
         return "{\"param_v2\":{" +
             "\"business\":\"course_reminder\"," +
@@ -369,8 +435,8 @@ object FocusForwarder {
             "\"picInfo\":{\"type\":1,\"pic\":\"\"}," +
             "\"hintInfo\":{" +
                 "\"type\":2," +
-                "\"content\":\"到店自取\"," +
-                "\"title\":\"请留意大屏信息\"," +
+                "\"content\":\"${escape(hintContent)}\"," +
+                "\"title\":\"${escape(hintTitle)}\"," +
                 "\"subContent\":\"\"," +
                 "\"subTitle\":\"\"," +
                 "\"colorContent\":\"#666666\"," +

@@ -118,7 +118,7 @@ class _HomePageState extends State<HomePage> {
 
 
   /// 构建统一展示内容（背屏和超级岛共用）
-  /// 外卖=产品|店名，快递=取件地址，其他=首行
+  /// 外卖=产品|店名，快递=取件地址，其他=关键字段组合
   String _buildDisplayContent(String sourceText, ParsedContent parsed) {
     final filtered = ContentParser.filterBackScreenContent(sourceText);
     final lines = filtered.split('\n')
@@ -131,8 +131,32 @@ class _HomePageState extends State<HomePage> {
       case ParsedCategory.foodDelivery:
         return _extractProductAndShop(lines);
       default:
-        return lines.isNotEmpty ? lines.first : '';
+        return _buildFromKeyInfos(parsed, lines);
     }
+  }
+
+  /// 从关键字段构建展示内容，对齐美食取餐码模式
+  String _buildFromKeyInfos(ParsedContent parsed, List<String> lines) {
+    final parts = <String>[];
+    for (final info in parsed.keyInfos) {
+      switch (info.type) {
+        case KeyType.code:
+        case KeyType.order:
+          parts.add('${info.label}：${info.value}');
+        case KeyType.amount:
+          parts.add('金额：¥${info.value}');
+        case KeyType.location:
+          if (!parts.any((p) => p.contains(info.value))) {
+            parts.add(info.value);
+          }
+        case KeyType.time:
+          if (parts.isEmpty) parts.add(info.value);
+        default:
+          break;
+      }
+    }
+    if (parts.isNotEmpty) return parts.join('  ');
+    return lines.isNotEmpty ? lines.first : '';
   }
 
   /// 快递场景: 提取 快递品牌 | 取件点
@@ -319,17 +343,34 @@ class _HomePageState extends State<HomePage> {
   }
 
 
+  String _defaultLabel(ParsedCategory category) {
+    switch (category) {
+      case ParsedCategory.express: return '取件码';
+      case ParsedCategory.foodDelivery: return '取餐码';
+      case ParsedCategory.payment: return '支付';
+      case ParsedCategory.verification: return '验证码';
+      case ParsedCategory.meeting: return '会议';
+      case ParsedCategory.travel: return '出行';
+      case ParsedCategory.bill: return '账单';
+      case ParsedCategory.order: return '订单';
+      case ParsedCategory.system: return '系统';
+      case ParsedCategory.general: return '通知';
+    }
+  }
+
   /// 统一转发入口：#9 超级岛 + 背屏同步转发
   /// 由图片OCR、分享文本、按钮三个入口统一调用
   Future<void> _forwardViaTemplate9(ParsedContent parsed, String displayContent, String category) async {
     if (_isBypassing) return;
     setState(() => _isBypassing = true);
 
-    // 标签/主要文本1
-    final label = parsed.title.isNotEmpty ? parsed.title : '取餐码';
-    // 码值/主要文本2
+    // 标签/主要文本1（按场景取默认值）
+    final label = parsed.title.isNotEmpty ? parsed.title : _defaultLabel(parsed.category);
+    // 码值/主要文本2（优先 code 类型，回退到 order 类型）
     final codeInfo = parsed.keyInfos
         .where((k) => k.type == KeyType.code)
+        .firstOrNull ?? parsed.keyInfos
+        .where((k) => k.type == KeyType.order)
         .firstOrNull;
     final codeValue = codeInfo?.value ?? '';
     // 件数
@@ -719,8 +760,6 @@ class _HomePageState extends State<HomePage> {
                 Text('解析结果', style: TextStyle(
                   fontWeight: FontWeight.w600, color: GlassTokens.accent, fontSize: 13,
                 )),
-                const Spacer(),
-                _buildCategoryChip(p.category),
               ]),
               const SizedBox(height: 12),
               TextField(
