@@ -6,6 +6,8 @@ import android.app.NotificationManager
 import android.content.ComponentName
 import android.content.Context
 import android.content.ServiceConnection
+import android.graphics.drawable.Icon
+import android.os.Bundle
 import android.os.IBinder
 import android.util.Log
 import rikka.shizuku.Shizuku
@@ -25,6 +27,21 @@ object FocusForwarder {
     private const val NOTIFICATION_ID = 9100
 
     private var notificationIdCounter = 0
+
+    /** 场景分类 → 智能图标资源 ID 映射 */
+    private fun sceneIconRes(category: String): Int {
+        return when (category) {
+            "foodDelivery", "food" -> com.example.fbs.R.drawable.ic_scene_food
+            "express" -> com.example.fbs.R.drawable.ic_scene_express
+            "payment", "bill" -> com.example.fbs.R.drawable.ic_scene_pay
+            "scan" -> com.example.fbs.R.drawable.ic_scene_scan
+            "order" -> com.example.fbs.R.drawable.ic_scene_order
+            "verification" -> com.example.fbs.R.drawable.ic_scene_verify
+            "meeting" -> com.example.fbs.R.drawable.ic_scene_meeting
+            "travel" -> com.example.fbs.R.drawable.ic_scene_travel
+            else -> com.example.fbs.R.drawable.ic_scene_order
+        }
+    }
 
     /**
      * 发送网络阻断后的超级岛通知。
@@ -97,7 +114,7 @@ object FocusForwarder {
                         )
                     }
 
-                    val smallIcon = android.R.drawable.ic_dialog_info
+                    val smallIcon = sceneIconRes(category)
                     // 小岛标题：只显示场景标题（"取餐码"），不含码值
                     val shortTitle = if (title.contains(":")) title.substringBefore(":").trim() else title
                     val builder = Notification.Builder(context, CHANNEL_ID)
@@ -243,15 +260,20 @@ object FocusForwarder {
                         )
                     }
 
-                    val smallIcon = android.R.drawable.ic_dialog_info
+                    val sceneIconDrawable = sceneIconRes(category)
                     val builder = Notification.Builder(context, CHANNEL_ID)
-                        .setSmallIcon(smallIcon)
+                        .setSmallIcon(sceneIconDrawable)
                         .setContentTitle("$label: $codeValue")
                         .setContentText(storeName.ifEmpty { "请留意大屏信息" })
                         .setWhen(System.currentTimeMillis())
                         .setAutoCancel(true)
 
                     val notif = builder.build()
+                    // 设置场景图标到 miui.focus.pics Bundle（小岛使用）
+                    val sceneIcon = Icon.createWithResource(context, sceneIconRes(category))
+                    val picsBundle = Bundle()
+                    picsBundle.putParcelable("fbs_scene_icon", sceneIcon)
+                    notif.extras.putBundle("miui.focus.pics", picsBundle)
                     notif.extras.putString("miui.focus.param", islandParams)
 
                     nm.notify(notifId, notif)
@@ -275,6 +297,21 @@ object FocusForwarder {
         })
     }
 
+    /** 场景分类 → 智能图标资源名 */
+    private fun sceneIconName(category: String): String {
+        return when (category) {
+            "foodDelivery", "food" -> "ic_scene_food"
+            "express" -> "ic_scene_express"
+            "payment", "bill" -> "ic_scene_pay"
+            "scan" -> "ic_scene_scan"
+            "order" -> "ic_scene_order"
+            "verification" -> "ic_scene_verify"
+            "meeting" -> "ic_scene_meeting"
+            "travel" -> "ic_scene_travel"
+            else -> "ic_scene_order"
+        }
+    }
+
     /** 构建模板 #9 岛屿 JSON */
     private fun buildIslandJsonTemplate9(
         label: String,
@@ -291,12 +328,6 @@ object FocusForwarder {
         }
 
         val safeLabel = label.ifEmpty { "取餐码" }
-        // 次要文本1 + 次要文本2 → 拼接合并
-        val mergedContent = buildString {
-            if (subTitleText.isNotEmpty()) append(subTitleText)
-            if (subTitleText.isNotEmpty() && storeName.isNotEmpty()) append("  ")
-            if (storeName.isNotEmpty()) append(storeName)
-        }
 
         return "{\"param_v2\":{" +
             "\"business\":\"course_reminder\"," +
@@ -308,7 +339,7 @@ object FocusForwarder {
             "\"baseInfo\":{" +
                 "\"type\":2," +
                 "\"title\":\"${escape(safeLabel)}\"," +
-                "\"content\":\"${escape(mergedContent)}\"," +
+                "\"content\":\"${escape(storeName)}\"," +
                 "\"extraTitle\":\"${escape(codeValue)}\"," +
                 "\"specialTitle\":\"\"," +
                 "\"subContent\":\"\"," +
@@ -352,7 +383,7 @@ object FocusForwarder {
                     "\"templateNo\":9," +
                     "\"imageTextInfoLeft\":{" +
                         "\"type\":1," +
-                        "\"picInfo\":{\"type\":1,\"pic\":\"miui.focus.pic_small\"}," +
+                        "\"picInfo\":{\"type\":1,\"pic\":\"fbs_scene_icon\"}," +
                         "\"textInfo\":{" +
                             "\"title\":\"${escape(safeLabel)}\"," +
                             "\"showHighlightColor\":false," +
@@ -368,7 +399,7 @@ object FocusForwarder {
                     "}" +
                 "}," +
                 "\"smallIslandArea\":{" +
-                    "\"picInfo\":{\"type\":1,\"pic\":\"miui.focus.pic_small\",\"picDark\":\"miui.focus.pic_small_dark\"}" +
+                    "\"picInfo\":{\"type\":1,\"pic\":\"fbs_scene_icon\"}" +
                 "}" +
             "}" +
         "}}"

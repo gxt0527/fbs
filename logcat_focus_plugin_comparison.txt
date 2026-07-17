@@ -1,0 +1,292 @@
+--------- beginning of main
+07-17 13:51:11.582 D/FocusPlugin( 6122): handleTimeout 43200000
+07-17 13:51:11.587 E/FocusPlugin( 6122): onNotificationPosted {} com.example.fbs
+07-17 13:51:11.587 D/FocusPlugin( 6122): createStandardTemplate
+07-17 13:51:11.587 D/FocusPlugin( 6122): isSameModule: false
+07-17 13:51:11.590 D/FocusPlugin( 6122): getFocusNotificationContent inflateFinish value: {}  authResult:{}
+07-17 13:51:11.590 D/FocusPlugin( 6122): inflateFinishCallback 0|com.example.fbs|501|null|10411 {} {}
+07-17 13:51:11.596 E/FocusPlugin( 6122): onAuthSuccess 0|com.example.fbs|501|null|10411 com.example.fbs
+07-17 13:51:11.596 D/FocusPlugin( 6122): inflateFinishCallback 0|com.example.fbs|501|null|10411 {0|com.example.fbs|501|null|10411=true} {}
+07-17 13:51:11.632 E/FocusPlugin( 6122): onInflateSuccess 0|com.example.fbs|501|null|10411
+07-17 13:51:11.632 D/FocusPlugin( 6122): inflateFinishCallback 0|com.example.fbs|501|null|10411 {0|com.example.fbs|501|null|10411=true} {0|com.example.fbs|501|null|10411=true}
+07-17 13:51:11.632 D/FocusPlugin( 6122): addDynamicIslandView  android.widget.FrameLayout{dd35ba3 V.E...... ......I. 0,0-0,0 #7f0a01bd app:id/focus_container}, (true && false) || false
+07-17 13:51:11.632 D/FocusPlugin( 6122): parseOS2DefaultIslandData
+07-17 13:51:11.659 E/FocusPlugin( 6122): onInflateFinish 0|com.example.fbs|501|null|10411
+07-17 13:51:11.659 D/FocusPlugin( 6122): inflation Ended
+--------- beginning of system
+07-17 13:51:13.417 W/NotificationService( 3430): Toast already killed. pkg=com.example.fbs token=android.os.BinderProxy@baa6d97
+07-17 13:51:27.745 D/FocusPlugin( 6122): handleTimeout 43200000
+07-17 13:51:27.745 E/FocusPlugin( 6122): onNotificationPosted {0|com.example.fbs|501|null|10411=true} com.example.fbs
+07-17 13:51:27.746 D/FocusPlugin( 6122): createStandardTemplate
+07-17 13:51:27.746 D/FocusPlugin( 6122): isSameModule: false
+07-17 13:51:27.747 D/FocusPlugin( 6122): getFocusNotificationContent inflateFinish value: {0|com.example.fbs|501|null|10411=true}  authResult:{0|com.example.fbs|501|null|10411=true}
+07-17 13:51:27.747 D/FocusPlugin( 6122): inflateFinishCallback 0|com.example.fbs|9100|null|10411 {0|com.example.fbs|501|null|10411=true} {0|com.example.fbs|501|null|10411=true}
+07-17 13:51:27.751 E/FocusPlugin( 6122): onAuthSuccess 0|com.example.fbs|9100|null|10411 com.example.fbs
+07-17 13:51:27.751 D/FocusPlugin( 6122): inflateFinishCallback 0|com.example.fbs|9100|null|10411 {0|com.example.fbs|501|null|10411=true, 0|com.example.fbs|9100|null|10411=true} {0|com.example.fbs|501|null|10411=true}
+07-17 13:51:27.760 E/FocusPlugin( 6122): onInflateSuccess 0|com.example.fbs|9100|null|10411
+07-17 13:51:27.760 D/FocusPlugin( 6122): inflateFinishCallback 0|com.example.fbs|9100|null|10411 {0|com.example.fbs|501|null|10411=true, 0|com.example.fbs|9100|null|10411=true} {0|com.example.fbs|501|null|10411=true, 0|com.example.fbs|9100|null|10411=true}
+07-17 13:51:27.760 D/FocusPlugin( 6122): addDynamicIslandView  android.widget.FrameLayout{5acc5a V.E...... ......I. 0,0-0,0 #7f0a01bd app:id/focus_container}, (true && false) || false
+07-17 13:51:27.760 D/FocusPlugin( 6122): parseOS2DefaultIslandData
+07-17 13:51:27.763 E/FocusPlugin( 6122): onInflateFinish 0|com.example.fbs|9100|null|10411
+07-17 13:51:27.763 D/FocusPlugin( 6122): inflation Ended
+07-17 13:51:33.179 I/NotificationService( 3430): Cancel FGS notification CallingUid: 6110 CallingPid: 18328 Pkg: com.xiaomi.finddevice Id:3753399 Tag:null UserId:0 MustHaveFlags:0 MustNotHaveFlags:0 Reason:8 foregroundNotiWhen:1784267452743 foregroundNotiFlags:96 foregroundNotiChannelId:FGS_HIDE
+07-17 13:51:33.183 D/FocusPlugin( 6122): NotifLifetime: onNotificationRemoved, key: 0|com.xiaomi.finddevice|3753399|null|6110, needExtendLifetime: false, reason: 8
+07-17 13:51:33.183 I/FocusPlugin( 6122): onNotificationRemoved 0|com.xiaomi.finddevice|3753399|null|6110, content: null
+07-17 13:51:33.183 I/FocusPlugin( 6122): removeByKey 0|com.xiaomi.finddevice|3753399|null|6110
+07-17 13:51:34.646 D/FocusPlugin( 6122): handleTimeout 43200000
+07-17 13:51:34.646 E/FocusPlugin( 6122): onNotificationPosted {0|com.example.fbs|501|null|10411=true, 0|com.example.fbs|9100|null|10411=true} com.example.fbs
+07-17 13:51:34.646 D/FocusPlugin( 6122): createStandardTemplate
+07-17 13:51:34.646 D/FocusPlugin( 6122): isSameModule: false
+07-17 13:51:34.647 D/FocusPlugin( 6122): getFocusNotificationContent inflateFinish value: {0|com.example.fbs|501|null|10411=true, 0|com.example.fbs|9100|null|10411=true}  authResult:{0|com.example.fbs|501|null|10411=true, 0|com.example.fbs|9100|null|10411=true}
+07-17 13:51:34.647 D/FocusPlugin( 6122): inflateFinishCallback 0|com.example.fbs|9101|null|10411 {0|com.example.fbs|501|null|10411=true, 0|com.example.fbs|9100|null|10411=true} {0|com.example.fbs|501|null|10411=true, 0|com.example.fbs|9100|null|10411=true}
+07-17 13:51:34.647 E/FocusPlugin( 6122): onAuthSuccess 0|com.example.fbs|9101|null|10411 com.example.fbs
+07-17 13:51:34.647 D/FocusPlugin( 6122): inflateFinishCallback 0|com.example.fbs|9101|null|10411 {0|com.example.fbs|501|null|10411=true, 0|com.example.fbs|9100|null|10411=true, 0|com.example.fbs|9101|null|10411=true} {0|com.example.fbs|501|null|10411=true, 0|com.example.fbs|9100|null|10411=true}
+07-17 13:51:34.660 E/FocusPlugin( 6122): onInflateSuccess 0|com.example.fbs|9101|null|10411
+07-17 13:51:34.660 D/FocusPlugin( 6122): inflateFinishCallback 0|com.example.fbs|9101|null|10411 {0|com.example.fbs|501|null|10411=true, 0|com.example.fbs|9100|null|10411=true, 0|com.example.fbs|9101|null|10411=true} {0|com.example.fbs|501|null|10411=true, 0|com.example.fbs|9100|null|10411=true, 0|com.example.fbs|9101|null|10411=true}
+07-17 13:51:34.660 D/FocusPlugin( 6122): addDynamicIslandView  android.widget.FrameLayout{96e950e V.E...... ......I. 0,0-0,0 #7f0a01bd app:id/focus_container}, (true && false) || false
+07-17 13:51:34.660 D/FocusPlugin( 6122): parseOS2DefaultIslandData
+07-17 13:51:34.669 E/FocusPlugin( 6122): onInflateFinish 0|com.example.fbs|9101|null|10411
+07-17 13:51:34.669 D/FocusPlugin( 6122): inflation Ended
+07-17 13:54:14.905 D/FocusPlugin( 6122): NotifLifetime: onNotificationRemoved, key: 0|com.example.fbs|9100|null|10411, needExtendLifetime: false, reason: 2
+07-17 13:54:14.905 I/FocusPlugin( 6122): onNotificationRemoved 0|com.example.fbs|9100|null|10411, content: miui.systemui.notification.focus.FocusNotificationContentImpl@d3abb81
+07-17 13:54:14.905 I/FocusPlugin( 6122): removeByKey 0|com.example.fbs|9100|null|10411
+07-17 13:54:15.219 D/FocusPlugin( 6122): NotifLifetime: onNotificationRemoved, key: 0|com.example.fbs|9101|null|10411, needExtendLifetime: false, reason: 2
+07-17 13:54:15.219 I/FocusPlugin( 6122): onNotificationRemoved 0|com.example.fbs|9101|null|10411, content: miui.systemui.notification.focus.FocusNotificationContentImpl@f7fd2c5
+07-17 13:54:15.219 I/FocusPlugin( 6122): removeByKey 0|com.example.fbs|9101|null|10411
+07-17 13:54:18.040 D/FocusPlugin( 6122): NotifLifetime: onNotificationRemoved, key: 0|com.example.fbs|501|null|10411, needExtendLifetime: false, reason: 2
+07-17 13:54:18.040 I/FocusPlugin( 6122): onNotificationRemoved 0|com.example.fbs|501|null|10411, content: miui.systemui.notification.focus.FocusNotificationContentImpl@c53963d
+07-17 13:54:18.040 I/FocusPlugin( 6122): removeByKey 0|com.example.fbs|501|null|10411
+07-17 13:59:26.753 I/NotificationService( 3430): Cannot find enqueued record for key: -1|android|62|null|1000
+07-17 13:59:39.610 E/FocusPlugin( 6122): onNotificationPosted {} com.example.fbs
+07-17 13:59:39.612 E/FocusPlugin( 6122): onAuthSuccess 0|com.example.fbs|501|null|10411 com.example.fbs
+07-17 13:59:39.612 D/FocusPlugin( 6122): inflateFinishCallback 0|com.example.fbs|501|null|10411 {0|com.example.fbs|501|null|10411=true} {}
+07-17 13:59:41.570 W/NotificationService( 3430): Toast already killed. pkg=com.example.fbs token=android.os.BinderProxy@6370966
+07-17 13:59:44.396 E/FocusPlugin( 6122): onNotificationPosted {} com.example.fbs
+07-17 13:59:44.397 E/FocusPlugin( 6122): onAuthSuccess 0|com.example.fbs|501|null|10411 com.example.fbs
+07-17 13:59:44.397 D/FocusPlugin( 6122): inflateFinishCallback 0|com.example.fbs|501|null|10411 {0|com.example.fbs|501|null|10411=true} {}
+07-17 13:59:44.809 D/FocusPlugin( 6122): handleTimeout 43200000
+07-17 13:59:44.809 E/FocusPlugin( 6122): onNotificationPosted {} com.example.fbs
+07-17 13:59:44.810 D/FocusPlugin( 6122): createStandardTemplate
+07-17 13:59:44.810 D/FocusPlugin( 6122): isSameModule: false
+07-17 13:59:44.810 E/FocusPlugin( 6122): onAuthSuccess 0|com.example.fbs|502|null|10411 com.example.fbs
+07-17 13:59:44.810 D/FocusPlugin( 6122): inflateFinishCallback 0|com.example.fbs|502|null|10411 {0|com.example.fbs|501|null|10411=true, 0|com.example.fbs|502|null|10411=true} {}
+07-17 13:59:44.822 E/FocusPlugin( 6122): onInflateSuccess 0|com.example.fbs|502|null|10411
+07-17 13:59:44.822 D/FocusPlugin( 6122): inflateFinishCallback 0|com.example.fbs|502|null|10411 {0|com.example.fbs|501|null|10411=true, 0|com.example.fbs|502|null|10411=true} {0|com.example.fbs|502|null|10411=true}
+07-17 13:59:44.822 D/FocusPlugin( 6122): addDynamicIslandView  android.widget.FrameLayout{d546b33 V.E...... ......I. 0,0-0,0 #7f0a01bd app:id/focus_container}, (true && false) || false
+07-17 13:59:44.822 D/FocusPlugin( 6122): parseOS2DefaultIslandData
+07-17 13:59:44.831 E/FocusPlugin( 6122): onInflateFinish 0|com.example.fbs|502|null|10411
+07-17 13:59:44.831 D/FocusPlugin( 6122): inflation Ended
+07-17 13:59:45.011 D/FocusPlugin( 6122): getFocusNotificationContent inflateFinish value: {0|com.example.fbs|502|null|10411=true}  authResult:{0|com.example.fbs|501|null|10411=true, 0|com.example.fbs|502|null|10411=true}
+07-17 13:59:45.011 D/FocusPlugin( 6122): inflateFinishCallback 0|com.example.fbs|502|null|10411 {0|com.example.fbs|501|null|10411=true, 0|com.example.fbs|502|null|10411=true} {0|com.example.fbs|502|null|10411=true}
+07-17 13:59:45.011 E/FocusPlugin( 6122): updateDynamicIslandView
+07-17 13:59:45.011 E/FocusPlugin( 6122): updateDynamicIslandView: islandExpandedViewandroid.widget.FrameLayout{d546b33 V.E...... ......ID 0,0-1087,378 #7f0a01bd app:id/focus_container} , key: 0|com.example.fbs|502|null|10411
+07-17 13:59:45.011 D/FocusPlugin( 6122): parseOS2DefaultIslandData
+07-17 13:59:45.024 D/FocusPlugin( 6122): 0|com.example.fbs|0|0|com.example.fbs|g:Aggregate_AlertingSection|10411|0|com.example.fbs|g:Aggregate_AlertingSection is not focus notification, isMedia: false
+07-17 13:59:46.435 W/NotificationService( 3430): Toast already killed. pkg=com.example.fbs token=android.os.BinderProxy@e7284bf
+07-17 13:59:50.418 D/FocusPlugin( 6122): NotifLifetime: onNotificationRemoved, key: 0|com.example.fbs|502|null|10411, needExtendLifetime: false, reason: 2
+07-17 13:59:50.418 I/FocusPlugin( 6122): onNotificationRemoved 0|com.example.fbs|502|null|10411, content: miui.systemui.notification.focus.FocusNotificationContentImpl@499348e
+07-17 13:59:50.418 I/FocusPlugin( 6122): removeByKey 0|com.example.fbs|502|null|10411
+07-17 13:59:50.617 D/FocusPlugin( 6122): 0|com.example.fbs|0|0|com.example.fbs|g:Aggregate_AlertingSection|10411|0|com.example.fbs|g:Aggregate_AlertingSection is not focus notification, isMedia: false
+07-17 13:59:58.600 E/FocusPlugin( 6122): onNotificationPosted {} com.example.fbs
+07-17 13:59:58.601 E/FocusPlugin( 6122): onAuthSuccess 0|com.example.fbs|9100|null|10411 com.example.fbs
+07-17 13:59:58.601 D/FocusPlugin( 6122): inflateFinishCallback 0|com.example.fbs|9100|null|10411 {0|com.example.fbs|501|null|10411=true, 0|com.example.fbs|9100|null|10411=true} {}
+07-17 13:59:58.804 D/FocusPlugin( 6122): 0|com.example.fbs|0|0|com.example.fbs|g:Aggregate_AlertingSection|10411|0|com.example.fbs|g:Aggregate_AlertingSection is not focus notification, isMedia: false
+07-17 14:00:03.956 E/FocusPlugin( 6122): onNotificationPosted {} com.example.fbs
+07-17 14:00:03.958 E/FocusPlugin( 6122): onAuthSuccess 0|com.example.fbs|9101|null|10411 com.example.fbs
+07-17 14:00:03.958 D/FocusPlugin( 6122): inflateFinishCallback 0|com.example.fbs|9101|null|10411 {0|com.example.fbs|501|null|10411=true, 0|com.example.fbs|9100|null|10411=true, 0|com.example.fbs|9101|null|10411=true} {}
+07-17 14:00:04.341 E/FocusPlugin( 6122): onNotificationPosted {} com.example.fbs
+07-17 14:00:04.343 E/FocusPlugin( 6122): onAuthSuccess 0|com.example.fbs|9100|null|10411 com.example.fbs
+07-17 14:00:04.343 D/FocusPlugin( 6122): inflateFinishCallback 0|com.example.fbs|9100|null|10411 {0|com.example.fbs|501|null|10411=true, 0|com.example.fbs|9100|null|10411=true, 0|com.example.fbs|9101|null|10411=true} {}
+07-17 14:00:06.981 D/FocusPlugin( 6122): handleTimeout 43200000
+07-17 14:00:06.981 E/FocusPlugin( 6122): onNotificationPosted {} com.example.fbs
+07-17 14:00:06.981 D/FocusPlugin( 6122): createStandardTemplate
+07-17 14:00:06.981 D/FocusPlugin( 6122): isSameModule: false
+07-17 14:00:06.982 E/FocusPlugin( 6122): onAuthSuccess 0|com.example.fbs|9102|null|10411 com.example.fbs
+07-17 14:00:06.982 D/FocusPlugin( 6122): inflateFinishCallback 0|com.example.fbs|9102|null|10411 {0|com.example.fbs|501|null|10411=true, 0|com.example.fbs|9100|null|10411=true, 0|com.example.fbs|9101|null|10411=true, 0|com.example.fbs|9102|null|10411=true} {}
+07-17 14:00:06.993 E/FocusPlugin( 6122): onInflateSuccess 0|com.example.fbs|9102|null|10411
+07-17 14:00:06.993 D/FocusPlugin( 6122): inflateFinishCallback 0|com.example.fbs|9102|null|10411 {0|com.example.fbs|501|null|10411=true, 0|com.example.fbs|9100|null|10411=true, 0|com.example.fbs|9101|null|10411=true, 0|com.example.fbs|9102|null|10411=true} {0|com.example.fbs|9102|null|10411=true}
+07-17 14:00:06.993 D/FocusPlugin( 6122): addDynamicIslandView  android.widget.FrameLayout{5d08b4 V.E...... ......I. 0,0-0,0 #7f0a01bd app:id/focus_container}, (true && false) || false
+07-17 14:00:06.993 D/FocusPlugin( 6122): parseOS2DefaultIslandData
+07-17 14:00:06.997 E/FocusPlugin( 6122): onInflateFinish 0|com.example.fbs|9102|null|10411
+07-17 14:00:06.997 D/FocusPlugin( 6122): inflation Ended
+07-17 14:00:07.182 D/FocusPlugin( 6122): getFocusNotificationContent inflateFinish value: {0|com.example.fbs|9102|null|10411=true}  authResult:{0|com.example.fbs|501|null|10411=true, 0|com.example.fbs|9100|null|10411=true, 0|com.example.fbs|9101|null|10411=true, 0|com.example.fbs|9102|null|10411=true}
+07-17 14:00:07.182 D/FocusPlugin( 6122): inflateFinishCallback 0|com.example.fbs|9102|null|10411 {0|com.example.fbs|501|null|10411=true, 0|com.example.fbs|9100|null|10411=true, 0|com.example.fbs|9101|null|10411=true, 0|com.example.fbs|9102|null|10411=true} {0|com.example.fbs|9102|null|10411=true}
+07-17 14:00:07.182 E/FocusPlugin( 6122): updateDynamicIslandView
+07-17 14:00:07.182 E/FocusPlugin( 6122): updateDynamicIslandView: islandExpandedViewandroid.widget.FrameLayout{5d08b4 V.E...... ......ID 0,0-1087,378 #7f0a01bd app:id/focus_container} , key: 0|com.example.fbs|9102|null|10411
+07-17 14:00:07.182 D/FocusPlugin( 6122): parseOS2DefaultIslandData
+07-17 14:00:09.954 D/FocusPlugin( 6122): NotifLifetime: onNotificationRemoved, key: 0|com.example.fbs|9102|null|10411, needExtendLifetime: false, reason: 2
+07-17 14:00:09.954 I/FocusPlugin( 6122): onNotificationRemoved 0|com.example.fbs|9102|null|10411, content: miui.systemui.notification.focus.FocusNotificationContentImpl@70cb984
+07-17 14:00:09.954 I/FocusPlugin( 6122): removeByKey 0|com.example.fbs|9102|null|10411
+07-17 14:00:11.453 D/FocusPlugin( 6122): 0|com.tencent.mm|288422196|null|10401 is not focus notification, isMedia: false
+07-17 14:00:13.510 E/FocusPlugin( 6122): onNotificationPosted {} com.example.fbs
+07-17 14:00:13.512 E/FocusPlugin( 6122): onAuthSuccess 0|com.example.fbs|9101|null|10411 com.example.fbs
+07-17 14:00:13.512 D/FocusPlugin( 6122): inflateFinishCallback 0|com.example.fbs|9101|null|10411 {0|com.example.fbs|501|null|10411=true, 0|com.example.fbs|9100|null|10411=true, 0|com.example.fbs|9101|null|10411=true} {}
+07-17 14:00:13.929 E/FocusPlugin( 6122): onNotificationPosted {} com.example.fbs
+07-17 14:00:13.931 E/FocusPlugin( 6122): onAuthSuccess 0|com.example.fbs|9100|null|10411 com.example.fbs
+07-17 14:00:13.931 D/FocusPlugin( 6122): inflateFinishCallback 0|com.example.fbs|9100|null|10411 {0|com.example.fbs|501|null|10411=true, 0|com.example.fbs|9100|null|10411=true, 0|com.example.fbs|9101|null|10411=true} {}
+07-17 14:00:14.359 D/FocusPlugin( 6122): handleTimeout 43200000
+07-17 14:00:14.359 E/FocusPlugin( 6122): onNotificationPosted {} com.example.fbs
+07-17 14:00:14.359 D/FocusPlugin( 6122): createStandardTemplate
+07-17 14:00:14.360 D/FocusPlugin( 6122): isSameModule: false
+07-17 14:00:14.361 E/FocusPlugin( 6122): onAuthSuccess 0|com.example.fbs|9103|null|10411 com.example.fbs
+07-17 14:00:14.361 D/FocusPlugin( 6122): inflateFinishCallback 0|com.example.fbs|9103|null|10411 {0|com.example.fbs|501|null|10411=true, 0|com.example.fbs|9100|null|10411=true, 0|com.example.fbs|9101|null|10411=true, 0|com.example.fbs|9103|null|10411=true} {}
+07-17 14:00:14.369 E/FocusPlugin( 6122): onInflateSuccess 0|com.example.fbs|9103|null|10411
+07-17 14:00:14.369 D/FocusPlugin( 6122): inflateFinishCallback 0|com.example.fbs|9103|null|10411 {0|com.example.fbs|501|null|10411=true, 0|com.example.fbs|9100|null|10411=true, 0|com.example.fbs|9101|null|10411=true, 0|com.example.fbs|9103|null|10411=true} {0|com.example.fbs|9103|null|10411=true}
+07-17 14:00:14.369 D/FocusPlugin( 6122): addDynamicIslandView  android.widget.FrameLayout{ec6a5d0 V.E...... ......I. 0,0-0,0 #7f0a01bd app:id/focus_container}, (true && false) || false
+07-17 14:00:14.369 D/FocusPlugin( 6122): parseOS2DefaultIslandData
+07-17 14:00:14.372 E/FocusPlugin( 6122): onInflateFinish 0|com.example.fbs|9103|null|10411
+07-17 14:00:14.372 D/FocusPlugin( 6122): inflation Ended
+07-17 14:00:14.567 D/FocusPlugin( 6122): getFocusNotificationContent inflateFinish value: {0|com.example.fbs|9103|null|10411=true}  authResult:{0|com.example.fbs|501|null|10411=true, 0|com.example.fbs|9100|null|10411=true, 0|com.example.fbs|9101|null|10411=true, 0|com.example.fbs|9103|null|10411=true}
+07-17 14:00:14.567 D/FocusPlugin( 6122): inflateFinishCallback 0|com.example.fbs|9103|null|10411 {0|com.example.fbs|501|null|10411=true, 0|com.example.fbs|9100|null|10411=true, 0|com.example.fbs|9101|null|10411=true, 0|com.example.fbs|9103|null|10411=true} {0|com.example.fbs|9103|null|10411=true}
+07-17 14:00:14.567 E/FocusPlugin( 6122): updateDynamicIslandView
+07-17 14:00:14.567 E/FocusPlugin( 6122): updateDynamicIslandView: islandExpandedViewandroid.widget.FrameLayout{ec6a5d0 V.E...... ........ 0,0-1087,378 #7f0a01bd app:id/focus_container} , key: 0|com.example.fbs|9103|null|10411
+07-17 14:00:14.567 D/FocusPlugin( 6122): parseOS2DefaultIslandData
+07-17 14:00:19.168 D/FocusPlugin( 6122): NotifLifetime: onNotificationRemoved, key: 0|com.tencent.mm|288422196|null|10401, needExtendLifetime: false, reason: 2
+07-17 14:00:19.168 I/FocusPlugin( 6122): onNotificationRemoved 0|com.tencent.mm|288422196|null|10401, content: null
+07-17 14:00:19.168 I/FocusPlugin( 6122): removeByKey 0|com.tencent.mm|288422196|null|10401
+07-17 14:00:19.439 D/FocusPlugin( 6122): NotifLifetime: onNotificationRemoved, key: 0|com.example.fbs|9103|null|10411, needExtendLifetime: false, reason: 2
+07-17 14:00:19.439 I/FocusPlugin( 6122): onNotificationRemoved 0|com.example.fbs|9103|null|10411, content: miui.systemui.notification.focus.FocusNotificationContentImpl@202059a
+07-17 14:00:19.440 I/FocusPlugin( 6122): removeByKey 0|com.example.fbs|9103|null|10411
+07-17 14:00:22.478 E/FocusPlugin( 6122): onNotificationPosted {} com.example.fbs
+07-17 14:00:22.479 E/FocusPlugin( 6122): onAuthSuccess 0|com.example.fbs|9101|null|10411 com.example.fbs
+07-17 14:00:22.479 D/FocusPlugin( 6122): inflateFinishCallback 0|com.example.fbs|9101|null|10411 {0|com.example.fbs|501|null|10411=true, 0|com.example.fbs|9100|null|10411=true, 0|com.example.fbs|9101|null|10411=true} {}
+07-17 14:00:22.905 E/FocusPlugin( 6122): onNotificationPosted {} com.example.fbs
+07-17 14:00:22.907 E/FocusPlugin( 6122): onAuthSuccess 0|com.example.fbs|9100|null|10411 com.example.fbs
+07-17 14:00:22.907 D/FocusPlugin( 6122): inflateFinishCallback 0|com.example.fbs|9100|null|10411 {0|com.example.fbs|501|null|10411=true, 0|com.example.fbs|9100|null|10411=true, 0|com.example.fbs|9101|null|10411=true} {}
+07-17 14:00:23.316 E/FocusPlugin( 6122): onNotificationPosted {} com.example.fbs
+07-17 14:00:23.319 E/FocusPlugin( 6122): onAuthSuccess 0|com.example.fbs|9103|null|10411 com.example.fbs
+07-17 14:00:23.319 D/FocusPlugin( 6122): inflateFinishCallback 0|com.example.fbs|9103|null|10411 {0|com.example.fbs|501|null|10411=true, 0|com.example.fbs|9100|null|10411=true, 0|com.example.fbs|9101|null|10411=true, 0|com.example.fbs|9103|null|10411=true} {}
+07-17 14:00:23.737 D/FocusPlugin( 6122): handleTimeout 43200000
+07-17 14:00:23.737 E/FocusPlugin( 6122): onNotificationPosted {} com.example.fbs
+07-17 14:00:23.738 D/FocusPlugin( 6122): createStandardTemplate
+07-17 14:00:23.738 D/FocusPlugin( 6122): isSameModule: false
+07-17 14:00:23.738 E/FocusPlugin( 6122): onAuthSuccess 0|com.example.fbs|9104|null|10411 com.example.fbs
+07-17 14:00:23.738 D/FocusPlugin( 6122): inflateFinishCallback 0|com.example.fbs|9104|null|10411 {0|com.example.fbs|501|null|10411=true, 0|com.example.fbs|9100|null|10411=true, 0|com.example.fbs|9101|null|10411=true, 0|com.example.fbs|9103|null|10411=true, 0|com.example.fbs|9104|null|10411=true} {}
+07-17 14:00:23.750 E/FocusPlugin( 6122): onInflateSuccess 0|com.example.fbs|9104|null|10411
+07-17 14:00:23.750 D/FocusPlugin( 6122): inflateFinishCallback 0|com.example.fbs|9104|null|10411 {0|com.example.fbs|501|null|10411=true, 0|com.example.fbs|9100|null|10411=true, 0|com.example.fbs|9101|null|10411=true, 0|com.example.fbs|9103|null|10411=true, 0|com.example.fbs|9104|null|10411=true} {0|com.example.fbs|9104|null|10411=true}
+07-17 14:00:23.750 D/FocusPlugin( 6122): addDynamicIslandView  android.widget.FrameLayout{dff0cca V.E...... ......I. 0,0-0,0 #7f0a01bd app:id/focus_container}, (true && false) || false
+07-17 14:00:23.750 D/FocusPlugin( 6122): parseOS2DefaultIslandData
+07-17 14:00:23.761 E/FocusPlugin( 6122): onInflateFinish 0|com.example.fbs|9104|null|10411
+07-17 14:00:23.761 D/FocusPlugin( 6122): inflation Ended
+07-17 14:00:23.939 D/FocusPlugin( 6122): getFocusNotificationContent inflateFinish value: {0|com.example.fbs|9104|null|10411=true}  authResult:{0|com.example.fbs|501|null|10411=true, 0|com.example.fbs|9100|null|10411=true, 0|com.example.fbs|9101|null|10411=true, 0|com.example.fbs|9103|null|10411=true, 0|com.example.fbs|9104|null|10411=true}
+07-17 14:00:23.939 D/FocusPlugin( 6122): inflateFinishCallback 0|com.example.fbs|9104|null|10411 {0|com.example.fbs|501|null|10411=true, 0|com.example.fbs|9100|null|10411=true, 0|com.example.fbs|9101|null|10411=true, 0|com.example.fbs|9103|null|10411=true, 0|com.example.fbs|9104|null|10411=true} {0|com.example.fbs|9104|null|10411=true}
+07-17 14:00:23.939 E/FocusPlugin( 6122): updateDynamicIslandView
+07-17 14:00:23.939 E/FocusPlugin( 6122): updateDynamicIslandView: islandExpandedViewandroid.widget.FrameLayout{dff0cca V.E...... ......ID 0,0-1087,378 #7f0a01bd app:id/focus_container} , key: 0|com.example.fbs|9104|null|10411
+07-17 14:00:23.939 D/FocusPlugin( 6122): parseOS2DefaultIslandData
+07-17 14:00:33.035 I/NotificationService( 3430): Cancel FGS notification CallingUid: 6110 CallingPid: 22969 Pkg: com.xiaomi.finddevice Id:163190491 Tag:null UserId:0 MustHaveFlags:0 MustNotHaveFlags:0 Reason:8 foregroundNotiWhen:1784267993007 foregroundNotiFlags:96 foregroundNotiChannelId:FGS_HIDE
+07-17 14:00:33.044 D/FocusPlugin( 6122): NotifLifetime: onNotificationRemoved, key: 0|com.xiaomi.finddevice|163190491|null|6110, needExtendLifetime: false, reason: 8
+07-17 14:00:33.044 I/FocusPlugin( 6122): onNotificationRemoved 0|com.xiaomi.finddevice|163190491|null|6110, content: null
+07-17 14:00:33.044 I/FocusPlugin( 6122): removeByKey 0|com.xiaomi.finddevice|163190491|null|6110
+07-17 14:00:42.171 D/FocusPlugin( 6122): NotifLifetime: onNotificationRemoved, key: 0|com.example.fbs|9104|null|10411, needExtendLifetime: false, reason: 2
+07-17 14:00:42.171 I/FocusPlugin( 6122): onNotificationRemoved 0|com.example.fbs|9104|null|10411, content: miui.systemui.notification.focus.FocusNotificationContentImpl@b4868c3
+07-17 14:00:42.171 I/FocusPlugin( 6122): removeByKey 0|com.example.fbs|9104|null|10411
+07-17 14:00:44.663 E/FocusPlugin( 6122): onNotificationPosted {} com.example.fbs
+07-17 14:00:44.664 E/FocusPlugin( 6122): onAuthSuccess 0|com.example.fbs|9101|null|10411 com.example.fbs
+07-17 14:00:44.664 D/FocusPlugin( 6122): inflateFinishCallback 0|com.example.fbs|9101|null|10411 {0|com.example.fbs|501|null|10411=true, 0|com.example.fbs|9100|null|10411=true, 0|com.example.fbs|9101|null|10411=true, 0|com.example.fbs|9103|null|10411=true} {}
+07-17 14:00:45.081 E/FocusPlugin( 6122): onNotificationPosted {} com.example.fbs
+07-17 14:00:45.082 E/FocusPlugin( 6122): onAuthSuccess 0|com.example.fbs|9100|null|10411 com.example.fbs
+07-17 14:00:45.082 D/FocusPlugin( 6122): inflateFinishCallback 0|com.example.fbs|9100|null|10411 {0|com.example.fbs|501|null|10411=true, 0|com.example.fbs|9100|null|10411=true, 0|com.example.fbs|9101|null|10411=true, 0|com.example.fbs|9103|null|10411=true} {}
+07-17 14:00:45.507 E/FocusPlugin( 6122): onNotificationPosted {} com.example.fbs
+07-17 14:00:45.510 E/FocusPlugin( 6122): onAuthSuccess 0|com.example.fbs|9103|null|10411 com.example.fbs
+07-17 14:00:45.510 D/FocusPlugin( 6122): inflateFinishCallback 0|com.example.fbs|9103|null|10411 {0|com.example.fbs|501|null|10411=true, 0|com.example.fbs|9100|null|10411=true, 0|com.example.fbs|9101|null|10411=true, 0|com.example.fbs|9103|null|10411=true} {}
+07-17 14:00:45.907 D/FocusPlugin( 6122): handleTimeout 43200000
+07-17 14:00:45.907 E/FocusPlugin( 6122): onNotificationPosted {} com.example.fbs
+07-17 14:00:45.908 D/FocusPlugin( 6122): createStandardTemplate
+07-17 14:00:45.908 D/FocusPlugin( 6122): isSameModule: false
+07-17 14:00:45.908 E/FocusPlugin( 6122): onAuthSuccess 0|com.example.fbs|9105|null|10411 com.example.fbs
+07-17 14:00:45.908 D/FocusPlugin( 6122): inflateFinishCallback 0|com.example.fbs|9105|null|10411 {0|com.example.fbs|501|null|10411=true, 0|com.example.fbs|9100|null|10411=true, 0|com.example.fbs|9101|null|10411=true, 0|com.example.fbs|9103|null|10411=true, 0|com.example.fbs|9105|null|10411=true} {}
+07-17 14:00:45.916 E/FocusPlugin( 6122): onInflateSuccess 0|com.example.fbs|9105|null|10411
+07-17 14:00:45.916 D/FocusPlugin( 6122): inflateFinishCallback 0|com.example.fbs|9105|null|10411 {0|com.example.fbs|501|null|10411=true, 0|com.example.fbs|9100|null|10411=true, 0|com.example.fbs|9101|null|10411=true, 0|com.example.fbs|9103|null|10411=true, 0|com.example.fbs|9105|null|10411=true} {0|com.example.fbs|9105|null|10411=true}
+07-17 14:00:45.916 D/FocusPlugin( 6122): addDynamicIslandView  android.widget.FrameLayout{cbcb4a7 V.E...... ......I. 0,0-0,0 #7f0a01bd app:id/focus_container}, (true && false) || false
+07-17 14:00:45.916 D/FocusPlugin( 6122): parseOS2DefaultIslandData
+07-17 14:00:45.918 E/FocusPlugin( 6122): onInflateFinish 0|com.example.fbs|9105|null|10411
+07-17 14:00:45.918 D/FocusPlugin( 6122): inflation Ended
+07-17 14:00:46.112 D/FocusPlugin( 6122): getFocusNotificationContent inflateFinish value: {0|com.example.fbs|9105|null|10411=true}  authResult:{0|com.example.fbs|501|null|10411=true, 0|com.example.fbs|9100|null|10411=true, 0|com.example.fbs|9101|null|10411=true, 0|com.example.fbs|9103|null|10411=true, 0|com.example.fbs|9105|null|10411=true}
+07-17 14:00:46.112 D/FocusPlugin( 6122): inflateFinishCallback 0|com.example.fbs|9105|null|10411 {0|com.example.fbs|501|null|10411=true, 0|com.example.fbs|9100|null|10411=true, 0|com.example.fbs|9101|null|10411=true, 0|com.example.fbs|9103|null|10411=true, 0|com.example.fbs|9105|null|10411=true} {0|com.example.fbs|9105|null|10411=true}
+07-17 14:00:46.112 E/FocusPlugin( 6122): updateDynamicIslandView
+07-17 14:00:46.112 E/FocusPlugin( 6122): updateDynamicIslandView: islandExpandedViewandroid.widget.FrameLayout{cbcb4a7 V.E...... ........ 0,0-1087,378 #7f0a01bd app:id/focus_container} , key: 0|com.example.fbs|9105|null|10411
+07-17 14:00:46.112 D/FocusPlugin( 6122): parseOS2DefaultIslandData
+07-17 14:00:46.329 E/FocusPlugin( 6122): onNotificationPosted {0|com.example.fbs|9105|null|10411=true} com.example.fbs
+07-17 14:00:46.329 E/FocusPlugin( 6122): onAuthSuccess 0|com.example.fbs|9104|null|10411 com.example.fbs
+07-17 14:00:46.329 D/FocusPlugin( 6122): inflateFinishCallback 0|com.example.fbs|9104|null|10411 {0|com.example.fbs|501|null|10411=true, 0|com.example.fbs|9100|null|10411=true, 0|com.example.fbs|9101|null|10411=true, 0|com.example.fbs|9103|null|10411=true, 0|com.example.fbs|9105|null|10411=true, 0|com.example.fbs|9104|null|10411=true} {0|com.example.fbs|9105|null|10411=true}
+07-17 14:00:49.916 D/FocusPlugin( 6122): NotifLifetime: onNotificationRemoved, key: 0|com.example.fbs|9105|null|10411, needExtendLifetime: false, reason: 2
+07-17 14:00:49.916 I/FocusPlugin( 6122): onNotificationRemoved 0|com.example.fbs|9105|null|10411, content: miui.systemui.notification.focus.FocusNotificationContentImpl@ca6858d
+07-17 14:00:49.916 I/FocusPlugin( 6122): removeByKey 0|com.example.fbs|9105|null|10411
+07-17 14:01:06.750 E/FocusPlugin( 6122): onNotificationPosted {} com.example.fbs
+07-17 14:01:06.752 E/FocusPlugin( 6122): onAuthSuccess 0|com.example.fbs|9101|null|10411 com.example.fbs
+07-17 14:01:06.752 D/FocusPlugin( 6122): inflateFinishCallback 0|com.example.fbs|9101|null|10411 {0|com.example.fbs|501|null|10411=true, 0|com.example.fbs|9100|null|10411=true, 0|com.example.fbs|9101|null|10411=true, 0|com.example.fbs|9103|null|10411=true, 0|com.example.fbs|9104|null|10411=true} {}
+07-17 14:01:07.170 E/FocusPlugin( 6122): onNotificationPosted {} com.example.fbs
+07-17 14:01:07.171 E/FocusPlugin( 6122): onAuthSuccess 0|com.example.fbs|9100|null|10411 com.example.fbs
+07-17 14:01:07.171 D/FocusPlugin( 6122): inflateFinishCallback 0|com.example.fbs|9100|null|10411 {0|com.example.fbs|501|null|10411=true, 0|com.example.fbs|9100|null|10411=true, 0|com.example.fbs|9101|null|10411=true, 0|com.example.fbs|9103|null|10411=true, 0|com.example.fbs|9104|null|10411=true} {}
+07-17 14:01:07.580 E/FocusPlugin( 6122): onNotificationPosted {} com.example.fbs
+07-17 14:01:07.580 E/FocusPlugin( 6122): onAuthSuccess 0|com.example.fbs|9103|null|10411 com.example.fbs
+07-17 14:01:07.580 D/FocusPlugin( 6122): inflateFinishCallback 0|com.example.fbs|9103|null|10411 {0|com.example.fbs|501|null|10411=true, 0|com.example.fbs|9100|null|10411=true, 0|com.example.fbs|9101|null|10411=true, 0|com.example.fbs|9103|null|10411=true, 0|com.example.fbs|9104|null|10411=true} {}
+07-17 14:01:07.988 E/FocusPlugin( 6122): onNotificationPosted {} com.example.fbs
+07-17 14:01:07.988 E/FocusPlugin( 6122): onAuthSuccess 0|com.example.fbs|9105|null|10411 com.example.fbs
+07-17 14:01:07.988 D/FocusPlugin( 6122): inflateFinishCallback 0|com.example.fbs|9105|null|10411 {0|com.example.fbs|501|null|10411=true, 0|com.example.fbs|9100|null|10411=true, 0|com.example.fbs|9101|null|10411=true, 0|com.example.fbs|9103|null|10411=true, 0|com.example.fbs|9104|null|10411=true, 0|com.example.fbs|9105|null|10411=true} {}
+07-17 14:01:08.391 E/FocusPlugin( 6122): onNotificationPosted {} com.example.fbs
+07-17 14:01:08.392 E/FocusPlugin( 6122): onAuthSuccess 0|com.example.fbs|9104|null|10411 com.example.fbs
+07-17 14:01:08.392 D/FocusPlugin( 6122): inflateFinishCallback 0|com.example.fbs|9104|null|10411 {0|com.example.fbs|501|null|10411=true, 0|com.example.fbs|9100|null|10411=true, 0|com.example.fbs|9101|null|10411=true, 0|com.example.fbs|9103|null|10411=true, 0|com.example.fbs|9104|null|10411=true, 0|com.example.fbs|9105|null|10411=true} {}
+07-17 14:01:08.810 D/FocusPlugin( 6122): handleTimeout 43200000
+07-17 14:01:08.811 E/FocusPlugin( 6122): onNotificationPosted {} com.example.fbs
+07-17 14:01:08.811 D/FocusPlugin( 6122): createStandardTemplate
+07-17 14:01:08.811 D/FocusPlugin( 6122): isSameModule: false
+07-17 14:01:08.812 E/FocusPlugin( 6122): onAuthSuccess 0|com.example.fbs|9106|null|10411 com.example.fbs
+07-17 14:01:08.812 D/FocusPlugin( 6122): inflateFinishCallback 0|com.example.fbs|9106|null|10411 {0|com.example.fbs|501|null|10411=true, 0|com.example.fbs|9100|null|10411=true, 0|com.example.fbs|9101|null|10411=true, 0|com.example.fbs|9103|null|10411=true, 0|com.example.fbs|9104|null|10411=true, 0|com.example.fbs|9105|null|10411=true, 0|com.example.fbs|9106|null|10411=true} {}
+07-17 14:01:08.823 E/FocusPlugin( 6122): onInflateSuccess 0|com.example.fbs|9106|null|10411
+07-17 14:01:08.823 D/FocusPlugin( 6122): inflateFinishCallback 0|com.example.fbs|9106|null|10411 {0|com.example.fbs|501|null|10411=true, 0|com.example.fbs|9100|null|10411=true, 0|com.example.fbs|9101|null|10411=true, 0|com.example.fbs|9103|null|10411=true, 0|com.example.fbs|9104|null|10411=true, 0|com.example.fbs|9105|null|10411=true, 0|com.example.fbs|9106|null|10411=true} {0|com.example.fbs|9106|null|10411=true}
+07-17 14:01:08.823 D/FocusPlugin( 6122): addDynamicIslandView  android.widget.FrameLayout{abceaa8 V.E...... ......I. 0,0-0,0 #7f0a01bd app:id/focus_container}, (true && false) || false
+07-17 14:01:08.823 D/FocusPlugin( 6122): parseOS2DefaultIslandData
+07-17 14:01:08.832 E/FocusPlugin( 6122): onInflateFinish 0|com.example.fbs|9106|null|10411
+07-17 14:01:08.832 D/FocusPlugin( 6122): inflation Ended
+07-17 14:01:09.018 D/FocusPlugin( 6122): getFocusNotificationContent inflateFinish value: {0|com.example.fbs|9106|null|10411=true}  authResult:{0|com.example.fbs|501|null|10411=true, 0|com.example.fbs|9100|null|10411=true, 0|com.example.fbs|9101|null|10411=true, 0|com.example.fbs|9103|null|10411=true, 0|com.example.fbs|9104|null|10411=true, 0|com.example.fbs|9105|null|10411=true, 0|com.example.fbs|9106|null|10411=true}
+07-17 14:01:09.018 D/FocusPlugin( 6122): inflateFinishCallback 0|com.example.fbs|9106|null|10411 {0|com.example.fbs|501|null|10411=true, 0|com.example.fbs|9100|null|10411=true, 0|com.example.fbs|9101|null|10411=true, 0|com.example.fbs|9103|null|10411=true, 0|com.example.fbs|9104|null|10411=true, 0|com.example.fbs|9105|null|10411=true, 0|com.example.fbs|9106|null|10411=true} {0|com.example.fbs|9106|null|10411=true}
+07-17 14:01:09.018 E/FocusPlugin( 6122): updateDynamicIslandView
+07-17 14:01:09.018 E/FocusPlugin( 6122): updateDynamicIslandView: islandExpandedViewandroid.widget.FrameLayout{abceaa8 V.E...... ........ 0,0-1087,378 #7f0a01bd app:id/focus_container} , key: 0|com.example.fbs|9106|null|10411
+07-17 14:01:09.019 D/FocusPlugin( 6122): parseOS2DefaultIslandData
+07-17 14:01:16.731 D/FocusPlugin( 6122): NotifLifetime: onNotificationRemoved, key: 0|com.example.fbs|9106|null|10411, needExtendLifetime: false, reason: 2
+07-17 14:01:16.731 I/FocusPlugin( 6122): onNotificationRemoved 0|com.example.fbs|9106|null|10411, content: miui.systemui.notification.focus.FocusNotificationContentImpl@a5aadb6
+07-17 14:01:16.731 I/FocusPlugin( 6122): removeByKey 0|com.example.fbs|9106|null|10411
+07-17 14:01:36.391 D/FocusPlugin( 6122): NotifLifetime: onNotificationRemoved, key: 0|com.example.fbs|501|null|10411, needExtendLifetime: false, reason: 5
+07-17 14:01:36.391 I/FocusPlugin( 6122): onNotificationRemoved 0|com.example.fbs|501|null|10411, content: miui.systemui.notification.focus.FocusNotificationContentImpl@8c4edef
+07-17 14:01:36.391 I/FocusPlugin( 6122): removeByKey 0|com.example.fbs|501|null|10411
+07-17 14:01:36.393 D/FocusPlugin( 6122): NotifLifetime: onNotificationRemoved, key: 0|com.example.fbs|9100|null|10411, needExtendLifetime: false, reason: 5
+07-17 14:01:36.393 I/FocusPlugin( 6122): onNotificationRemoved 0|com.example.fbs|9100|null|10411, content: miui.systemui.notification.focus.FocusNotificationContentImpl@23250fc
+07-17 14:01:36.393 I/FocusPlugin( 6122): removeByKey 0|com.example.fbs|9100|null|10411
+07-17 14:01:36.393 D/FocusPlugin( 6122): NotifLifetime: onNotificationRemoved, key: 0|com.example.fbs|9101|null|10411, needExtendLifetime: false, reason: 5
+07-17 14:01:36.393 I/FocusPlugin( 6122): onNotificationRemoved 0|com.example.fbs|9101|null|10411, content: miui.systemui.notification.focus.FocusNotificationContentImpl@3017385
+07-17 14:01:36.393 I/FocusPlugin( 6122): removeByKey 0|com.example.fbs|9101|null|10411
+07-17 14:01:36.393 D/FocusPlugin( 6122): NotifLifetime: onNotificationRemoved, key: 0|com.example.fbs|9103|null|10411, needExtendLifetime: false, reason: 5
+07-17 14:01:36.393 I/FocusPlugin( 6122): onNotificationRemoved 0|com.example.fbs|9103|null|10411, content: miui.systemui.notification.focus.FocusNotificationContentImpl@6aee5da
+07-17 14:01:36.393 I/FocusPlugin( 6122): removeByKey 0|com.example.fbs|9103|null|10411
+07-17 14:01:36.394 D/FocusPlugin( 6122): NotifLifetime: onNotificationRemoved, key: 0|com.example.fbs|9104|null|10411, needExtendLifetime: false, reason: 5
+07-17 14:01:36.394 I/FocusPlugin( 6122): onNotificationRemoved 0|com.example.fbs|9104|null|10411, content: miui.systemui.notification.focus.FocusNotificationContentImpl@31c7a0b
+07-17 14:01:36.394 I/FocusPlugin( 6122): removeByKey 0|com.example.fbs|9104|null|10411
+07-17 14:01:36.394 D/FocusPlugin( 6122): NotifLifetime: onNotificationRemoved, key: 0|com.example.fbs|9105|null|10411, needExtendLifetime: false, reason: 5
+07-17 14:01:36.394 I/FocusPlugin( 6122): onNotificationRemoved 0|com.example.fbs|9105|null|10411, content: miui.systemui.notification.focus.FocusNotificationContentImpl@fd180e8
+07-17 14:01:36.394 I/FocusPlugin( 6122): removeByKey 0|com.example.fbs|9105|null|10411
+07-17 14:01:36.394 D/FocusPlugin( 6122): NotifLifetime: onNotificationRemoved, key: 0|com.example.fbs|0|0|com.example.fbs|g:Aggregate_AlertingSection|10411|0|com.example.fbs|g:Aggregate_AlertingSection, needExtendLifetime: false, reason: 5
+07-17 14:01:36.394 I/FocusPlugin( 6122): onNotificationRemoved 0|com.example.fbs|0|0|com.example.fbs|g:Aggregate_AlertingSection|10411|0|com.example.fbs|g:Aggregate_AlertingSection, content: null
+07-17 14:01:36.394 I/FocusPlugin( 6122): removeByKey 0|com.example.fbs|0|0|com.example.fbs|g:Aggregate_AlertingSection|10411|0|com.example.fbs|g:Aggregate_AlertingSection
+07-17 14:02:25.292 I/NotificationService( 3430): Cannot find enqueued record for key: -1|android|62|null|1000
+07-17 14:02:39.291 E/FocusPlugin( 6122): onNotificationPosted {} com.example.fbs
+07-17 14:02:39.292 E/FocusPlugin( 6122): onAuthSuccess 0|com.example.fbs|501|null|10411 com.example.fbs
+07-17 14:02:39.292 D/FocusPlugin( 6122): inflateFinishCallback 0|com.example.fbs|501|null|10411 {0|com.example.fbs|501|null|10411=true} {}
+07-17 14:02:41.229 W/NotificationService( 3430): Toast already killed. pkg=com.example.fbs token=android.os.BinderProxy@99c0e75
+07-17 14:03:02.700 D/FocusPlugin( 6122): 0|com.tencent.mm|-762662960|null|10401 is not focus notification, isMedia: false
+07-17 14:03:09.027 D/FocusPlugin( 6122): NotifLifetime: onNotificationRemoved, key: 0|com.tencent.mm|-762662960|null|10401, needExtendLifetime: false, reason: 8
+07-17 14:03:09.027 I/FocusPlugin( 6122): onNotificationRemoved 0|com.tencent.mm|-762662960|null|10401, content: null
+07-17 14:03:09.027 I/FocusPlugin( 6122): removeByKey 0|com.tencent.mm|-762662960|null|10401
+07-17 14:03:10.298 D/FocusPlugin( 6122): 0|com.tencent.mm|-762662960|null|10401 is not focus notification, isMedia: false
+07-17 14:03:27.504 E/FocusPlugin( 6122): onNotificationPosted {} com.example.fbs
+07-17 14:03:27.506 E/FocusPlugin( 6122): onAuthSuccess 0|com.example.fbs|502|null|10411 com.example.fbs
+07-17 14:03:27.506 D/FocusPlugin( 6122): inflateFinishCallback 0|com.example.fbs|502|null|10411 {0|com.example.fbs|501|null|10411=true, 0|com.example.fbs|502|null|10411=true} {}
+07-17 14:03:27.707 D/FocusPlugin( 6122): 0|com.example.fbs|0|0|com.example.fbs|g:Aggregate_AlertingSection|10411|0|com.example.fbs|g:Aggregate_AlertingSection is not focus notification, isMedia: false
+07-17 14:03:27.921 E/FocusPlugin( 6122): onNotificationPosted {} com.example.fbs
+07-17 14:03:27.925 E/FocusPlugin( 6122): onAuthSuccess 0|com.example.fbs|501|null|10411 com.example.fbs
+07-17 14:03:27.925 D/FocusPlugin( 6122): inflateFinishCallback 0|com.example.fbs|501|null|10411 {0|com.example.fbs|501|null|10411=true, 0|com.example.fbs|502|null|10411=true} {}
+07-17 14:03:29.407 W/NotificationService( 3430): Toast already killed. pkg=com.example.fbs token=android.os.BinderProxy@17153a4
+07-17 14:03:30.598 D/FocusPlugin( 6122): NotifLifetime: onNotificationRemoved, key: 0|com.tencent.mm|-762662960|null|10401, needExtendLifetime: false, reason: 2
+07-17 14:03:30.598 I/FocusPlugin( 6122): onNotificationRemoved 0|com.tencent.mm|-762662960|null|10401, content: null
+07-17 14:03:30.598 I/FocusPlugin( 6122): removeByKey 0|com.tencent.mm|-762662960|null|10401
+07-17 14:03:40.357 D/FocusPlugin( 6122): 0|com.tencent.mm|-762662960|null|10401 is not focus notification, isMedia: false

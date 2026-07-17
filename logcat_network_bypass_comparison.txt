@@ -1,0 +1,489 @@
+--------- beginning of main
+07-17 13:51:08.690 D/MainActivity(16946): >>> methodCallHandler: launchHyperIslandTest
+07-17 13:51:10.887 W/HITest  (16946): [Bypass] JSON >>> {"param_v2":{"business":"course_reminder","protocol":1,"enableFloat":true,"updatable":true,"reopen":"reopen","sequence":1,"baseInfo":{"type":2,"title":"高等数学","content":"第1-2节｜A301｜08:00","subTitle":"","extraTitle":"","specialTitle":"","subContent":"","picFunction":"","showDivider":true,"showContentDivider":false,"colorTitle":"#111111","colorTitleDark":"#ffffff","colorContent":"#333333","colorContentDark":"#cccccc"},"picInfo":{"type":1,"pic":""},"hintInfo":{"type":2,"content":"即将上课","title":"","subContent":"地点","subTitle":"A301","colorContent":"#666666","colorContentDark":"#aaaaaa","colorTitle":"#222222","colorTitleDark":"#eeeeee","colorSubContent":"#666666","colorSubContentDark":"#aaaaaa","colorSubTitle":"#222222","colorSubTitleDark":"#eeeeee","actionInfo":{"actionTitle":"查看课表","actionIntentType":1,"actionIntent":"intent:#Intent;component=com.example.fbs/.hyperisland.HyperIslandTestActivity;end"}},"param_island":{"islandProperty":1,"islandTimeout":3600,"bigIslandArea":{"templateNo":2,"imageTextInfoLeft":{"type":1,"textInfo":{"title":"高等数学","content":"","showHighlightColor":false,"narrowFont":false}},"textInfo":{"frontTitle":"","title":"A301","content":"","showHighlightColor":false,"narrowFont":false}},"smallIslandArea":{"picInfo":{"type":1,"pic":"miui.focus.pic_small","picDark":"miui.focus.pic_small_dark"}}}}}
+07-17 13:51:10.888 W/HITest  (16946): [Bypass] 开始 bindUserService...
+07-17 13:51:10.903 W/HITest  (16946): [Bypass] bindUserService 已调用
+07-17 13:51:11.214 W/HITest  (16946): [Bypass] 已连接，准备阻断 XMSF...
+07-17 13:51:11.215 I/HITest/Bypass(18682): connectivity Binder: android.os.BinderProxy@97f9ecf
+07-17 13:51:11.215 I/HITest/Bypass(18682): ==== 设置 XMSF 网络: enabled=false ====
+07-17 13:51:11.218 I/HITest/Bypass(18682): ✅ setFirewallChainEnabled(9, true)
+07-17 13:51:11.218 I/HITest/Bypass(18682): ✅ setUidFirewallRule(9, 10215, 2)
+07-17 13:51:11.218 I/HITest/Bypass(18682): ==== 操作成功: enabled=false ====
+07-17 13:51:11.218 W/HITest  (16946): [Bypass] disableXmsfNetworking: true
+07-17 13:51:11.526 W/HITest  (16946): [Bypass] ✅ 通知已发送 id=501
+07-17 13:51:11.626 I/HITest/Bypass(18682): ==== 设置 XMSF 网络: enabled=true ====
+07-17 13:51:11.629 I/HITest/Bypass(18682): ✅ setFirewallChainEnabled(9, true)
+07-17 13:51:11.629 I/HITest/Bypass(18682): ✅ setUidFirewallRule(9, 10215, 0)
+07-17 13:51:11.629 I/HITest/Bypass(18682): ✅ setFirewallChainEnabled(9, false)
+07-17 13:51:11.629 I/HITest/Bypass(18682): ==== 操作成功: enabled=true ====
+07-17 13:51:11.629 W/HITest  (16946): [Bypass] enableXmsfNetworking: true
+07-17 13:51:11.629 W/HITest  (16946): [Bypass] ✅ 流程完成！
+07-17 13:51:27.097 D/MainActivity(16946): >>> methodCallHandler: sendFocusWithNetworkBypass
+07-17 13:51:27.098 I/FocusForwarder(16946): 开始 bindUserService...
+07-17 13:51:27.417 I/FocusForwarder(16946): 已连接，阻断 XMSF...
+07-17 13:51:27.418 I/HITest/Bypass(19107): connectivity Binder: android.os.BinderProxy@4bbe1f
+07-17 13:51:27.418 I/HITest/Bypass(19107): ==== 设置 XMSF 网络: enabled=false ====
+07-17 13:51:27.423 I/HITest/Bypass(19107): ✅ setFirewallChainEnabled(9, true)
+07-17 13:51:27.423 I/HITest/Bypass(19107): ✅ setUidFirewallRule(9, 10215, 2)
+07-17 13:51:27.423 I/HITest/Bypass(19107): ==== 操作成功: enabled=false ====
+07-17 13:51:27.729 I/FocusForwarder(16946): ✅ 通知已发送 id=9100
+07-17 13:51:27.831 I/HITest/Bypass(19107): ==== 设置 XMSF 网络: enabled=true ====
+07-17 13:51:27.838 I/HITest/Bypass(19107): ✅ setFirewallChainEnabled(9, true)
+07-17 13:51:27.839 I/HITest/Bypass(19107): ✅ setUidFirewallRule(9, 10215, 0)
+07-17 13:51:27.839 I/HITest/Bypass(19107): ✅ setFirewallChainEnabled(9, false)
+07-17 13:51:27.839 I/HITest/Bypass(19107): ==== 操作成功: enabled=true ====
+07-17 13:51:27.839 I/FocusForwarder(16946): ✅ 流程完成
+07-17 13:51:34.039 D/MainActivity(16946): >>> methodCallHandler: sendFocusWithNetworkBypassTemplate9
+07-17 13:51:34.040 I/FocusForwarder(16946): [T9] 开始 bindUserService...
+07-17 13:51:34.335 I/FocusForwarder(16946): [T9] 已连接，阻断 XMSF...
+07-17 13:51:34.335 I/HITest/Bypass(19183): connectivity Binder: android.os.BinderProxy@9450bd2
+07-17 13:51:34.336 I/HITest/Bypass(19183): ==== 设置 XMSF 网络: enabled=false ====
+07-17 13:51:34.339 I/HITest/Bypass(19183): ✅ setFirewallChainEnabled(9, true)
+07-17 13:51:34.339 I/HITest/Bypass(19183): ✅ setUidFirewallRule(9, 10215, 2)
+07-17 13:51:34.339 I/HITest/Bypass(19183): ==== 操作成功: enabled=false ====
+07-17 13:51:34.641 I/FocusForwarder(16946): [T9] ✅ 通知已发送 id=9101
+07-17 13:51:34.742 I/HITest/Bypass(19183): ==== 设置 XMSF 网络: enabled=true ====
+07-17 13:51:34.744 I/HITest/Bypass(19183): ✅ setFirewallChainEnabled(9, true)
+07-17 13:51:34.745 I/HITest/Bypass(19183): ✅ setUidFirewallRule(9, 10215, 0)
+07-17 13:51:34.745 I/HITest/Bypass(19183): ✅ setFirewallChainEnabled(9, false)
+07-17 13:51:34.745 I/HITest/Bypass(19183): ==== 操作成功: enabled=true ====
+07-17 13:51:34.745 I/FocusForwarder(16946): [T9] ✅ 流程完成
+07-17 13:57:53.045 D/BackScreenController(17318): BackScreenController initialized with Shizuku SDK
+07-17 13:57:53.045 D/BackScreenController(17318): Shizuku binder received!
+07-17 13:57:53.566 D/MainActivity(17318): >>> methodCallHandler: isNotificationListenerEnabled
+07-17 13:57:53.567 D/MainActivity(17318): >>> methodCallHandler: isPostNotificationsGranted
+07-17 13:57:53.567 D/MainActivity(17318): >>> methodCallHandler: isShizukuRunning
+07-17 13:57:53.567 D/MainActivity(17318): >>> methodCallHandler: hasShizukuPermission
+07-17 13:57:53.601 D/MainActivity(17318): >>> methodCallHandler: isShizukuRunning
+07-17 13:57:53.601 D/MainActivity(17318): EventChannel onListen
+07-17 13:57:53.614 D/MainActivity(17318): >>> methodCallHandler: hasShizukuPermission
+07-17 13:59:32.516 D/BackScreenController(22344): BackScreenController initialized with Shizuku SDK
+07-17 13:59:32.516 D/BackScreenController(22344): Shizuku binder received!
+07-17 13:59:32.981 D/MainActivity(22344): >>> methodCallHandler: isNotificationListenerEnabled
+07-17 13:59:32.982 D/MainActivity(22344): >>> methodCallHandler: isPostNotificationsGranted
+07-17 13:59:32.982 D/MainActivity(22344): >>> methodCallHandler: isShizukuRunning
+07-17 13:59:32.982 D/MainActivity(22344): >>> methodCallHandler: hasShizukuPermission
+07-17 13:59:33.014 D/MainActivity(22344): >>> methodCallHandler: isShizukuRunning
+07-17 13:59:33.014 D/MainActivity(22344): EventChannel onListen
+07-17 13:59:33.022 D/MainActivity(22344): >>> methodCallHandler: hasShizukuPermission
+07-17 13:59:33.891 D/MainActivity(22344): >>> methodCallHandler: requestShizukuPermission
+07-17 13:59:34.478 D/BackScreenController(22344): Shizuku permission result: requestCode=1001, granted=true
+07-17 13:59:36.900 D/MainActivity(22344): >>> methodCallHandler: isShizukuRunning
+07-17 13:59:36.900 D/MainActivity(22344): >>> methodCallHandler: hasShizukuPermission
+07-17 13:59:37.683 D/MainActivity(22344): >>> methodCallHandler: launchHyperIslandTest
+07-17 13:59:39.057 W/HITest  (22344): [Bypass] JSON >>> {"param_v2":{"business":"course_reminder","protocol":1,"enableFloat":true,"updatable":true,"reopen":"reopen","sequence":1,"baseInfo":{"type":2,"title":"高等数学","content":"第1-2节｜A301｜08:00","subTitle":"","extraTitle":"","specialTitle":"","subContent":"","picFunction":"","showDivider":true,"showContentDivider":false,"colorTitle":"#111111","colorTitleDark":"#ffffff","colorContent":"#333333","colorContentDark":"#cccccc"},"picInfo":{"type":1,"pic":""},"hintInfo":{"type":2,"content":"即将上课","title":"","subContent":"地点","subTitle":"A301","colorContent":"#666666","colorContentDark":"#aaaaaa","colorTitle":"#222222","colorTitleDark":"#eeeeee","colorSubContent":"#666666","colorSubContentDark":"#aaaaaa","colorSubTitle":"#222222","colorSubTitleDark":"#eeeeee","actionInfo":{"actionTitle":"查看课表","actionIntentType":1,"actionIntent":"intent:#Intent;component=com.example.fbs/.hyperisland.HyperIslandTestActivity;end"}},"param_island":{"islandProperty":1,"islandTimeout":3600,"bigIslandArea":{"templateNo":2,"imageTextInfoLeft":{"type":1,"textInfo":{"title":"高等数学","content":"","showHighlightColor":false,"narrowFont":false}},"textInfo":{"frontTitle":"","title":"A301","content":"","showHighlightColor":false,"narrowFont":false}},"smallIslandArea":{"picInfo":{"type":1,"pic":"miui.focus.pic_small","picDark":"miui.focus.pic_small_dark"}}}}}
+07-17 13:59:39.057 W/HITest  (22344): [Bypass] 开始 bindUserService...
+07-17 13:59:39.070 W/HITest  (22344): [Bypass] bindUserService 已调用
+07-17 13:59:39.291 W/HITest  (22344): [Bypass] 已连接，准备阻断 XMSF...
+07-17 13:59:39.292 I/HITest/Bypass(22667): connectivity Binder: android.os.BinderProxy@95080fb
+07-17 13:59:39.292 I/HITest/Bypass(22667): ==== 设置 XMSF 网络: enabled=false ====
+07-17 13:59:39.295 I/HITest/Bypass(22667): ✅ setFirewallChainEnabled(9, true)
+07-17 13:59:39.295 I/HITest/Bypass(22667): ✅ setUidFirewallRule(9, 10215, 2)
+07-17 13:59:39.295 I/HITest/Bypass(22667): ==== 操作成功: enabled=false ====
+07-17 13:59:39.295 W/HITest  (22344): [Bypass] disableXmsfNetworking: true
+07-17 13:59:39.601 W/HITest  (22344): [Bypass] ✅ 通知已发送 id=501
+07-17 13:59:39.703 I/HITest/Bypass(22667): ==== 设置 XMSF 网络: enabled=true ====
+07-17 13:59:39.710 I/HITest/Bypass(22667): ✅ setFirewallChainEnabled(9, true)
+07-17 13:59:39.710 I/HITest/Bypass(22667): ✅ setUidFirewallRule(9, 10215, 0)
+07-17 13:59:39.710 I/HITest/Bypass(22667): ✅ setFirewallChainEnabled(9, false)
+07-17 13:59:39.710 I/HITest/Bypass(22667): ==== 操作成功: enabled=true ====
+07-17 13:59:39.711 W/HITest  (22344): [Bypass] enableXmsfNetworking: true
+07-17 13:59:39.711 W/HITest  (22344): [Bypass] ✅ 流程完成！
+07-17 13:59:43.927 W/HITest  (22344): [Bypass] JSON >>> {"param_v2":{"business":"course_reminder","protocol":1,"enableFloat":true,"updatable":true,"reopen":"reopen","sequence":2,"baseInfo":{"type":2,"title":"高等数学","content":"第1-2节｜A301｜08:00","subTitle":"","extraTitle":"","specialTitle":"","subContent":"","picFunction":"","showDivider":true,"showContentDivider":false,"colorTitle":"#111111","colorTitleDark":"#ffffff","colorContent":"#333333","colorContentDark":"#cccccc"},"picInfo":{"type":1,"pic":""},"hintInfo":{"type":2,"content":"即将上课","title":"","subContent":"地点","subTitle":"A301","colorContent":"#666666","colorContentDark":"#aaaaaa","colorTitle":"#222222","colorTitleDark":"#eeeeee","colorSubContent":"#666666","colorSubContentDark":"#aaaaaa","colorSubTitle":"#222222","colorSubTitleDark":"#eeeeee","actionInfo":{"actionTitle":"查看课表","actionIntentType":1,"actionIntent":"intent:#Intent;component=com.example.fbs/.hyperisland.HyperIslandTestActivity;end"}},"param_island":{"islandProperty":1,"islandTimeout":3600,"bigIslandArea":{"templateNo":2,"imageTextInfoLeft":{"type":1,"textInfo":{"title":"高等数学","content":"","showHighlightColor":false,"narrowFont":false}},"textInfo":{"frontTitle":"","title":"A301","content":"","showHighlightColor":false,"narrowFont":false}},"smallIslandArea":{"picInfo":{"type":1,"pic":"miui.focus.pic_small","picDark":"miui.focus.pic_small_dark"}}}}}
+07-17 13:59:43.927 W/HITest  (22344): [Bypass] 开始 bindUserService...
+07-17 13:59:43.930 W/HITest  (22344): [Bypass] bindUserService 已调用
+07-17 13:59:44.086 W/HITest  (22344): [Bypass] 已连接，准备阻断 XMSF...
+07-17 13:59:44.087 I/HITest/Bypass(22739): connectivity Binder: android.os.BinderProxy@30388cf
+07-17 13:59:44.087 I/HITest/Bypass(22739): ==== 设置 XMSF 网络: enabled=false ====
+07-17 13:59:44.088 I/HITest/Bypass(22739): ✅ setFirewallChainEnabled(9, true)
+07-17 13:59:44.088 I/HITest/Bypass(22739): ✅ setUidFirewallRule(9, 10215, 2)
+07-17 13:59:44.088 I/HITest/Bypass(22739): ==== 操作成功: enabled=false ====
+07-17 13:59:44.088 W/HITest  (22344): [Bypass] disableXmsfNetworking: true
+07-17 13:59:44.391 W/HITest  (22344): [Bypass] ✅ 通知已发送 id=501
+07-17 13:59:44.492 I/HITest/Bypass(22739): ==== 设置 XMSF 网络: enabled=true ====
+07-17 13:59:44.495 I/HITest/Bypass(22739): ✅ setFirewallChainEnabled(9, true)
+07-17 13:59:44.495 I/HITest/Bypass(22739): ✅ setUidFirewallRule(9, 10215, 0)
+07-17 13:59:44.495 I/HITest/Bypass(22739): ✅ setFirewallChainEnabled(9, false)
+07-17 13:59:44.495 I/HITest/Bypass(22739): ==== 操作成功: enabled=true ====
+07-17 13:59:44.496 W/HITest  (22344): [Bypass] enableXmsfNetworking: true
+07-17 13:59:44.496 W/HITest  (22344): [Bypass] ✅ 流程完成！
+07-17 13:59:44.498 W/HITest  (22344): [Bypass] 已连接，准备阻断 XMSF...
+07-17 13:59:44.498 I/HITest/Bypass(22739): ==== 设置 XMSF 网络: enabled=false ====
+07-17 13:59:44.501 I/HITest/Bypass(22739): ✅ setFirewallChainEnabled(9, true)
+07-17 13:59:44.501 I/HITest/Bypass(22739): ✅ setUidFirewallRule(9, 10215, 2)
+07-17 13:59:44.501 I/HITest/Bypass(22739): ==== 操作成功: enabled=false ====
+07-17 13:59:44.501 W/HITest  (22344): [Bypass] disableXmsfNetworking: true
+07-17 13:59:44.803 W/HITest  (22344): [Bypass] ✅ 通知已发送 id=502
+07-17 13:59:44.904 I/HITest/Bypass(22739): ==== 设置 XMSF 网络: enabled=true ====
+07-17 13:59:44.908 I/HITest/Bypass(22739): ✅ setFirewallChainEnabled(9, true)
+07-17 13:59:44.908 I/HITest/Bypass(22739): ✅ setUidFirewallRule(9, 10215, 0)
+07-17 13:59:44.908 I/HITest/Bypass(22739): ✅ setFirewallChainEnabled(9, false)
+07-17 13:59:44.908 I/HITest/Bypass(22739): ==== 操作成功: enabled=true ====
+07-17 13:59:44.908 W/HITest  (22344): [Bypass] enableXmsfNetworking: true
+07-17 13:59:44.908 W/HITest  (22344): [Bypass] ✅ 流程完成！
+07-17 13:59:57.948 D/MainActivity(22344): >>> methodCallHandler: sendFocusWithNetworkBypassTemplate9
+07-17 13:59:57.948 I/FocusForwarder(22344): [T9] 开始 bindUserService...
+07-17 13:59:58.254 I/FocusForwarder(22344): [T9] 已连接，阻断 XMSF...
+07-17 13:59:58.255 I/HITest/Bypass(23230): connectivity Binder: android.os.BinderProxy@f62e62a
+07-17 13:59:58.255 I/HITest/Bypass(23230): ==== 设置 XMSF 网络: enabled=false ====
+07-17 13:59:58.258 I/HITest/Bypass(23230): ✅ setFirewallChainEnabled(9, true)
+07-17 13:59:58.258 I/HITest/Bypass(23230): ✅ setUidFirewallRule(9, 10215, 2)
+07-17 13:59:58.258 I/HITest/Bypass(23230): ==== 操作成功: enabled=false ====
+07-17 13:59:58.564 I/FocusForwarder(22344): [T9] ✅ 通知已发送 id=9100
+07-17 13:59:58.665 I/HITest/Bypass(23230): ==== 设置 XMSF 网络: enabled=true ====
+07-17 13:59:58.671 I/HITest/Bypass(23230): ✅ setFirewallChainEnabled(9, true)
+07-17 13:59:58.672 I/HITest/Bypass(23230): ✅ setUidFirewallRule(9, 10215, 0)
+07-17 13:59:58.672 I/HITest/Bypass(23230): ✅ setFirewallChainEnabled(9, false)
+07-17 13:59:58.672 I/HITest/Bypass(23230): ==== 操作成功: enabled=true ====
+07-17 13:59:58.672 I/FocusForwarder(22344): [T9] ✅ 流程完成
+07-17 14:00:03.293 D/MainActivity(22344): >>> methodCallHandler: sendFocusWithNetworkBypassTemplate9
+07-17 14:00:03.294 I/FocusForwarder(22344): [T9] 开始 bindUserService...
+07-17 14:00:03.605 I/FocusForwarder(22344): [T9] 已连接，阻断 XMSF...
+07-17 14:00:03.607 I/HITest/Bypass(23338): connectivity Binder: android.os.BinderProxy@382aff3
+07-17 14:00:03.607 I/HITest/Bypass(23338): ==== 设置 XMSF 网络: enabled=false ====
+07-17 14:00:03.612 I/HITest/Bypass(23338): ✅ setFirewallChainEnabled(9, true)
+07-17 14:00:03.613 I/HITest/Bypass(23338): ✅ setUidFirewallRule(9, 10215, 2)
+07-17 14:00:03.613 I/HITest/Bypass(23338): ==== 操作成功: enabled=false ====
+07-17 14:00:03.919 I/FocusForwarder(22344): [T9] ✅ 通知已发送 id=9101
+07-17 14:00:04.020 I/HITest/Bypass(23338): ==== 设置 XMSF 网络: enabled=true ====
+07-17 14:00:04.027 I/HITest/Bypass(23338): ✅ setFirewallChainEnabled(9, true)
+07-17 14:00:04.027 I/HITest/Bypass(23338): ✅ setUidFirewallRule(9, 10215, 0)
+07-17 14:00:04.027 I/HITest/Bypass(23338): ✅ setFirewallChainEnabled(9, false)
+07-17 14:00:04.027 I/HITest/Bypass(23338): ==== 操作成功: enabled=true ====
+07-17 14:00:04.027 I/FocusForwarder(22344): [T9] ✅ 流程完成
+07-17 14:00:04.028 I/FocusForwarder(22344): [T9] 已连接，阻断 XMSF...
+07-17 14:00:04.029 I/HITest/Bypass(23338): ==== 设置 XMSF 网络: enabled=false ====
+07-17 14:00:04.032 I/HITest/Bypass(23338): ✅ setFirewallChainEnabled(9, true)
+07-17 14:00:04.032 I/HITest/Bypass(23338): ✅ setUidFirewallRule(9, 10215, 2)
+07-17 14:00:04.032 I/HITest/Bypass(23338): ==== 操作成功: enabled=false ====
+07-17 14:00:04.335 I/FocusForwarder(22344): [T9] ✅ 通知已发送 id=9100
+07-17 14:00:04.436 I/HITest/Bypass(23338): ==== 设置 XMSF 网络: enabled=true ====
+07-17 14:00:04.442 I/HITest/Bypass(23338): ✅ setFirewallChainEnabled(9, true)
+07-17 14:00:04.442 I/HITest/Bypass(23338): ✅ setUidFirewallRule(9, 10215, 0)
+07-17 14:00:04.442 I/HITest/Bypass(23338): ✅ setFirewallChainEnabled(9, false)
+07-17 14:00:04.442 I/HITest/Bypass(23338): ==== 操作成功: enabled=true ====
+07-17 14:00:04.442 I/FocusForwarder(22344): [T9] ✅ 流程完成
+07-17 14:00:06.489 D/MainActivity(22344): >>> methodCallHandler: sendFocusWithNetworkBypass
+07-17 14:00:06.489 I/FocusForwarder(22344): 开始 bindUserService...
+07-17 14:00:06.656 I/FocusForwarder(22344): 已连接，阻断 XMSF...
+07-17 14:00:06.657 I/HITest/Bypass(23842): connectivity Binder: android.os.BinderProxy@2c8f5d2
+07-17 14:00:06.657 I/HITest/Bypass(23842): ==== 设置 XMSF 网络: enabled=false ====
+07-17 14:00:06.658 I/HITest/Bypass(23842): ✅ setFirewallChainEnabled(9, true)
+07-17 14:00:06.659 I/HITest/Bypass(23842): ✅ setUidFirewallRule(9, 10215, 2)
+07-17 14:00:06.659 I/HITest/Bypass(23842): ==== 操作成功: enabled=false ====
+07-17 14:00:06.961 I/FocusForwarder(22344): ✅ 通知已发送 id=9102
+07-17 14:00:07.062 I/HITest/Bypass(23842): ==== 设置 XMSF 网络: enabled=true ====
+07-17 14:00:07.065 I/HITest/Bypass(23842): ✅ setFirewallChainEnabled(9, true)
+07-17 14:00:07.065 I/HITest/Bypass(23842): ✅ setUidFirewallRule(9, 10215, 0)
+07-17 14:00:07.065 I/HITest/Bypass(23842): ✅ setFirewallChainEnabled(9, false)
+07-17 14:00:07.065 I/HITest/Bypass(23842): ==== 操作成功: enabled=true ====
+07-17 14:00:07.066 I/FocusForwarder(22344): ✅ 流程完成
+07-17 14:00:12.893 D/MainActivity(22344): >>> methodCallHandler: sendFocusWithNetworkBypassTemplate9
+07-17 14:00:12.893 I/FocusForwarder(22344): [T9] 开始 bindUserService...
+07-17 14:00:13.190 I/FocusForwarder(22344): [T9] 已连接，阻断 XMSF...
+07-17 14:00:13.191 I/HITest/Bypass(24093): connectivity Binder: android.os.BinderProxy@1558190
+07-17 14:00:13.191 I/HITest/Bypass(24093): ==== 设置 XMSF 网络: enabled=false ====
+07-17 14:00:13.193 I/HITest/Bypass(24093): ✅ setFirewallChainEnabled(9, true)
+07-17 14:00:13.193 I/HITest/Bypass(24093): ✅ setUidFirewallRule(9, 10215, 2)
+07-17 14:00:13.193 I/HITest/Bypass(24093): ==== 操作成功: enabled=false ====
+07-17 14:00:13.498 I/FocusForwarder(22344): [T9] ✅ 通知已发送 id=9101
+07-17 14:00:13.600 I/HITest/Bypass(24093): ==== 设置 XMSF 网络: enabled=true ====
+07-17 14:00:13.607 I/HITest/Bypass(24093): ✅ setFirewallChainEnabled(9, true)
+07-17 14:00:13.607 I/HITest/Bypass(24093): ✅ setUidFirewallRule(9, 10215, 0)
+07-17 14:00:13.607 I/HITest/Bypass(24093): ✅ setFirewallChainEnabled(9, false)
+07-17 14:00:13.607 I/HITest/Bypass(24093): ==== 操作成功: enabled=true ====
+07-17 14:00:13.608 I/FocusForwarder(22344): [T9] ✅ 流程完成
+07-17 14:00:13.609 I/FocusForwarder(22344): [T9] 已连接，阻断 XMSF...
+07-17 14:00:13.610 I/HITest/Bypass(24093): ==== 设置 XMSF 网络: enabled=false ====
+07-17 14:00:13.614 I/HITest/Bypass(24093): ✅ setFirewallChainEnabled(9, true)
+07-17 14:00:13.615 I/HITest/Bypass(24093): ✅ setUidFirewallRule(9, 10215, 2)
+07-17 14:00:13.615 I/HITest/Bypass(24093): ==== 操作成功: enabled=false ====
+07-17 14:00:13.920 I/FocusForwarder(22344): [T9] ✅ 通知已发送 id=9100
+07-17 14:00:14.021 I/HITest/Bypass(24093): ==== 设置 XMSF 网络: enabled=true ====
+07-17 14:00:14.028 I/HITest/Bypass(24093): ✅ setFirewallChainEnabled(9, true)
+07-17 14:00:14.029 I/HITest/Bypass(24093): ✅ setUidFirewallRule(9, 10215, 0)
+07-17 14:00:14.029 I/HITest/Bypass(24093): ✅ setFirewallChainEnabled(9, false)
+07-17 14:00:14.029 I/HITest/Bypass(24093): ==== 操作成功: enabled=true ====
+07-17 14:00:14.030 I/FocusForwarder(22344): [T9] ✅ 流程完成
+07-17 14:00:14.031 I/FocusForwarder(22344): [T9] 已连接，阻断 XMSF...
+07-17 14:00:14.033 I/HITest/Bypass(24093): ==== 设置 XMSF 网络: enabled=false ====
+07-17 14:00:14.038 I/HITest/Bypass(24093): ✅ setFirewallChainEnabled(9, true)
+07-17 14:00:14.038 I/HITest/Bypass(24093): ✅ setUidFirewallRule(9, 10215, 2)
+07-17 14:00:14.039 I/HITest/Bypass(24093): ==== 操作成功: enabled=false ====
+07-17 14:00:14.341 I/FocusForwarder(22344): [T9] ✅ 通知已发送 id=9103
+07-17 14:00:14.441 I/HITest/Bypass(24093): ==== 设置 XMSF 网络: enabled=true ====
+07-17 14:00:14.443 I/HITest/Bypass(24093): ✅ setFirewallChainEnabled(9, true)
+07-17 14:00:14.443 I/HITest/Bypass(24093): ✅ setUidFirewallRule(9, 10215, 0)
+07-17 14:00:14.443 I/HITest/Bypass(24093): ✅ setFirewallChainEnabled(9, false)
+07-17 14:00:14.443 I/HITest/Bypass(24093): ==== 操作成功: enabled=true ====
+07-17 14:00:14.443 I/FocusForwarder(22344): [T9] ✅ 流程完成
+07-17 14:00:21.862 D/MainActivity(22344): >>> methodCallHandler: sendFocusWithNetworkBypassTemplate9
+07-17 14:00:21.862 I/FocusForwarder(22344): [T9] 开始 bindUserService...
+07-17 14:00:22.163 I/FocusForwarder(22344): [T9] 已连接，阻断 XMSF...
+07-17 14:00:22.163 I/HITest/Bypass(24194): connectivity Binder: android.os.BinderProxy@f28532d
+07-17 14:00:22.164 I/HITest/Bypass(24194): ==== 设置 XMSF 网络: enabled=false ====
+07-17 14:00:22.166 I/HITest/Bypass(24194): ✅ setFirewallChainEnabled(9, true)
+07-17 14:00:22.166 I/HITest/Bypass(24194): ✅ setUidFirewallRule(9, 10215, 2)
+07-17 14:00:22.166 I/HITest/Bypass(24194): ==== 操作成功: enabled=false ====
+07-17 14:00:22.470 I/FocusForwarder(22344): [T9] ✅ 通知已发送 id=9101
+07-17 14:00:22.571 I/HITest/Bypass(24194): ==== 设置 XMSF 网络: enabled=true ====
+07-17 14:00:22.578 I/HITest/Bypass(24194): ✅ setFirewallChainEnabled(9, true)
+07-17 14:00:22.579 I/HITest/Bypass(24194): ✅ setUidFirewallRule(9, 10215, 0)
+07-17 14:00:22.579 I/HITest/Bypass(24194): ✅ setFirewallChainEnabled(9, false)
+07-17 14:00:22.580 I/HITest/Bypass(24194): ==== 操作成功: enabled=true ====
+07-17 14:00:22.580 I/FocusForwarder(22344): [T9] ✅ 流程完成
+07-17 14:00:22.582 I/FocusForwarder(22344): [T9] 已连接，阻断 XMSF...
+07-17 14:00:22.583 I/HITest/Bypass(24194): ==== 设置 XMSF 网络: enabled=false ====
+07-17 14:00:22.589 I/HITest/Bypass(24194): ✅ setFirewallChainEnabled(9, true)
+07-17 14:00:22.590 I/HITest/Bypass(24194): ✅ setUidFirewallRule(9, 10215, 2)
+07-17 14:00:22.590 I/HITest/Bypass(24194): ==== 操作成功: enabled=false ====
+07-17 14:00:22.896 I/FocusForwarder(22344): [T9] ✅ 通知已发送 id=9100
+07-17 14:00:22.996 I/HITest/Bypass(24194): ==== 设置 XMSF 网络: enabled=true ====
+07-17 14:00:23.000 I/HITest/Bypass(24194): ✅ setFirewallChainEnabled(9, true)
+07-17 14:00:23.000 I/HITest/Bypass(24194): ✅ setUidFirewallRule(9, 10215, 0)
+07-17 14:00:23.000 I/HITest/Bypass(24194): ✅ setFirewallChainEnabled(9, false)
+07-17 14:00:23.000 I/HITest/Bypass(24194): ==== 操作成功: enabled=true ====
+07-17 14:00:23.000 I/FocusForwarder(22344): [T9] ✅ 流程完成
+07-17 14:00:23.001 I/FocusForwarder(22344): [T9] 已连接，阻断 XMSF...
+07-17 14:00:23.001 I/HITest/Bypass(24194): ==== 设置 XMSF 网络: enabled=false ====
+07-17 14:00:23.003 I/HITest/Bypass(24194): ✅ setFirewallChainEnabled(9, true)
+07-17 14:00:23.003 I/HITest/Bypass(24194): ✅ setUidFirewallRule(9, 10215, 2)
+07-17 14:00:23.003 I/HITest/Bypass(24194): ==== 操作成功: enabled=false ====
+07-17 14:00:23.308 I/FocusForwarder(22344): [T9] ✅ 通知已发送 id=9103
+07-17 14:00:23.409 I/HITest/Bypass(24194): ==== 设置 XMSF 网络: enabled=true ====
+07-17 14:00:23.417 I/HITest/Bypass(24194): ✅ setFirewallChainEnabled(9, true)
+07-17 14:00:23.417 I/HITest/Bypass(24194): ✅ setUidFirewallRule(9, 10215, 0)
+07-17 14:00:23.417 I/HITest/Bypass(24194): ✅ setFirewallChainEnabled(9, false)
+07-17 14:00:23.417 I/HITest/Bypass(24194): ==== 操作成功: enabled=true ====
+07-17 14:00:23.418 I/FocusForwarder(22344): [T9] ✅ 流程完成
+07-17 14:00:23.419 I/FocusForwarder(22344): [T9] 已连接，阻断 XMSF...
+07-17 14:00:23.420 I/HITest/Bypass(24194): ==== 设置 XMSF 网络: enabled=false ====
+07-17 14:00:23.427 I/HITest/Bypass(24194): ✅ setFirewallChainEnabled(9, true)
+07-17 14:00:23.427 I/HITest/Bypass(24194): ✅ setUidFirewallRule(9, 10215, 2)
+07-17 14:00:23.427 I/HITest/Bypass(24194): ==== 操作成功: enabled=false ====
+07-17 14:00:23.730 I/FocusForwarder(22344): [T9] ✅ 通知已发送 id=9104
+07-17 14:00:23.831 I/HITest/Bypass(24194): ==== 设置 XMSF 网络: enabled=true ====
+07-17 14:00:23.839 I/HITest/Bypass(24194): ✅ setFirewallChainEnabled(9, true)
+07-17 14:00:23.839 I/HITest/Bypass(24194): ✅ setUidFirewallRule(9, 10215, 0)
+07-17 14:00:23.840 I/HITest/Bypass(24194): ✅ setFirewallChainEnabled(9, false)
+07-17 14:00:23.840 I/HITest/Bypass(24194): ==== 操作成功: enabled=true ====
+07-17 14:00:23.840 I/FocusForwarder(22344): [T9] ✅ 流程完成
+07-17 14:00:44.039 D/MainActivity(22344): >>> methodCallHandler: sendFocusWithNetworkBypassTemplate9
+07-17 14:00:44.039 I/FocusForwarder(22344): [T9] 开始 bindUserService...
+07-17 14:00:44.338 I/FocusForwarder(22344): [T9] 已连接，阻断 XMSF...
+07-17 14:00:44.340 I/HITest/Bypass(24310): connectivity Binder: android.os.BinderProxy@eedc030
+07-17 14:00:44.340 I/HITest/Bypass(24310): ==== 设置 XMSF 网络: enabled=false ====
+07-17 14:00:44.344 I/HITest/Bypass(24310): ✅ setFirewallChainEnabled(9, true)
+07-17 14:00:44.344 I/HITest/Bypass(24310): ✅ setUidFirewallRule(9, 10215, 2)
+07-17 14:00:44.344 I/HITest/Bypass(24310): ==== 操作成功: enabled=false ====
+07-17 14:00:44.651 I/FocusForwarder(22344): [T9] ✅ 通知已发送 id=9101
+07-17 14:00:44.752 I/HITest/Bypass(24310): ==== 设置 XMSF 网络: enabled=true ====
+07-17 14:00:44.759 I/HITest/Bypass(24310): ✅ setFirewallChainEnabled(9, true)
+07-17 14:00:44.759 I/HITest/Bypass(24310): ✅ setUidFirewallRule(9, 10215, 0)
+07-17 14:00:44.760 I/HITest/Bypass(24310): ✅ setFirewallChainEnabled(9, false)
+07-17 14:00:44.760 I/HITest/Bypass(24310): ==== 操作成功: enabled=true ====
+07-17 14:00:44.760 I/FocusForwarder(22344): [T9] ✅ 流程完成
+07-17 14:00:44.762 I/FocusForwarder(22344): [T9] 已连接，阻断 XMSF...
+07-17 14:00:44.763 I/HITest/Bypass(24310): ==== 设置 XMSF 网络: enabled=false ====
+07-17 14:00:44.768 I/HITest/Bypass(24310): ✅ setFirewallChainEnabled(9, true)
+07-17 14:00:44.768 I/HITest/Bypass(24310): ✅ setUidFirewallRule(9, 10215, 2)
+07-17 14:00:44.768 I/HITest/Bypass(24310): ==== 操作成功: enabled=false ====
+07-17 14:00:45.073 I/FocusForwarder(22344): [T9] ✅ 通知已发送 id=9100
+07-17 14:00:45.175 I/HITest/Bypass(24310): ==== 设置 XMSF 网络: enabled=true ====
+07-17 14:00:45.181 I/HITest/Bypass(24310): ✅ setFirewallChainEnabled(9, true)
+07-17 14:00:45.182 I/HITest/Bypass(24310): ✅ setUidFirewallRule(9, 10215, 0)
+07-17 14:00:45.182 I/HITest/Bypass(24310): ✅ setFirewallChainEnabled(9, false)
+07-17 14:00:45.182 I/HITest/Bypass(24310): ==== 操作成功: enabled=true ====
+07-17 14:00:45.182 I/FocusForwarder(22344): [T9] ✅ 流程完成
+07-17 14:00:45.184 I/FocusForwarder(22344): [T9] 已连接，阻断 XMSF...
+07-17 14:00:45.184 I/HITest/Bypass(24310): ==== 设置 XMSF 网络: enabled=false ====
+07-17 14:00:45.189 I/HITest/Bypass(24310): ✅ setFirewallChainEnabled(9, true)
+07-17 14:00:45.190 I/HITest/Bypass(24310): ✅ setUidFirewallRule(9, 10215, 2)
+07-17 14:00:45.190 I/HITest/Bypass(24310): ==== 操作成功: enabled=false ====
+07-17 14:00:45.499 I/FocusForwarder(22344): [T9] ✅ 通知已发送 id=9103
+07-17 14:00:45.599 I/HITest/Bypass(24310): ==== 设置 XMSF 网络: enabled=true ====
+07-17 14:00:45.600 I/HITest/Bypass(24310): ✅ setFirewallChainEnabled(9, true)
+07-17 14:00:45.600 I/HITest/Bypass(24310): ✅ setUidFirewallRule(9, 10215, 0)
+07-17 14:00:45.600 I/HITest/Bypass(24310): ✅ setFirewallChainEnabled(9, false)
+07-17 14:00:45.600 I/HITest/Bypass(24310): ==== 操作成功: enabled=true ====
+07-17 14:00:45.600 I/FocusForwarder(22344): [T9] ✅ 流程完成
+07-17 14:00:45.601 I/FocusForwarder(22344): [T9] 已连接，阻断 XMSF...
+07-17 14:00:45.601 I/HITest/Bypass(24310): ==== 设置 XMSF 网络: enabled=false ====
+07-17 14:00:45.602 I/HITest/Bypass(24310): ✅ setFirewallChainEnabled(9, true)
+07-17 14:00:45.602 I/HITest/Bypass(24310): ✅ setUidFirewallRule(9, 10215, 2)
+07-17 14:00:45.602 I/HITest/Bypass(24310): ==== 操作成功: enabled=false ====
+07-17 14:00:45.903 I/FocusForwarder(22344): [T9] ✅ 通知已发送 id=9105
+07-17 14:00:46.004 I/HITest/Bypass(24310): ==== 设置 XMSF 网络: enabled=true ====
+07-17 14:00:46.006 I/HITest/Bypass(24310): ✅ setFirewallChainEnabled(9, true)
+07-17 14:00:46.006 I/HITest/Bypass(24310): ✅ setUidFirewallRule(9, 10215, 0)
+07-17 14:00:46.006 I/HITest/Bypass(24310): ✅ setFirewallChainEnabled(9, false)
+07-17 14:00:46.006 I/HITest/Bypass(24310): ==== 操作成功: enabled=true ====
+07-17 14:00:46.006 I/FocusForwarder(22344): [T9] ✅ 流程完成
+07-17 14:00:46.007 I/FocusForwarder(22344): [T9] 已连接，阻断 XMSF...
+07-17 14:00:46.007 I/HITest/Bypass(24310): ==== 设置 XMSF 网络: enabled=false ====
+07-17 14:00:46.008 I/HITest/Bypass(24310): ✅ setFirewallChainEnabled(9, true)
+07-17 14:00:46.008 I/HITest/Bypass(24310): ✅ setUidFirewallRule(9, 10215, 2)
+07-17 14:00:46.008 I/HITest/Bypass(24310): ==== 操作成功: enabled=false ====
+07-17 14:00:46.310 I/FocusForwarder(22344): [T9] ✅ 通知已发送 id=9104
+07-17 14:00:46.410 I/HITest/Bypass(24310): ==== 设置 XMSF 网络: enabled=true ====
+07-17 14:00:46.413 I/HITest/Bypass(24310): ✅ setFirewallChainEnabled(9, true)
+07-17 14:00:46.413 I/HITest/Bypass(24310): ✅ setUidFirewallRule(9, 10215, 0)
+07-17 14:00:46.413 I/HITest/Bypass(24310): ✅ setFirewallChainEnabled(9, false)
+07-17 14:00:46.413 I/HITest/Bypass(24310): ==== 操作成功: enabled=true ====
+07-17 14:00:46.413 I/FocusForwarder(22344): [T9] ✅ 流程完成
+07-17 14:01:06.107 D/MainActivity(22344): >>> methodCallHandler: sendFocusWithNetworkBypassTemplate9
+07-17 14:01:06.107 I/FocusForwarder(22344): [T9] 开始 bindUserService...
+07-17 14:01:06.426 I/FocusForwarder(22344): [T9] 已连接，阻断 XMSF...
+07-17 14:01:06.427 I/HITest/Bypass(24526): connectivity Binder: android.os.BinderProxy@4466b3e
+07-17 14:01:06.427 I/HITest/Bypass(24526): ==== 设置 XMSF 网络: enabled=false ====
+07-17 14:01:06.429 I/HITest/Bypass(24526): ✅ setFirewallChainEnabled(9, true)
+07-17 14:01:06.430 I/HITest/Bypass(24526): ✅ setUidFirewallRule(9, 10215, 2)
+07-17 14:01:06.430 I/HITest/Bypass(24526): ==== 操作成功: enabled=false ====
+07-17 14:01:06.735 I/FocusForwarder(22344): [T9] ✅ 通知已发送 id=9101
+07-17 14:01:06.836 I/HITest/Bypass(24526): ==== 设置 XMSF 网络: enabled=true ====
+07-17 14:01:06.844 I/HITest/Bypass(24526): ✅ setFirewallChainEnabled(9, true)
+07-17 14:01:06.844 I/HITest/Bypass(24526): ✅ setUidFirewallRule(9, 10215, 0)
+07-17 14:01:06.845 I/HITest/Bypass(24526): ✅ setFirewallChainEnabled(9, false)
+07-17 14:01:06.845 I/HITest/Bypass(24526): ==== 操作成功: enabled=true ====
+07-17 14:01:06.845 I/FocusForwarder(22344): [T9] ✅ 流程完成
+07-17 14:01:06.847 I/FocusForwarder(22344): [T9] 已连接，阻断 XMSF...
+07-17 14:01:06.847 I/HITest/Bypass(24526): ==== 设置 XMSF 网络: enabled=false ====
+07-17 14:01:06.854 I/HITest/Bypass(24526): ✅ setFirewallChainEnabled(9, true)
+07-17 14:01:06.854 I/HITest/Bypass(24526): ✅ setUidFirewallRule(9, 10215, 2)
+07-17 14:01:06.854 I/HITest/Bypass(24526): ==== 操作成功: enabled=false ====
+07-17 14:01:07.161 I/FocusForwarder(22344): [T9] ✅ 通知已发送 id=9100
+07-17 14:01:07.262 I/HITest/Bypass(24526): ==== 设置 XMSF 网络: enabled=true ====
+07-17 14:01:07.264 I/HITest/Bypass(24526): ✅ setFirewallChainEnabled(9, true)
+07-17 14:01:07.264 I/HITest/Bypass(24526): ✅ setUidFirewallRule(9, 10215, 0)
+07-17 14:01:07.264 I/HITest/Bypass(24526): ✅ setFirewallChainEnabled(9, false)
+07-17 14:01:07.264 I/HITest/Bypass(24526): ==== 操作成功: enabled=true ====
+07-17 14:01:07.264 I/FocusForwarder(22344): [T9] ✅ 流程完成
+07-17 14:01:07.269 I/FocusForwarder(22344): [T9] 已连接，阻断 XMSF...
+07-17 14:01:07.270 I/HITest/Bypass(24526): ==== 设置 XMSF 网络: enabled=false ====
+07-17 14:01:07.271 I/HITest/Bypass(24526): ✅ setFirewallChainEnabled(9, true)
+07-17 14:01:07.271 I/HITest/Bypass(24526): ✅ setUidFirewallRule(9, 10215, 2)
+07-17 14:01:07.271 I/HITest/Bypass(24526): ==== 操作成功: enabled=false ====
+07-17 14:01:07.575 I/FocusForwarder(22344): [T9] ✅ 通知已发送 id=9103
+07-17 14:01:07.675 I/HITest/Bypass(24526): ==== 设置 XMSF 网络: enabled=true ====
+07-17 14:01:07.676 I/HITest/Bypass(24526): ✅ setFirewallChainEnabled(9, true)
+07-17 14:01:07.676 I/HITest/Bypass(24526): ✅ setUidFirewallRule(9, 10215, 0)
+07-17 14:01:07.676 I/HITest/Bypass(24526): ✅ setFirewallChainEnabled(9, false)
+07-17 14:01:07.676 I/HITest/Bypass(24526): ==== 操作成功: enabled=true ====
+07-17 14:01:07.676 I/FocusForwarder(22344): [T9] ✅ 流程完成
+07-17 14:01:07.677 I/FocusForwarder(22344): [T9] 已连接，阻断 XMSF...
+07-17 14:01:07.677 I/HITest/Bypass(24526): ==== 设置 XMSF 网络: enabled=false ====
+07-17 14:01:07.678 I/HITest/Bypass(24526): ✅ setFirewallChainEnabled(9, true)
+07-17 14:01:07.678 I/HITest/Bypass(24526): ✅ setUidFirewallRule(9, 10215, 2)
+07-17 14:01:07.678 I/HITest/Bypass(24526): ==== 操作成功: enabled=false ====
+07-17 14:01:07.979 I/FocusForwarder(22344): [T9] ✅ 通知已发送 id=9105
+07-17 14:01:08.079 I/HITest/Bypass(24526): ==== 设置 XMSF 网络: enabled=true ====
+07-17 14:01:08.080 I/HITest/Bypass(24526): ✅ setFirewallChainEnabled(9, true)
+07-17 14:01:08.080 I/HITest/Bypass(24526): ✅ setUidFirewallRule(9, 10215, 0)
+07-17 14:01:08.080 I/HITest/Bypass(24526): ✅ setFirewallChainEnabled(9, false)
+07-17 14:01:08.080 I/HITest/Bypass(24526): ==== 操作成功: enabled=true ====
+07-17 14:01:08.081 I/FocusForwarder(22344): [T9] ✅ 流程完成
+07-17 14:01:08.081 I/FocusForwarder(22344): [T9] 已连接，阻断 XMSF...
+07-17 14:01:08.081 I/HITest/Bypass(24526): ==== 设置 XMSF 网络: enabled=false ====
+07-17 14:01:08.082 I/HITest/Bypass(24526): ✅ setFirewallChainEnabled(9, true)
+07-17 14:01:08.082 I/HITest/Bypass(24526): ✅ setUidFirewallRule(9, 10215, 2)
+07-17 14:01:08.082 I/HITest/Bypass(24526): ==== 操作成功: enabled=false ====
+07-17 14:01:08.385 I/FocusForwarder(22344): [T9] ✅ 通知已发送 id=9104
+07-17 14:01:08.489 I/HITest/Bypass(24526): ==== 设置 XMSF 网络: enabled=true ====
+07-17 14:01:08.491 I/HITest/Bypass(24526): ✅ setFirewallChainEnabled(9, true)
+07-17 14:01:08.491 I/HITest/Bypass(24526): ✅ setUidFirewallRule(9, 10215, 0)
+07-17 14:01:08.491 I/HITest/Bypass(24526): ✅ setFirewallChainEnabled(9, false)
+07-17 14:01:08.491 I/HITest/Bypass(24526): ==== 操作成功: enabled=true ====
+07-17 14:01:08.491 I/FocusForwarder(22344): [T9] ✅ 流程完成
+07-17 14:01:08.492 I/FocusForwarder(22344): [T9] 已连接，阻断 XMSF...
+07-17 14:01:08.493 I/HITest/Bypass(24526): ==== 设置 XMSF 网络: enabled=false ====
+07-17 14:01:08.495 I/HITest/Bypass(24526): ✅ setFirewallChainEnabled(9, true)
+07-17 14:01:08.495 I/HITest/Bypass(24526): ✅ setUidFirewallRule(9, 10215, 2)
+07-17 14:01:08.495 I/HITest/Bypass(24526): ==== 操作成功: enabled=false ====
+07-17 14:01:08.801 I/FocusForwarder(22344): [T9] ✅ 通知已发送 id=9106
+07-17 14:01:08.902 I/HITest/Bypass(24526): ==== 设置 XMSF 网络: enabled=true ====
+07-17 14:01:08.905 I/HITest/Bypass(24526): ✅ setFirewallChainEnabled(9, true)
+07-17 14:01:08.906 I/HITest/Bypass(24526): ✅ setUidFirewallRule(9, 10215, 0)
+07-17 14:01:08.906 I/HITest/Bypass(24526): ✅ setFirewallChainEnabled(9, false)
+07-17 14:01:08.906 I/HITest/Bypass(24526): ==== 操作成功: enabled=true ====
+07-17 14:01:08.906 I/FocusForwarder(22344): [T9] ✅ 流程完成
+07-17 14:01:34.180 D/MainActivity(22344): >>> methodCallHandler: isShizukuRunning
+07-17 14:01:34.180 D/MainActivity(22344): >>> methodCallHandler: hasShizukuPermission
+07-17 14:01:34.180 D/MainActivity(22344): >>> methodCallHandler: isPostNotificationsGranted
+07-17 14:01:34.180 D/MainActivity(22344): >>> methodCallHandler: hasPromotedNotificationPermission
+07-17 14:01:34.181 D/MainActivity(22344): >>> methodCallHandler: isInstalledAppsPermissionSupported
+07-17 14:01:34.181 D/MainActivity(22344): >>> methodCallHandler: isInstalledAppsPermissionGranted
+07-17 14:01:34.181 D/MainActivity(22344): >>> methodCallHandler: isNotificationListenerEnabled
+07-17 14:01:34.970 D/MainActivity(22344): >>> methodCallHandler: isShizukuRunning
+07-17 14:01:34.975 D/MainActivity(22344): >>> methodCallHandler: hasShizukuPermission
+07-17 14:02:18.290 D/BackScreenController(19613): BackScreenController initialized with Shizuku SDK
+07-17 14:02:18.773 D/MainActivity(19613): >>> methodCallHandler: isNotificationListenerEnabled
+07-17 14:02:18.773 D/MainActivity(19613): >>> methodCallHandler: isPostNotificationsGranted
+07-17 14:02:18.774 D/MainActivity(19613): >>> methodCallHandler: isShizukuRunning
+07-17 14:02:18.774 D/MainActivity(19613): >>> methodCallHandler: hasShizukuPermission
+07-17 14:02:18.811 D/MainActivity(19613): >>> methodCallHandler: isShizukuRunning
+07-17 14:02:18.811 D/MainActivity(19613): EventChannel onListen
+07-17 14:02:18.827 D/MainActivity(19613): >>> methodCallHandler: hasShizukuPermission
+07-17 14:02:31.444 D/BackScreenController(25201): BackScreenController initialized with Shizuku SDK
+07-17 14:02:31.444 D/BackScreenController(25201): Shizuku binder received!
+07-17 14:02:31.919 D/MainActivity(25201): >>> methodCallHandler: isNotificationListenerEnabled
+07-17 14:02:31.920 D/MainActivity(25201): >>> methodCallHandler: isPostNotificationsGranted
+07-17 14:02:31.920 D/MainActivity(25201): >>> methodCallHandler: isShizukuRunning
+07-17 14:02:31.920 D/MainActivity(25201): >>> methodCallHandler: hasShizukuPermission
+07-17 14:02:31.933 D/MainActivity(25201): >>> methodCallHandler: isShizukuRunning
+07-17 14:02:31.933 D/MainActivity(25201): EventChannel onListen
+07-17 14:02:31.947 D/MainActivity(25201): >>> methodCallHandler: hasShizukuPermission
+07-17 14:02:32.963 D/MainActivity(25201): >>> methodCallHandler: requestShizukuPermission
+07-17 14:02:33.589 D/BackScreenController(25201): Shizuku permission result: requestCode=1001, granted=true
+07-17 14:02:35.972 D/MainActivity(25201): >>> methodCallHandler: isShizukuRunning
+07-17 14:02:35.973 D/MainActivity(25201): >>> methodCallHandler: hasShizukuPermission
+07-17 14:02:37.121 D/MainActivity(25201): >>> methodCallHandler: launchHyperIslandTest
+07-17 14:02:38.726 W/HITest  (25201): [Bypass] JSON >>> {"param_v2":{"business":"course_reminder","protocol":1,"enableFloat":true,"updatable":true,"reopen":"reopen","sequence":1,"baseInfo":{"type":2,"title":"高等数学","content":"第1-2节｜A301｜08:00","subTitle":"","extraTitle":"","specialTitle":"","subContent":"","picFunction":"","showDivider":true,"showContentDivider":false,"colorTitle":"#111111","colorTitleDark":"#ffffff","colorContent":"#333333","colorContentDark":"#cccccc"},"picInfo":{"type":1,"pic":""},"hintInfo":{"type":2,"content":"即将上课","title":"","subContent":"地点","subTitle":"A301","colorContent":"#666666","colorContentDark":"#aaaaaa","colorTitle":"#222222","colorTitleDark":"#eeeeee","colorSubContent":"#666666","colorSubContentDark":"#aaaaaa","colorSubTitle":"#222222","colorSubTitleDark":"#eeeeee","actionInfo":{"actionTitle":"查看课表","actionIntentType":1,"actionIntent":"intent:#Intent;component=com.example.fbs/.hyperisland.HyperIslandTestActivity;end"}},"param_island":{"islandProperty":1,"islandTimeout":3600,"bigIslandArea":{"templateNo":2,"imageTextInfoLeft":{"type":1,"textInfo":{"title":"高等数学","content":"","showHighlightColor":false,"narrowFont":false}},"textInfo":{"frontTitle":"","title":"A301","content":"","showHighlightColor":false,"narrowFont":false}},"smallIslandArea":{"picInfo":{"type":1,"pic":"miui.focus.pic_small","picDark":"miui.focus.pic_small_dark"}}}}}
+07-17 14:02:38.726 W/HITest  (25201): [Bypass] 开始 bindUserService...
+07-17 14:02:38.739 W/HITest  (25201): [Bypass] bindUserService 已调用
+07-17 14:02:38.975 W/HITest  (25201): [Bypass] 已连接，准备阻断 XMSF...
+07-17 14:02:38.976 I/HITest/Bypass(25421): connectivity Binder: android.os.BinderProxy@cfe0ebb
+07-17 14:02:38.976 I/HITest/Bypass(25421): ==== 设置 XMSF 网络: enabled=false ====
+07-17 14:02:38.980 I/HITest/Bypass(25421): ✅ setFirewallChainEnabled(9, true)
+07-17 14:02:38.981 I/HITest/Bypass(25421): ✅ setUidFirewallRule(9, 10215, 2)
+07-17 14:02:38.981 I/HITest/Bypass(25421): ==== 操作成功: enabled=false ====
+07-17 14:02:38.981 W/HITest  (25201): [Bypass] disableXmsfNetworking: true
+07-17 14:02:39.285 W/HITest  (25201): [Bypass] ✅ 通知已发送 id=501
+07-17 14:02:39.387 I/HITest/Bypass(25421): ==== 设置 XMSF 网络: enabled=true ====
+07-17 14:02:39.395 I/HITest/Bypass(25421): ✅ setFirewallChainEnabled(9, true)
+07-17 14:02:39.395 I/HITest/Bypass(25421): ✅ setUidFirewallRule(9, 10215, 0)
+07-17 14:02:39.396 I/HITest/Bypass(25421): ✅ setFirewallChainEnabled(9, false)
+07-17 14:02:39.396 I/HITest/Bypass(25421): ==== 操作成功: enabled=true ====
+07-17 14:02:39.396 W/HITest  (25201): [Bypass] enableXmsfNetworking: true
+07-17 14:02:39.396 W/HITest  (25201): [Bypass] ✅ 流程完成！
+07-17 14:03:26.899 W/HITest  (25201): [Bypass] JSON >>> {"param_v2":{"business":"course_reminder","protocol":1,"enableFloat":true,"updatable":true,"reopen":"reopen","sequence":2,"baseInfo":{"type":2,"title":"高等数学","content":"第1-2节｜A301｜08:00","subTitle":"","extraTitle":"","specialTitle":"","subContent":"","picFunction":"","showDivider":true,"showContentDivider":false,"colorTitle":"#111111","colorTitleDark":"#ffffff","colorContent":"#333333","colorContentDark":"#cccccc"},"picInfo":{"type":1,"pic":""},"hintInfo":{"type":2,"content":"即将上课","title":"","subContent":"地点","subTitle":"A301","colorContent":"#666666","colorContentDark":"#aaaaaa","colorTitle":"#222222","colorTitleDark":"#eeeeee","colorSubContent":"#666666","colorSubContentDark":"#aaaaaa","colorSubTitle":"#222222","colorSubTitleDark":"#eeeeee","actionInfo":{"actionTitle":"查看课表","actionIntentType":1,"actionIntent":"intent:#Intent;component=com.example.fbs/.hyperisland.HyperIslandTestActivity;end"}},"param_island":{"islandProperty":1,"islandTimeout":3600,"bigIslandArea":{"templateNo":2,"imageTextInfoLeft":{"type":1,"textInfo":{"title":"高等数学","content":"","showHighlightColor":false,"narrowFont":false}},"textInfo":{"frontTitle":"","title":"A301","content":"","showHighlightColor":false,"narrowFont":false}},"smallIslandArea":{"picInfo":{"type":1,"pic":"miui.focus.pic_small","picDark":"miui.focus.pic_small_dark"}}}}}
+07-17 14:03:26.899 W/HITest  (25201): [Bypass] 开始 bindUserService...
+07-17 14:03:26.901 W/HITest  (25201): [Bypass] bindUserService 已调用
+07-17 14:03:27.180 W/HITest  (25201): [Bypass] 已连接，准备阻断 XMSF...
+07-17 14:03:27.180 I/HITest/Bypass(25562): connectivity Binder: android.os.BinderProxy@7c07d3a
+07-17 14:03:27.181 I/HITest/Bypass(25562): ==== 设置 XMSF 网络: enabled=false ====
+07-17 14:03:27.183 I/HITest/Bypass(25562): ✅ setFirewallChainEnabled(9, true)
+07-17 14:03:27.183 I/HITest/Bypass(25562): ✅ setUidFirewallRule(9, 10215, 2)
+07-17 14:03:27.183 I/HITest/Bypass(25562): ==== 操作成功: enabled=false ====
+07-17 14:03:27.183 W/HITest  (25201): [Bypass] disableXmsfNetworking: true
+07-17 14:03:27.488 W/HITest  (25201): [Bypass] ✅ 通知已发送 id=502
+07-17 14:03:27.590 I/HITest/Bypass(25562): ==== 设置 XMSF 网络: enabled=true ====
+07-17 14:03:27.597 I/HITest/Bypass(25562): ✅ setFirewallChainEnabled(9, true)
+07-17 14:03:27.598 I/HITest/Bypass(25562): ✅ setUidFirewallRule(9, 10215, 0)
+07-17 14:03:27.598 I/HITest/Bypass(25562): ✅ setFirewallChainEnabled(9, false)
+07-17 14:03:27.598 I/HITest/Bypass(25562): ==== 操作成功: enabled=true ====
+07-17 14:03:27.599 W/HITest  (25201): [Bypass] enableXmsfNetworking: true
+07-17 14:03:27.599 W/HITest  (25201): [Bypass] ✅ 流程完成！
+07-17 14:03:27.600 W/HITest  (25201): [Bypass] 已连接，准备阻断 XMSF...
+07-17 14:03:27.601 I/HITest/Bypass(25562): ==== 设置 XMSF 网络: enabled=false ====
+07-17 14:03:27.605 I/HITest/Bypass(25562): ✅ setFirewallChainEnabled(9, true)
+07-17 14:03:27.605 I/HITest/Bypass(25562): ✅ setUidFirewallRule(9, 10215, 2)
+07-17 14:03:27.605 I/HITest/Bypass(25562): ==== 操作成功: enabled=false ====
+07-17 14:03:27.606 W/HITest  (25201): [Bypass] disableXmsfNetworking: true
+07-17 14:03:27.910 W/HITest  (25201): [Bypass] ✅ 通知已发送 id=501
+07-17 14:03:28.012 I/HITest/Bypass(25562): ==== 设置 XMSF 网络: enabled=true ====
+07-17 14:03:28.019 I/HITest/Bypass(25562): ✅ setFirewallChainEnabled(9, true)
+07-17 14:03:28.019 I/HITest/Bypass(25562): ✅ setUidFirewallRule(9, 10215, 0)
+07-17 14:03:28.019 I/HITest/Bypass(25562): ✅ setFirewallChainEnabled(9, false)
+07-17 14:03:28.019 I/HITest/Bypass(25562): ==== 操作成功: enabled=true ====
+07-17 14:03:28.020 W/HITest  (25201): [Bypass] enableXmsfNetworking: true
+07-17 14:03:28.020 W/HITest  (25201): [Bypass] ✅ 流程完成！
