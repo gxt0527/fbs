@@ -51,6 +51,12 @@ android {
     buildTypes {
         release {
             signingConfig = signingConfigs.getByName("release")
+            // proguard-rules.pro 保留 hyperisland/** + AIDL Stub，
+            // 防止 R8 dead-code elimination 把 Shizuku UserService 类整类删除
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro"
+            )
         }
     }
 

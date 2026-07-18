@@ -1,6 +1,7 @@
 package com.example.fbs.hyperisland
 
 import android.os.IBinder
+import android.os.Parcel
 import android.util.Log
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
@@ -11,11 +12,18 @@ import java.util.concurrent.TimeUnit
  * 完全复刻自 NexioSchedule (课程表) 的 PrivilegedServiceImpl.setPackageNetworkingEnabled()
  * 使用 IConnectivityManager（服务名 "connectivity"）的防火墙方法。
  *
- * 关键参数：
- * - FIREWALL_CHAIN_OEM_DENY = 9（Int 常量，不是 String）
- * - setFirewallChainEnabled(int, boolean)
- * - setUidFirewallRule(int, int, int)
- * - ALLOW = 0, DENY = 2
+ * ⚠️ 关键修复（2026-07-18）：
+ * 原实现用 `connMgr.javaClass.getMethod("setFirewallChainEnabled", ...).invoke(...)` 反射调用
+ * `@hide` 隐藏 API。debug 版（debuggable）放宽了「非 SDK 接口限制」，反射成功；
+ * 但 release 版（非 debuggable）强制黑名单，反射抛 NoSuchMethodException → 防火墙不生效 → 上岛失败。
+ *
+ * 改用原始 `IBinder.transact()` 直接走 IPC，完全不触碰隐藏 API 的 Java 反射，
+ * 在 debug 与 release 下行为一致。
+ *
+ * 本机（HyperOS / Android 16）IConnectivityManager 事务码（已用 app_process 实测）：
+ * - TRANSACTION_setFirewallChainEnabled = 85
+ * - TRANSACTION_setUidFirewallRule     = 83
+ * 接口描述符（writeInterfaceToken）："android.net.IConnectivityManager"
  */
 class NetworkBypassService : com.example.fbs.INetworkBypass.Stub() {
 
@@ -27,7 +35,15 @@ class NetworkBypassService : com.example.fbs.INetworkBypass.Stub() {
         private const val DENY = 2
         private const val TIMEOUT_SECONDS = 3L
 
-        private var connectivityObj: Any? = null
+        // IConnectivityManager 接口描述符
+        private const val DESCRIPTOR = "android.net.IConnectivityManager"
+
+        // 本机实测事务码（见类注释）
+        private const val TRANSACTION_SET_FIREWALL_CHAIN_ENABLED = 85
+        private const val TRANSACTION_SET_UID_FIREWALL_RULE = 83
+
+        @Volatile
+        private var connectivityBinder: IBinder? = null
     }
 
     override fun disableXmsfNetworking(): Boolean {
@@ -47,32 +63,21 @@ class NetworkBypassService : com.example.fbs.INetworkBypass.Stub() {
 
         val thread = Thread {
             try {
-                val connMgr = getConnectivityManager()
+                val binder = getConnectivityBinder()
                 Log.i(TAG, "==== 设置 XMSF 网络: enabled=$enabled ====")
 
-                // 启用防火墙链
-                val setChainMethod = connMgr.javaClass.getMethod(
-                    "setFirewallChainEnabled",
-                    Int::class.javaPrimitiveType,
-                    Boolean::class.javaPrimitiveType
-                )
-                setChainMethod.invoke(connMgr, FIREWALL_CHAIN_OEM_DENY, true)
+                // 启用防火墙链 setFirewallChainEnabled(int chain, boolean enable)
+                transactSetFirewallChainEnabled(binder, FIREWALL_CHAIN_OEM_DENY, true)
                 Log.i(TAG, "✅ setFirewallChainEnabled($FIREWALL_CHAIN_OEM_DENY, true)")
 
-                // 设置 UID 规则
+                // 设置 UID 规则 setUidFirewallRule(int chain, int uid, int rule)
                 val rule = if (enabled) ALLOW else DENY
-                val setRuleMethod = connMgr.javaClass.getMethod(
-                    "setUidFirewallRule",
-                    Int::class.javaPrimitiveType,
-                    Int::class.javaPrimitiveType,
-                    Int::class.javaPrimitiveType
-                )
-                setRuleMethod.invoke(connMgr, FIREWALL_CHAIN_OEM_DENY, XMSF_UID, rule)
+                transactSetUidFirewallRule(binder, FIREWALL_CHAIN_OEM_DENY, XMSF_UID, rule)
                 Log.i(TAG, "✅ setUidFirewallRule($FIREWALL_CHAIN_OEM_DENY, $XMSF_UID, $rule)")
 
                 // 如果恢复网络，禁用防火墙链
                 if (enabled) {
-                    setChainMethod.invoke(connMgr, FIREWALL_CHAIN_OEM_DENY, false)
+                    transactSetFirewallChainEnabled(binder, FIREWALL_CHAIN_OEM_DENY, false)
                     Log.i(TAG, "✅ setFirewallChainEnabled($FIREWALL_CHAIN_OEM_DENY, false)")
                 }
 
@@ -100,18 +105,47 @@ class NetworkBypassService : com.example.fbs.INetworkBypass.Stub() {
         }
     }
 
-    /** 获取 IConnectivityManager 接口 */
-    private fun getConnectivityManager(): Any {
-        if (connectivityObj != null) return connectivityObj!!
+    // ── 原始 Binder 事务（不依赖任何隐藏 API 反射）──
+
+    private fun transactSetFirewallChainEnabled(binder: IBinder, chain: Int, enable: Boolean) {
+        val data = Parcel.obtain()
+        val reply = Parcel.obtain()
+        try {
+            data.writeInterfaceToken(DESCRIPTOR)
+            data.writeInt(chain)
+            data.writeInt(if (enable) 1 else 0)
+            binder.transact(TRANSACTION_SET_FIREWALL_CHAIN_ENABLED, data, reply, 0)
+            reply.readException()
+        } finally {
+            data.recycle()
+            reply.recycle()
+        }
+    }
+
+    private fun transactSetUidFirewallRule(binder: IBinder, chain: Int, uid: Int, rule: Int) {
+        val data = Parcel.obtain()
+        val reply = Parcel.obtain()
+        try {
+            data.writeInterfaceToken(DESCRIPTOR)
+            data.writeInt(chain)
+            data.writeInt(uid)
+            data.writeInt(rule)
+            binder.transact(TRANSACTION_SET_UID_FIREWALL_RULE, data, reply, 0)
+            reply.readException()
+        } finally {
+            data.recycle()
+            reply.recycle()
+        }
+    }
+
+    /** 获取 connectivity 原始 IBinder（ServiceManager.getService 为 greylist，release 可用） */
+    private fun getConnectivityBinder(): IBinder {
+        connectivityBinder?.let { return it }
         val smClass = Class.forName("android.os.ServiceManager")
         val getService = smClass.getMethod("getService", String::class.java)
         val rawBinder = getService.invoke(null, "connectivity") as IBinder
         Log.i(TAG, "connectivity Binder: $rawBinder")
-
-        val stubClass = Class.forName("android.net.IConnectivityManager\$Stub")
-        val asInterface = stubClass.getMethod("asInterface", IBinder::class.java)
-        val obj = asInterface.invoke(null, rawBinder)
-        connectivityObj = obj
-        return obj
+        connectivityBinder = rawBinder
+        return rawBinder
     }
 }
