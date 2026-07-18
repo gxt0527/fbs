@@ -58,33 +58,12 @@ class _SettingsPageState extends State<SettingsPage> with WidgetsBindingObserver
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        leading: Center(
-          child: GestureDetector(
-            onTap: () => Navigator.maybePop(context),
-            child: Container(
-              width: 36, height: 36,
-              margin: const EdgeInsets.only(left: 8),
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                gradient: GlassTokens.glassGradient(Theme.of(context).brightness),
-                border: Border.all(
-                  color: Theme.of(context).brightness == Brightness.dark
-                    ? Colors.white.withValues(alpha: 0.08)
-                    : Colors.white.withValues(alpha: 0.30),
-                  width: 0.5,
-                ),
-                boxShadow: GlassTokens.glassShadow(Theme.of(context).brightness),
-              ),
-              child: Icon(Icons.arrow_back,
-                color: Theme.of(context).brightness == Brightness.dark
-                  ? Colors.white70
-                  : Colors.black54,
-                size: 20,
-              ),
-            ),
-          ),
-        ),
-        title: const SizedBox.shrink(),
+        title: Text('设置', style: TextStyle(
+          fontSize: 20, fontWeight: FontWeight.w700,
+          color: Theme.of(context).brightness == Brightness.dark
+              ? Colors.white : const Color(0xFF1A1A2E),
+          letterSpacing: -0.3,
+        )),
       ),
       body: ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 24), children: [
         _buildSectionCard('背屏样式', Icons.palette_outlined, GlassTokens.accent, [
@@ -136,6 +115,23 @@ class _SettingsPageState extends State<SettingsPage> with WidgetsBindingObserver
           _actionTile('自启动', null, onGrant: () => _nativeService.openAutoStartSettings()),
           _actionTile('电池优化', null, onGrant: () => _nativeService.openBatteryOptimizationSettings()),
           _actionTile('应用详情', null, onGrant: () => _nativeService.openAppDetailsSettings()),
+        ]),
+        const SizedBox(height: GlassTokens.spaceMD),
+        _buildSectionCard('超级岛功能测试', Icons.flash_on_rounded, const Color(0xFF7C4DFF), [
+          ListTile(
+            contentPadding: EdgeInsets.zero,
+            leading: Container(
+              width: 36, height: 36,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(GlassTokens.radiusSM),
+                color: const Color(0xFF7C4DFF).withValues(alpha: 0.10),
+              ),
+              child: const Icon(Icons.flash_on_rounded, color: Color(0xFF7C4DFF), size: 20),
+            ),
+            title: const Text('发送测试通知', style: TextStyle(fontSize: 14)),
+            trailing: const Icon(Icons.chevron_right, size: 20),
+            onTap: () => _sendTestNotification(),
+          ),
         ]),
       ]),
     );
@@ -214,6 +210,55 @@ class _SettingsPageState extends State<SettingsPage> with WidgetsBindingObserver
         ),
       ]),
     );
+  }
+
+  /// 发送超级岛测试通知（网络阻断 #9 模板）
+  Future<void> _sendTestNotification() async {
+    try {
+      await _nativeService.sendFocusWithNetworkBypassTemplate9(
+        label: '测试通知',
+        codeValue: '8866',
+        storeName: 'FBS超级岛功能测试',
+        items: '1条',
+        amount: '0',
+        category: 'general',
+      );
+
+      // 同时显示到背屏
+      final style = await NotificationStyle.load();
+      final styleMap = {
+        'titleFontSize': style.titleFontSize.toString(),
+        'subtitleFontSize': style.subtitleFontSize.toString(),
+        'contentFontSize': style.contentFontSize.toString(),
+        'titleColor': '#${style.titleColor.toARGB32().toRadixString(16).padLeft(8, '0')}',
+        'subtitleColor': '#${style.subtitleColor.toARGB32().toRadixString(16).padLeft(8, '0')}',
+        'contentColor': '#${style.contentColor.toARGB32().toRadixString(16).padLeft(8, '0')}',
+        'backgroundColor': '#${style.backgroundColor.toARGB32().toRadixString(16).padLeft(8, '0')}',
+        'showAppIcon': style.showAppIcon.toString(),
+        'showTimestamp': style.showTimestamp.toString(),
+        'cameraAvoidanceEnabled': style.cameraAvoidanceEnabled.toString(),
+        'horizontalOffset': NotificationStyle.cameraAvoidanceOffset.toStringAsFixed(0),
+        'padding': style.padding.toString(),
+        'spacing': style.spacing.toString(),
+        'displayDurationMs': style.displayDurationMs.toString(),
+        'useOfficialBackground': style.useOfficialBackground.toString(),
+      };
+      await _nativeService.displayOnBackScreen(
+        title: '测试通知',
+        subtitle: '8866',
+        content: 'FBS超级岛功能测试\n件数：1条  金额：¥0',
+        styleExtras: styleMap,
+        category: 'general',
+      );
+
+      if (mounted) {
+        _nativeService.showToast('超级岛测试通知已发送');
+      }
+    } catch (e) {
+      if (mounted) {
+        _nativeService.showToast('发送失败: $e');
+      }
+    }
   }
 
   Widget _actionTile(String label, bool? status, {VoidCallback? onGrant, VoidCallback? onSettings}) {

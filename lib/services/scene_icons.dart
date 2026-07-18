@@ -4,10 +4,16 @@ import '../services/content_parser.dart';
 
 /// 智能识别场景线性图标
 /// 用于超级岛和背屏的取餐码等场景
+///
+/// ⚠️ 修改图标时需要同步更新：
+///   1. 本文件（Flutter 侧 SVG 图标，assets/icons/）
+///   2. FocusForwarder.kt（Android 侧 drawable XML 图标）
+///   两者必须一一对应，只改一处会导致超级岛或背屏图标不一致。
 class SceneIcons {
   SceneIcons._();
 
   /// 根据解析分类获取对应场景图标
+  /// ⚠️ 同步参考 FocusForwarder.kt 的 sceneIconRes()，两处必须一致
   static String assetPath(ParsedCategory category) {
     return switch (category) {
       ParsedCategory.foodDelivery => 'assets/icons/ic_beverage_pickup.svg',
@@ -17,7 +23,7 @@ class SceneIcons {
       ParsedCategory.travel => 'assets/icons/ic_travel.svg',
       ParsedCategory.meeting => 'assets/icons/ic_meeting.svg',
       ParsedCategory.order => 'assets/icons/ic_order.svg',
-      ParsedCategory.bill => 'assets/icons/ic_payment.svg', // 账单复用支付图标
+      ParsedCategory.bill => 'assets/icons/ic_bill.svg',
       ParsedCategory.system => 'assets/icons/ic_smart_scan.svg',
       ParsedCategory.general => 'assets/icons/ic_smart_scan.svg',
     };

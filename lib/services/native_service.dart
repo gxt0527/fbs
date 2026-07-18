@@ -81,23 +81,6 @@ class NativeService {
     try { await _methodChannel.invokeMethod('dismissBackScreen'); } catch (_) {}
   }
 
-  // 超级岛 (HyperIsland-ToolKit)
-  Future<void> sendSuperIslandNotification({
-    required String title,
-    required String content,
-    String category = 'general',
-  }) async {
-    try {
-      await _methodChannel.invokeMethod('sendSuperIslandNotification', {
-        'title': title,
-        'content': content,
-        'iconName': category,
-      });
-    } catch (e) {
-      print('[FBS] sendSuperIslandNotification error: $e');
-    }
-  }
-
   // 网络阻断转发（已验证稳定的方案）
   Future<void> sendFocusWithNetworkBypass({
     required String title,
@@ -141,9 +124,6 @@ class NativeService {
       print('[FBS] sendFocusWithNetworkBypassTemplate9 error: $e');
     }
   }
-  Future<void> cancelSuperIslandNotification() async {
-    try { await _methodChannel.invokeMethod('cancelSuperIslandNotification'); } catch (_) {}
-  }
   Future<bool> hasPromotedPermission() async {
     try { return await _methodChannel.invokeMethod<bool>('hasPromotedNotificationPermission') ?? false; }
     catch (e) { return false; }
@@ -152,10 +132,6 @@ class NativeService {
     try { await _methodChannel.invokeMethod('requestPromotedNotificationPermission'); } catch (_) {}
   }
 
-  // HyperIsland 测试工具
-  Future<void> launchHyperIslandTest() async {
-    try { await _methodChannel.invokeMethod('launchHyperIslandTest'); } catch (_) {}
-  }
   Future<void> openFocusNotificationSettings() async {
     try { await _methodChannel.invokeMethod('openFocusNotificationSettings'); } catch (_) {}
   }

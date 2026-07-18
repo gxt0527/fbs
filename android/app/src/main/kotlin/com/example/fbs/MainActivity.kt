@@ -248,7 +248,7 @@ class MainActivity : FlutterActivity() {
                     )
                     result.success(true)
                 }
-                // 网络阻断转发 #9（模板9 — 文本组件2 + 识别图形组件1 + 按钮组件2）
+                // 网络阻断转发 #9（模板9 — Shell iptables 方案，兼容 debug/release）
                 "sendFocusWithNetworkBypassTemplate9" -> {
                     val label = call.argument<String>("label") ?: ""
                     val codeValue = call.argument<String>("codeValue") ?: ""

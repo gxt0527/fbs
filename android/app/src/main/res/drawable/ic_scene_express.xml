@@ -1,28 +1,12 @@
-<!-- 快递 — 包裹盒 -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="24dp"
     android:height="24dp"
-    android:viewportWidth="24"
-    android:viewportHeight="24">
+    android:viewportWidth="1024"
+    android:viewportHeight="1024">
     <path
-        android:strokeColor="#FFFFFF"
-        android:strokeWidth="1.75"
-        android:strokeLineCap="round"
-        android:strokeLineJoin="round"
-        android:pathData="M3,8 l9,-5 l9,5 l0,9 l-9,5 l-9,-5 Z"/>
+        android:fillColor="#FFFFFF"
+        android:pathData="M890.538667 341.333333l-146.090667-188.074666H288.085333L141.994667 341.333333h-3.754667v529.408h756.394667V341.333333h-4.096z m-43.008 0H576.853333V188.074667v-0.682667h151.210667l119.466667 153.941333z m-305.152 0h-51.541334V188.074667v-0.682667h51.882667V341.333333zM304.810667 187.392h152.234666V341.333333H185.344l119.466667-153.941333z m555.690666 649.216H172.373333V375.466667h688.128v461.141333z"/>
     <path
-        android:strokeColor="#FFFFFF"
-        android:strokeWidth="1.75"
-        android:strokeLineCap="round"
-        android:pathData="M12,3 L12,14"/>
-    <path
-        android:strokeColor="#FFFFFF"
-        android:strokeWidth="1.75"
-        android:strokeLineCap="round"
-        android:pathData="M3,8 L21,8"/>
-    <path
-        android:strokeColor="#FFFFFF"
-        android:strokeWidth="1.75"
-        android:strokeLineCap="round"
-        android:pathData="M3,17 L12,22"/>
+        android:fillColor="#FFFFFF"
+        android:pathData="M796.330667 751.274667h-94.890667c-9.557333 0-17.066667 7.509333-17.066667 17.066666s7.509333 17.066667 17.066667 17.066667h94.890667c9.557333 0 17.066667-7.509333 17.066666-17.066667s-7.509333-17.066667-17.066666-17.066666zM643.754667 716.8h152.576c9.557333 0 17.066667-7.509333 17.066666-17.066667s-7.509333-17.066667-17.066666-17.066666h-152.576c-9.557333 0-17.066667 7.509333-17.066667 17.066666s7.509333 17.066667 17.066667 17.066667z"/>
 </vector>

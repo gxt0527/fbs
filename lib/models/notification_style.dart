@@ -31,11 +31,11 @@ class NotificationStyle {
   static const double cameraAvoidanceOffset = 85;
 
   NotificationStyle({
-    this.titleFontSize = 28,
-    this.subtitleFontSize = 20,
-    this.contentFontSize = 16,
+    this.titleFontSize = 25,
+    this.subtitleFontSize = 30,
+    this.contentFontSize = 15,
     this.titleColor = Colors.white,
-    this.subtitleColor = const Color(0xFFB0B0B0),
+    this.subtitleColor = const Color(0xFFFFC04B),
     this.contentColor = const Color(0xFFE0E0E0),
     this.backgroundColor = const Color(0xFF1A1A2E),
     this.showAppIcon = true,
@@ -85,11 +85,11 @@ class NotificationStyle {
 
   factory NotificationStyle.fromMap(Map<String, dynamic> map) {
     return NotificationStyle(
-      titleFontSize: (map[_keyTitleFontSize] as num?)?.toDouble() ?? 28,
-      subtitleFontSize: (map[_keySubtitleFontSize] as num?)?.toDouble() ?? 20,
-      contentFontSize: (map[_keyContentFontSize] as num?)?.toDouble() ?? 16,
+      titleFontSize: (map[_keyTitleFontSize] as num?)?.toDouble() ?? 25,
+      subtitleFontSize: (map[_keySubtitleFontSize] as num?)?.toDouble() ?? 30,
+      contentFontSize: (map[_keyContentFontSize] as num?)?.toDouble() ?? 15,
       titleColor: Color(map[_keyTitleColor] as int? ?? 0xFFFFFFFF),
-      subtitleColor: Color(map[_keySubtitleColor] as int? ?? 0xFFB0B0B0),
+      subtitleColor: Color(map[_keySubtitleColor] as int? ?? 0xFFFFC04B),
       contentColor: Color(map[_keyContentColor] as int? ?? 0xFFE0E0E0),
       backgroundColor: Color(map[_keyBackgroundColor] as int? ?? 0xFF1A1A2E),
       showAppIcon: map[_keyShowAppIcon] as bool? ?? true,

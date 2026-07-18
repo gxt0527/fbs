@@ -98,12 +98,25 @@ class BackScreenController(private val context: Context) {
     fun hasPermission(): Boolean {
         return try {
             if (!Shizuku.pingBinder()) return false
-            Shizuku.checkSelfPermission() == PackageManager.PERMISSION_GRANTED
+            if (Shizuku.checkSelfPermission() != PackageManager.PERMISSION_GRANTED) return false
+            // 实际验证 Shizuku 连通性：执行 shell 命令，避免 UID 复用导致的"假授权"
+            testShellConnectivity()
         } catch (e: Exception) {
             Log.e(TAG, "Error checking permission", e)
             false
         }
     }
+
+    /// 实际测试 Shizuku shell 是否可用（避免 UID 复用导致 checkSelfPermission 假正常）
+    private fun testShellConnectivity(): Boolean {
+        return try {
+            val result = execShizukuShell("echo ok")
+            result.contains("ok")
+        } catch (e: Exception) {
+            false
+        }
+    }
+
 
     fun requestPermission(callback: (Boolean) -> Unit) {
         permissionCallback = callback

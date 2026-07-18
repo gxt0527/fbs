@@ -28,6 +28,7 @@ class FBSNotificationListenerService : NotificationListenerService() {
     companion object {
         private const val TAG = "FBSNotificationListener"
         private const val POLL_INTERVAL_MS = 5000L
+        private const val MAX_SEEN_KEYS = 500
         var eventSink: EventChannel.EventSink? = null
             private set
         @Volatile
@@ -98,6 +99,16 @@ class FBSNotificationListenerService : NotificationListenerService() {
 
     private val seenKeys = mutableSetOf<String>()
 
+    /// 添加 key 并自动清理最旧的条目
+    private fun addSeenKey(key: String) {
+        if (seenKeys.size >= MAX_SEEN_KEYS) {
+            // 清空一半最旧条目（LinkedHashSet 保持插入顺序）
+            val toRemove = seenKeys.take(seenKeys.size / 2)
+            seenKeys.removeAll(toRemove.toSet())
+        }
+        seenKeys.add(key)
+    }
+
     private val pollHandler = Handler(Looper.myLooper() ?: Looper.getMainLooper())
     private val pollRunnable = object : Runnable {
         override fun run() {
@@ -134,7 +145,7 @@ class FBSNotificationListenerService : NotificationListenerService() {
             activeNotifications.forEach { sbn ->
                 val key = sbn.key
                 if (key in seenKeys) return@forEach
-                seenKeys.add(key)
+                addSeenKey(key)
                 processAndSendNotification(sbn, "poll")
             }
         } catch (e: Exception) {
@@ -194,7 +205,7 @@ class FBSNotificationListenerService : NotificationListenerService() {
             Log.w(TAG, "=== END 3RD PARTY ===")
         }
 
-        seenKeys.add(sbn.key)
+        addSeenKey(sbn.key)
         processAndSendNotification(sbn, "posted")
     }
 

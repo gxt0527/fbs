@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../services/native_service.dart';
-import 'home_page.dart';
 import '../main.dart';
 import '../widgets/slide_route.dart';
 
@@ -66,7 +65,7 @@ class _PermissionGuidePageState extends State<PermissionGuidePage>
     if (mounted) {
       Navigator.pushReplacement(
         context,
-        SlideRoute(builder: (_) => const HomePage()),
+        SlideRoute(builder: (_) => const MainScaffold()),
       );
     }
   }
@@ -77,7 +76,7 @@ class _PermissionGuidePageState extends State<PermissionGuidePage>
     if (mounted) {
       Navigator.pushReplacement(
         context,
-        SlideRoute(builder: (_) => const HomePage()),
+        SlideRoute(builder: (_) => const MainScaffold()),
       );
     }
   }

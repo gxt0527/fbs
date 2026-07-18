@@ -417,225 +417,38 @@ class BackScreenNotificationActivity : Activity() {
         }
 
         // ── 场景图标绘制 ──
-        private val svgBase = 24f  // SVG viewBox 基准尺寸
+        // 从 Android VectorDrawable (res/drawable/ic_scene_*.xml) 加载场景图标
         private val sceneColor: Int get() = when (config.category) {
-            "foodDelivery" -> Color.parseColor("#FF375F")
+            "foodDelivery", "food" -> Color.parseColor("#FF375F")
             "express" -> Color.parseColor("#FF9500")
             "verification" -> Color.parseColor("#FF9500")
             "payment" -> Color.parseColor("#34C759")
             "order" -> Color.parseColor("#5AC8FA")
             "meeting" -> Color.parseColor("#0088FF")
             "travel" -> Color.parseColor("#AF52DE")
+            "bill" -> Color.parseColor("#D4A24C")
             else -> Color.parseColor("#8E8E93")
         }
-        private val iconStrokePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            style = Paint.Style.STROKE
-            strokeWidth = 3.5f  // 2x 加粗（原 1.75）
-            strokeCap = Paint.Cap.ROUND
-            strokeJoin = Paint.Join.ROUND
-        }
-        private val iconFillPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            style = Paint.Style.FILL
-            strokeWidth = 3.5f
-            strokeCap = Paint.Cap.ROUND
-            strokeJoin = Paint.Join.ROUND
-        }
 
-        /**
-         * 根据 category 绘制对应场景 SVG 图标到 canvas 指定位置
-         * @param size 图标逻辑尺寸（映射到 SVG 24x24 viewBox）
-         */
         private fun drawSceneIcon(canvas: Canvas, left: Float, top: Float, size: Float) {
-            val s = size / svgBase
-            iconStrokePaint.color = sceneColor
-            iconFillPaint.color = sceneColor
-            when (config.category) {
-                "foodDelivery" -> drawBeveragePickup(canvas, left, top, s)
-                "express" -> drawExpress(canvas, left, top, s)
-                "verification" -> drawVerification(canvas, left, top, s)
-                "payment" -> drawPayment(canvas, left, top, s)
-                "meeting" -> drawMeeting(canvas, left, top, s)
-                "travel" -> drawTravel(canvas, left, top, s)
-                "order" -> drawOrder(canvas, left, top, s)
-                else -> drawSmartScan(canvas, left, top, s)
-            }
+            val resId = sceneDrawableRes(config.category) ?: return
+            val drawable = context.resources.getDrawable(resId, context.theme) ?: return
+            drawable.setBounds(left.toInt(), top.toInt(), (left + size).toInt(), (top + size).toInt())
+            drawable.setTint(sceneColor)
+            drawable.draw(canvas)
         }
 
-        // ═══════════ SVG → Canvas 绘制 (viewBox 0-24) ═══════════
-
-        private fun drawBeveragePickup(c: Canvas, x: Float, y: Float, s: Float) {
-            val p = Path()
-            // Cup body
-            p.moveTo(x + 6f * s, y + 9f * s)
-            p.lineTo(x + 4.7f * s, y + 21f * s)
-            p.cubicTo(x + 4.5f * s, y + 22f * s, x + 5.2f * s, y + 22.8f * s, x + 6f * s, y + 22.6f * s)
-            p.lineTo(x + 17.8f * s, y + 20f * s)
-            p.cubicTo(x + 18.8f * s, y + 19.8f * s, x + 19.2f * s, y + 18.9f * s, x + 18.9f * s, y + 18f * s)
-            p.lineTo(x + 17.5f * s, y + 9f * s)
-            c.drawPath(p, iconStrokePaint)
-            // Lid
-            val lid = Path()
-            lid.moveTo(x + 5.5f * s, y + 9f * s)
-            lid.quadTo(x + 12f * s, y + 5f * s, x + 18.5f * s, y + 9f * s)
-            c.drawPath(lid, iconStrokePaint)
-            // Straw
-            c.drawLine(x + 14f * s, y + 7.5f * s, x + 18f * s, y + 3f * s, iconStrokePaint)
-            // Tag
-            val tagR = 1f * s
-            c.drawRoundRect(x + 15.5f * s, y + 14f * s, x + 21f * s, y + 20f * s, tagR, tagR, iconStrokePaint)
-            c.drawLine(x + 15.5f * s, y + 16f * s, x + 20.5f * s, y + 16f * s, iconStrokePaint)
-            c.drawLine(x + 16.5f * s, y + 18f * s, x + 19.5f * s, y + 18f * s, iconStrokePaint)
-        }
-
-        private fun drawExpress(c: Canvas, x: Float, y: Float, s: Float) {
-            val p = Path()
-            // Box front face
-            p.moveTo(x + 3f * s, y + 8f * s)
-            p.lineTo(x + 12f * s, y + 3f * s)
-            p.lineTo(x + 21f * s, y + 8f * s)
-            p.lineTo(x + 21f * s, y + 17f * s)
-            p.lineTo(x + 12f * s, y + 22f * s)
-            p.lineTo(x + 3f * s, y + 17f * s)
-            p.close()
-            c.drawPath(p, iconStrokePaint)
-            // Lid flap left
-            c.drawLine(x + 12f * s, y + 3f * s, x + 12f * s, y + 14f * s, iconStrokePaint)
-            // Top ridge
-            c.drawLine(x + 3f * s, y + 8f * s, x + 21f * s, y + 8f * s, iconStrokePaint)
-            // Bottom edge
-            c.drawLine(x + 3f * s, y + 17f * s, x + 12f * s, y + 22f * s, iconStrokePaint)
-        }
-
-        private fun drawVerification(c: Canvas, x: Float, y: Float, s: Float) {
-            val p = Path()
-            // Shield
-            p.moveTo(x + 12f * s, y + 2f * s)
-            p.lineTo(x + 4f * s, y + 6f * s)
-            p.rLineTo(0f, 5.5f * s)
-            p.rCubicTo(0f, 4.5f * s, 3.5f * s, 8f * s, 8f * s, 10f * s)
-            p.rCubicTo(4.5f * s, -2f * s, 8f * s, -5.5f * s, 8f * s, -10f * s)
-            p.rLineTo(0f, -5.5f * s)
-            p.close()
-            c.drawPath(p, iconStrokePaint)
-            // Checkmark
-            val check = Path()
-            check.moveTo(x + 8f * s, y + 12f * s)
-            check.lineTo(x + 11f * s, y + 15f * s)
-            check.lineTo(x + 16f * s, y + 9f * s)
-            c.drawPath(check, iconStrokePaint)
-        }
-
-        private fun drawPayment(c: Canvas, x: Float, y: Float, s: Float) {
-            val cr = 2f * s
-            c.drawRoundRect(x + 2f * s, y + 4f * s, x + 22f * s, y + 20f * s, cr, cr, iconStrokePaint)
-            // Chip
-            c.drawRoundRect(x + 6f * s, y + 9f * s, x + 10f * s, y + 14f * s, 0.5f * s, 0.5f * s, iconStrokePaint)
-            // Contactless
-            val c1 = Path()
-            c1.moveTo(x + 13f * s, y + 10f * s)
-            c1.cubicTo(x + 13.6f * s, y + 9.6f * s, x + 14.4f * s, y + 9.4f * s, x + 15.2f * s, y + 9.4f * s)
-            c1.cubicTo(x + 17.4f * s, y + 9.4f * s, x + 19.2f * s, y + 10.7f * s, x + 19.2f * s, y + 12.4f * s)
-            c1.cubicTo(x + 19.2f * s, y + 14.1f * s, x + 17.4f * s, y + 15.4f * s, x + 15.2f * s, y + 15.4f * s)
-            c1.cubicTo(x + 14.4f * s, y + 15.4f * s, x + 13.6f * s, y + 15.2f * s, x + 13f * s, y + 14.8f * s)
-            c.drawPath(c1, iconStrokePaint)
-            val c2 = Path()
-            c2.moveTo(x + 13f * s, y + 11.5f * s)
-            c2.cubicTo(x + 13.3f * s, y + 11.3f * s, x + 13.8f * s, y + 11.1f * s, x + 14.2f * s, y + 11.1f * s)
-            c2.cubicTo(x + 15.3f * s, y + 11.1f * s, x + 16.2f * s, y + 11.8f * s, x + 16.2f * s, y + 12.6f * s)
-            c2.cubicTo(x + 16.2f * s, y + 13.4f * s, x + 15.3f * s, y + 14.1f * s, x + 14.2f * s, y + 14.1f * s)
-            c2.cubicTo(x + 13.8f * s, y + 14.1f * s, x + 13.3f * s, y + 14f * s, x + 13f * s, y + 13.7f * s)
-            c.drawPath(c2, iconStrokePaint)
-        }
-
-        private fun drawMeeting(c: Canvas, x: Float, y: Float, s: Float) {
-            val cr = 2f * s
-            c.drawRoundRect(x + 3f * s, y + 4f * s, x + 21f * s, y + 22f * s, cr, cr, iconStrokePaint)
-            c.drawLine(x + 3f * s, y + 10f * s, x + 21f * s, y + 10f * s, iconStrokePaint)
-            c.drawLine(x + 8f * s, y + 2f * s, x + 8f * s, y + 6f * s, iconStrokePaint)
-            c.drawLine(x + 16f * s, y + 2f * s, x + 16f * s, y + 6f * s, iconStrokePaint)
-            // Clock
-            c.drawCircle(x + 12f * s, y + 15.5f * s, 2.5f * s, iconStrokePaint)
-            c.drawLine(x + 12f * s, y + 15.5f * s, x + 12f * s, y + 14f * s, iconStrokePaint)
-            c.drawLine(x + 12f * s, y + 15.5f * s, x + 13.5f * s, y + 16.5f * s, iconStrokePaint)
-        }
-
-        private fun drawTravel(c: Canvas, x: Float, y: Float, s: Float) {
-            val cr = 2f * s
-            c.drawRoundRect(x + 4f * s, y + 8f * s, x + 20f * s, y + 20f * s, cr, cr, iconStrokePaint)
-            // Handle
-            val h = Path()
-            h.moveTo(x + 8f * s, y + 8f * s)
-            h.rLineTo(0f, -3f * s)
-            h.rCubicTo(0f, -1.5f * s, 1.5f * s, -3f * s, 4f * s, -3f * s)
-            h.rCubicTo(2.5f * s, 0f, 4f * s, 1.5f * s, 4f * s, 3f * s)
-            h.rLineTo(0f, 3f * s)
-            c.drawPath(h, iconStrokePaint)
-            c.drawLine(x + 9f * s, y + 5f * s, x + 15f * s, y + 5f * s, iconStrokePaint)
-            // Wheels
-            c.drawCircle(x + 7f * s, y + 21f * s, 1.5f * s, iconStrokePaint)
-            c.drawCircle(x + 17f * s, y + 21f * s, 1.5f * s, iconStrokePaint)
-            // Center line
-            c.drawLine(x + 12f * s, y + 8f * s, x + 12f * s, y + 20f * s, iconStrokePaint)
-        }
-
-        private fun drawOrder(c: Canvas, x: Float, y: Float, s: Float) {
-            val bag = Path()
-            bag.moveTo(x + 5f * s, y + 7f * s)
-            bag.lineTo(x + 4f * s, y + 20f * s)
-            bag.rCubicTo(0f, 1.1f * s, 0.9f * s, 2f * s, 2f * s, 2f * s)
-            bag.rLineTo(12f * s, 0f)
-            bag.rCubicTo(1.1f * s, 0f, 2f * s, -0.9f * s, 2f * s, -2f * s)
-            bag.lineTo(x + 19f * s, y + 7f * s)
-            c.drawPath(bag, iconStrokePaint)
-            // Handles
-            val hl = Path()
-            hl.moveTo(x + 8f * s, y + 7f * s)
-            hl.rLineTo(0f, -2f * s)
-            hl.rCubicTo(0f, -2f * s, 1.5f * s, -3f * s, 4f * s, -3f * s)
-            hl.rCubicTo(2.5f * s, 0f, 4f * s, 1f * s, 4f * s, 3f * s)
-            hl.rLineTo(0f, 2f * s)
-            c.drawPath(hl, iconStrokePaint)
-            // Lines
-            c.drawLine(x + 6.5f * s, y + 11f * s, x + 17.5f * s, y + 11f * s, iconStrokePaint)
-            c.drawLine(x + 6.5f * s, y + 15f * s, x + 14.5f * s, y + 15f * s, iconStrokePaint)
-        }
-
-        private fun drawSmartScan(c: Canvas, x: Float, y: Float, s: Float) {
-            // Corner brackets
-            c.drawLine(x + 3f * s, y + 8f * s, x + 3f * s, y + 4f * s, iconStrokePaint)
-            c.drawLine(x + 3f * s, y + 4f * s, x + 7f * s, y + 4f * s, iconStrokePaint)
-            c.drawLine(x + 21f * s, y + 8f * s, x + 21f * s, y + 4f * s, iconStrokePaint)
-            c.drawLine(x + 21f * s, y + 4f * s, x + 17f * s, y + 4f * s, iconStrokePaint)
-            c.drawLine(x + 21f * s, y + 16f * s, x + 21f * s, y + 20f * s, iconStrokePaint)
-            c.drawLine(x + 21f * s, y + 20f * s, x + 17f * s, y + 20f * s, iconStrokePaint)
-            c.drawLine(x + 3f * s, y + 16f * s, x + 3f * s, y + 20f * s, iconStrokePaint)
-            c.drawLine(x + 3f * s, y + 20f * s, x + 7f * s, y + 20f * s, iconStrokePaint)
-            // Scan line
-            c.drawLine(x + 6f * s, y + 12f * s, x + 18f * s, y + 12f * s, iconStrokePaint)
-            // Sparkle
-            val fill = iconFillPaint
-            val sp = Path()
-            sp.moveTo(x + 12f * s, y + 9f * s)
-            sp.lineTo(x + 12.5f * s, y + 10.5f * s)
-            sp.lineTo(x + 14f * s, y + 11f * s)
-            sp.lineTo(x + 12.5f * s, y + 11.5f * s)
-            sp.lineTo(x + 12f * s, y + 13f * s)
-            sp.lineTo(x + 11.5f * s, y + 11.5f * s)
-            sp.lineTo(x + 10f * s, y + 11f * s)
-            sp.lineTo(x + 11.5f * s, y + 10.5f * s)
-            sp.close()
-            c.drawPath(sp, fill)
-            val sp2 = Path()
-            sp2.moveTo(x + 16f * s, y + 6f * s)
-            sp2.rLineTo(0.3f * s, 0.7f * s)
-            sp2.rLineTo(0.7f * s, 0.3f * s)
-            sp2.rLineTo(-0.7f * s, 0.3f * s)
-            sp2.rLineTo(-0.3f * s, 0.7f * s)
-            sp2.rLineTo(-0.3f * s, -0.7f * s)
-            sp2.rLineTo(-0.7f * s, -0.3f * s)
-            sp2.rLineTo(0.7f * s, -0.3f * s)
-            sp2.close()
-            c.drawPath(sp2, fill)
+        private fun sceneDrawableRes(category: String): Int? = when (category) {
+            "foodDelivery", "food" -> com.example.fbs.R.drawable.ic_scene_food
+            "express" -> com.example.fbs.R.drawable.ic_scene_express
+            "payment" -> com.example.fbs.R.drawable.ic_scene_pay
+            "bill" -> com.example.fbs.R.drawable.ic_scene_bill
+            "verification" -> com.example.fbs.R.drawable.ic_scene_verify
+            "meeting" -> com.example.fbs.R.drawable.ic_scene_meeting
+            "travel" -> com.example.fbs.R.drawable.ic_scene_travel
+            "order" -> com.example.fbs.R.drawable.ic_scene_order
+            "system", "general", "scan" -> com.example.fbs.R.drawable.ic_scene_system
+            else -> null
         }
 
         private val timeFormat = SimpleDateFormat("HH:mm", Locale.getDefault())

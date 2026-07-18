@@ -96,42 +96,34 @@ class NativeOcrService private constructor() {
                     )
                 }
 
-                if (bitmap == null) {
-                    return@withContext OcrResult(
-                        success = false,
-                        errorMessage = "图片解码失败"
-                    )
-                }
-
                 Log.d(TAG, "Image loaded: ${bitmap.width}x${bitmap.height}")
 
-                // 执行OCR识别
+                // 执行OCR识别，完毕后立即回收Bitmap释放内存
                 val startTime = System.currentTimeMillis()
-                val result = ocr?.recognize(bitmap)
-                val totalTime = System.currentTimeMillis() - startTime
+                var ocrResult: OcrResult
+                try {
+                    val result = ocr?.recognize(bitmap)
+                    val totalTime = System.currentTimeMillis() - startTime
 
-                if (result != null && result.results.isNotEmpty()) {
-                    // 将识别结果按行合并
-                    val textLines = result.results.map { it.text }
-                    val fullText = textLines.joinToString("\n")
-
-                    Log.d(TAG, "OCR completed: ${result.lineCount} lines, " +
-                            "det=${result.detectionTimeMs}ms, rec=${result.recognitionTimeMs}ms")
-
-                    OcrResult(
-                        success = true,
-                        text = fullText,
-                        lineCount = result.lineCount,
-                        detectionTimeMs = result.detectionTimeMs,
-                        recognitionTimeMs = result.recognitionTimeMs,
-                        totalTimeMs = totalTime,
-                    )
-                } else {
-                    OcrResult(
-                        success = false,
-                        errorMessage = "未识别到文字"
-                    )
+                    ocrResult = if (result != null && result.results.isNotEmpty()) {
+                        val textLines = result.results.map { it.text }
+                        val fullText = textLines.joinToString("\n")
+                        Log.d(TAG, "OCR completed: ${result.lineCount} lines, " +
+                                "det=${result.detectionTimeMs}ms, rec=${result.recognitionTimeMs}ms")
+                        OcrResult(
+                            success = true, text = fullText,
+                            lineCount = result.lineCount,
+                            detectionTimeMs = result.detectionTimeMs,
+                            recognitionTimeMs = result.recognitionTimeMs,
+                            totalTimeMs = totalTime,
+                        )
+                    } else {
+                        OcrResult(success = false, errorMessage = "未识别到文字")
+                    }
+                } finally {
+                    bitmap.recycle()
                 }
+                return@withContext ocrResult
             } catch (e: Exception) {
                 Log.e(TAG, "OCR recognition failed", e)
                 OcrResult(

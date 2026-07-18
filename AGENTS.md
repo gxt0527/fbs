@@ -305,6 +305,30 @@ val icon = Icon.createWithResource(context, iconRes)
 - ❌ 上岛动画（暂不加）
 - ⚠️ 岛上小图标待验证是否正确显示场景图标
 
+### 2026-07-18 场景图标系统 — 新增/修改场景必须同步
+
+**图标文件分布（三处需同步）：**
+
+| 作用域 | 文件位置 | 格式 | 用途 |
+|--------|---------|------|------|
+| Flutter 首页 | `assets/icons/ic_*.svg` | SVG | Flutter 端 `home_page.dart` 显示场景标签 |
+| Android 超级岛 | `res/drawable/ic_scene_*.xml` | VectorDrawable XML | `FocusForwarder.kt` 超极岛通知小图标 |
+| Android 背屏 | `res/drawable/ic_scene_*.xml`（同上） | VectorDrawable XML | `BackScreenNotificationActivity.kt` 背屏渲染 |
+
+**新增场景的修改清单（每加一个场景必须改全部）：**
+
+1. **`lib/services/content_parser.dart`** — `ParsedCategory` 枚举加新值
+2. **`lib/pages/home_page.dart`** — `_defaultLabel()` 加 label 映射
+3. **`assets/icons/`** — 加 `ic_*.svg` 文件
+4. **`res/drawable/`** — 加 `ic_scene_*.xml` VectorDrawable（与 SVG 设计一致）
+5. **`FocusForwarder.kt`** — `sceneIconRes()` 加 category → drawable 映射 + `sceneIconName()` 加名字
+6. **`BackScreenNotificationActivity.kt`** — `sceneDrawableRes()` 加 category → drawable 映射 + `sceneColor` 加颜色
+
+**注意：**
+- 背屏用 `drawable.setTint(sceneColor)` 统一着色，drawable XML 中颜色用 `#FFFFFF`
+- `ic_scene_verify.xml` 和 `ic_scene_pay.xml` 是 24x24 viewBox stroke 风格，其他是 1024x1024 fill 风格 — 保持同一风格
+- 新增 VectorDrawable 时 viewBox/路径数据从对应 SVG 转换
+
 ### 2026-07-17 模板#9 超级岛展开显示件数+金额修复
 
 **问题：** 超级岛展开后不显示件数和金额。

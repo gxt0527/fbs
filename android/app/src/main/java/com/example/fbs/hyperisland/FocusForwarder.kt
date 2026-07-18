@@ -64,17 +64,26 @@ object FocusForwarder {
         }
     }
 
-    /** 场景分类 → 智能图标资源 ID 映射 */
+    /**
+     * 场景分类 → 智能图标资源 ID 映射
+     *
+     * ⚠️ 修改图标时需要同步更新：
+     *   1. 本方法（Android 侧 drawable XML 图标，res/drawable/）
+     *   2. SceneIcons.assetPath()（Flutter 侧 SVG 图标，assets/icons/）
+     *   两者必须一一对应，只改一处会导致超级岛或背屏图标不一致。
+     */
     private fun sceneIconRes(category: String): Int {
         return when (category) {
             "foodDelivery", "food" -> com.example.fbs.R.drawable.ic_scene_food
             "express" -> com.example.fbs.R.drawable.ic_scene_express
-            "payment", "bill" -> com.example.fbs.R.drawable.ic_scene_pay
+            "payment" -> com.example.fbs.R.drawable.ic_scene_pay
+            "bill" -> com.example.fbs.R.drawable.ic_scene_bill
             "scan" -> com.example.fbs.R.drawable.ic_scene_scan
             "order" -> com.example.fbs.R.drawable.ic_scene_order
             "verification" -> com.example.fbs.R.drawable.ic_scene_verify
             "meeting" -> com.example.fbs.R.drawable.ic_scene_meeting
             "travel" -> com.example.fbs.R.drawable.ic_scene_travel
+            "system", "general" -> com.example.fbs.R.drawable.ic_scene_system
             else -> com.example.fbs.R.drawable.ic_scene_order
         }
     }
@@ -113,7 +122,8 @@ object FocusForwarder {
         val sceneName = when (category) {
             "foodDelivery", "food" -> "智能分类：美食"
             "express" -> "智能分类：快递"
-            "payment", "bill" -> "智能分类：支付"
+            "payment" -> "智能分类：支付"
+            "bill" -> "智能分类：账单"
             "scan" -> "智能分类：扫码"
             "order" -> "智能分类：订单"
             "verification" -> "智能分类：验证"
@@ -182,6 +192,14 @@ object FocusForwarder {
 
             override fun onServiceDisconnected(component: ComponentName) {
                 Log.w(TAG, "disconnected")
+            }
+
+            override fun onBindingDied(component: ComponentName) {
+                Log.e(TAG, "binding died: $component")
+            }
+
+            override fun onNullBinding(component: ComponentName) {
+                Log.e(TAG, "null binding: $component")
             }
         })
     }
@@ -266,7 +284,8 @@ object FocusForwarder {
         val sceneName = when (category) {
             "foodDelivery", "food" -> "智能分类：美食"
             "express" -> "智能分类：快递"
-            "payment", "bill" -> "智能分类：支付"
+            "payment" -> "智能分类：支付"
+            "bill" -> "智能分类：账单"
             "scan" -> "智能分类：扫码"
             "order" -> "智能分类：订单"
             "verification" -> "智能分类：验证"
@@ -350,20 +369,34 @@ object FocusForwarder {
             override fun onServiceDisconnected(component: ComponentName) {
                 Log.w(TAG, "[T9] disconnected")
             }
+
+            override fun onBindingDied(component: ComponentName) {
+                Log.e(TAG, "[T9] binding died: $component")
+            }
+
+            override fun onNullBinding(component: ComponentName) {
+                Log.e(TAG, "[T9] null binding: $component")
+            }
         })
     }
 
-    /** 场景分类 → 智能图标资源名 */
+    /**
+     * 场景分类 → 智能图标资源名
+     *
+     * ⚠️ 修改图标时需同时更新 sceneIconRes() 和 SceneIcons.assetPath()
+     */
     private fun sceneIconName(category: String): String {
         return when (category) {
             "foodDelivery", "food" -> "ic_scene_food"
             "express" -> "ic_scene_express"
-            "payment", "bill" -> "ic_scene_pay"
+            "payment" -> "ic_scene_pay"
+            "bill" -> "ic_scene_bill"
             "scan" -> "ic_scene_scan"
             "order" -> "ic_scene_order"
             "verification" -> "ic_scene_verify"
             "meeting" -> "ic_scene_meeting"
             "travel" -> "ic_scene_travel"
+            "system", "general" -> "ic_scene_system"
             else -> "ic_scene_order"
         }
     }

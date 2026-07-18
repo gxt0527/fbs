@@ -87,6 +87,62 @@ class ContentParser {
   );
   static final _isPureChinese = RegExp(r'^[\u4e00-\u9fa5]+$');
 
+  // ── OCR 文本清洗正则（static final，避免每次调用重新编译） ──
+  static final _ocrControlChars = RegExp(r'[\x00-\x08\x0B\x0C\x0E-\x1F\x7F-\x9F]');
+  static final _ocrNonChars    = RegExp(r'[\uFFFE\uFFFF\u{FDD0}-\u{FDEF}]', unicode: true);
+  static final _ocrZeroWidth   = RegExp(r'[\u200B-\u200F\u202A-\u202E\u2060-\u2064\uFEFF]');
+  static final _ocrBlankLines  = RegExp(r'\n{3,}');
+
+  // ── 关键信息提取正则（高频调用，static final 避免重复编译） ──
+  static final _rePickupCode = RegExp(r'(取件码|取件号|取货码|提货码|货架号|柜号|箱号)\s*[:：为]?\s*([\d\-]{3,15})');
+  static final _reFoodCode   = RegExp(r'(取餐码|取餐号)\s*[:：]?\s*([A-Za-z0-9]{4,10})');
+  static final _reVerifyCode = RegExp(r'(验证码|核销码|兑换码|校验码|动态码)\s*[:：为]?\s*([A-Za-z0-9]{4,12})');
+  static final _reOrderNo    = RegExp(r'(订单号|运单号|快递单号|交易单号|流水号|订单编号|商品单号)\s*[:：]?\s*([A-Za-z0-9\-]{8,30})');
+  static final _reAmountLabel = RegExp(
+    r'(金额|消费|支付|收款|转账|退款|支出|收入|到账|费用|合计|共)[：:]?\s*'
+    r'(人民币|美元|港币|欧元)?\s*[¥￥]?\s*'
+    r'(\d{1,3}(?:,\d{3})*(?:\.\d{1,2})?)\s*(元|块|美元|港币|欧元)?',
+  );
+  static final _reAmountYuan = RegExp(r'[¥￥]\s*(\d{1,3}(?:,\d{3})*(?:\.\d{1,2})?)\s*(元|块)?');
+  static final _reStore = RegExp(r'(门店|店铺|餐厅|店)[：:]\s*(.+?)(?=\s+(?:金额|消费|支付|件数|共|订单|总计|合计|备注|说明)|$)');
+  static final _reItems = RegExp(r'(?:件数|共)\s*[：:]?\s*(\d+)\s*(杯|件|份|单|箱|袋|瓶|盒|个)');
+  static final _reItemsStandalone = RegExp(r'\b(\d+)\s*(杯|件|份|单|箱|袋|瓶|盒|个)\b(?!.*[¥￥])');
+  static final _rePhone = RegExp(r'(?:[电話电话联系方式][：:]?\s*)?(1[3-9]\d[\s\-]?\d[\s\-]?\d[\s\-]?\d[\s\-]?\d[\s\-]?\d[\s\-]?\d[\s\-]?\d)');
+  static final _reChineseName = RegExp(r'(?:收件人|姓名|联系人|快递员|配送员|收货人)\s*[:：]\s*([^\s,，。]{2,4})');
+  static final _reAddress = RegExp(r'(?:地址|地点|位置|收货地址|配送地址|取件地址|发货地址)\s*[:：]\s*([^\s,，。]{8,60})');
+  static final _reUrl = RegExp(r'(https?://[^\s,，；;<>"()（）]{3,150})');
+  static final _reEmail = RegExp(r'([a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,})');
+  static final _rePlate = RegExp(r'[京津沪渝冀豫云辽黑湘皖鲁新苏浙赣鄂桂甘晋蒙陕吉闽贵粤川青藏琼][A-Z][A-HJ-NP-Z0-9]{4,5}[A-HJ-NP-Z0-9挂学警港澳]');
+  static final _reFlight = RegExp(r'\b([A-Z]{2}\d{3,4})\b');
+  static final _reTrain = RegExp(r'\b([GDCZ]\d{1,5})\b');
+  static final _reDateTime = RegExp(
+    r'(预计|预计送达|提醒|取件|截止|到期|开始|出发|到达)?'
+    r'\s*[:：]?\s*'
+    r'(\d{4}[-/年]\d{1,2}[-/月]\d{1,2}[日号]?)'
+    r'\s*(\d{1,2}[:：]\d{2}(?:[:：]\d{2})?)?',
+  );
+  static final _reShortTime = RegExp(
+    r'(预计[送达]?|提醒|取件[时间]?|截止|到期|开始|出发|到达|'
+    r'配送[时间]?|送达[时间]?|营业[时间]?|服务[时间]?|'
+    r'约)'
+    r'\s*[:：]?\s*'
+    r'(\d{1,2}[:：]\d{2})'
+    r'\s*(?:[~—\-至到]\s*(\d{1,2}[:：]\d{2}))?',
+  );
+  static final _reLocation = RegExp(r'(地址|地点|位置|定位|上车点|下车点|取件地址|收货地址)[：:]\s*(.+?)(?=\s+(?:金额|消费|件数|共|订单|总计|合计|备注|说明)|$)');
+  static final _reSource = RegExp(r'【([^】]+)】');
+  static final _reIsChineseName = RegExp(r'^[\u4e00-\u9fa5]{2,4}$');
+
+  // ── 快递单号模式（各快递公司） ──
+  static final _expressPatterns = {
+    '中通': RegExp(r'(?:中通|ZTO)\s*[A-Z]?\d{12,15}', caseSensitive: false),
+    '圆通': RegExp(r'(?:圆通|YTO)\s*[A-Z]?\d{13,15}', caseSensitive: false),
+    '申通': RegExp(r'(?:申通|STO)\s*[A-Z]?\d{12,15}', caseSensitive: false),
+    '韵达': RegExp(r'(?:韵达|YUNDA)\s*[A-Z]?\d{13,15}', caseSensitive: false),
+    '顺丰': RegExp(r'(?:顺丰|SF)\s*[A-Z0-9]{12,15}', caseSensitive: false),
+    '极兔': RegExp(r'(?:极兔|JT|J&T)\s*[A-Z]?\d{12,15}', caseSensitive: false),
+  };
+
   // ═══════════════ Public API ═══════════════
 
   static ParsedContent parse(String text) {
@@ -143,20 +199,20 @@ class ContentParser {
 
     // 2. 去除 C0 控制字符 (U+0000-U+001F)，保留 \n \t
     //    去除 C1 控制字符 (U+007F-U+009F)
-    result = result.replaceAll(RegExp(r'[\x00-\x08\x0B\x0C\x0E-\x1F\x7F-\x9F]'), '');
+    result = result.replaceAll(_ocrControlChars, '');
 
     // 3. 去除 Unicode 非字符 (Noncharacters)
-    result = result.replaceAll(RegExp(r'[\uFFFE\uFFFF\u{FDD0}-\u{FDEF}]', unicode: true), '');
+    result = result.replaceAll(_ocrNonChars, '');
 
     // 4. 替换不可见零宽字符/方向标记为空白（避免影响文本布局）
-    result = result.replaceAll(RegExp(r'[\u200B-\u200F\u202A-\u202E\u2060-\u2064\uFEFF]'), '');
+    result = result.replaceAll(_ocrZeroWidth, '');
 
     // 5. 去除行首行尾多余空白，合并连续空行为单个空行
     result = result.split('\n')
         .map((l) => l.trim())
         .join('\n');
     // 合并连续空行
-    result = result.replaceAll(RegExp(r'\n{3,}'), '\n\n');
+    result = result.replaceAll(_ocrBlankLines, '\n\n');
 
     return result.trim();
   }
@@ -338,7 +394,7 @@ class ContentParser {
       case ParsedCategory.verification:
         {
           final label = _extractCodeLabel(lines,
-            RegExp(r'(验证码|校验码|动态码)\s*[:：]?\s*[A-Za-z0-9]{4,12}'));
+            RegExp(r'(验证码|校验码|动态码)\s*[:：为]?\s*[A-Za-z0-9]{4,12}'));
           if (label != null) return label;
         }
         return _match(lines, [
@@ -482,16 +538,12 @@ class ContentParser {
     }
 
     // 1. 取件码（驿站/快递柜）- 支持数字+横杠组合，如 3-2-8188 / 取件码为11-4-9476
-    for (final m in RegExp(
-      r'(取件码|取件号|取货码|提货码|货架号|柜号|箱号)\s*[:：为]?\s*([\d\-]{3,15})',
-    ).allMatches(clean)) {
+    for (final m in _rePickupCode.allMatches(clean)) {
       add(KeyInfo(label: m.group(1)!, value: m.group(2)!, type: KeyType.code));
     }
 
     // 2. 取餐码（外卖平台）- 字母+数字组合 或 纯数字
-    for (final m in RegExp(
-      r'(取餐码|取餐号)\s*[:：]?\s*([A-Za-z0-9]{4,10})',
-    ).allMatches(clean)) {
+    for (final m in _reFoodCode.allMatches(clean)) {
       final code = m.group(2)!;
       // 接受: 字母+数字(A7832) 或 纯数字(7656)，拒绝纯字母
       final hasLetter = RegExp(r'[A-Za-z]').hasMatch(code);
@@ -501,30 +553,18 @@ class ContentParser {
       }
     }
 
-    // 3. 验证码/核销码
-    for (final m in RegExp(
-      r'(验证码|核销码|兑换码|校验码|动态码)\s*[:：]?\s*([A-Za-z0-9]{4,12})',
-    ).allMatches(clean)) {
+    // 3. 验证码/核销码（支持 "验证码为990856"、"验证码是123456" 格式）
+    for (final m in _reVerifyCode.allMatches(clean)) {
       add(KeyInfo(label: m.group(1)!, value: m.group(2)!, type: KeyType.code));
     }
 
     // 4. 订单号 / 运单号
-    for (final m in RegExp(
-      r'(订单号|运单号|快递单号|交易单号|流水号|订单编号|商品单号)\s*[:：]?\s*([A-Za-z0-9\-]{8,30})',
-    ).allMatches(clean)) {
+    for (final m in _reOrderNo.allMatches(clean)) {
       add(KeyInfo(label: m.group(1)!, value: m.group(2)!, type: KeyType.order));
     }
 
     // 5. 快递单号（智能识别各快递公司）
-    final expressPatterns = {
-      '中通': RegExp(r'(?:中通|ZTO)\s*[A-Z]?\d{12,15}', caseSensitive: false),
-      '圆通': RegExp(r'(?:圆通|YTO)\s*[A-Z]?\d{13,15}', caseSensitive: false),
-      '申通': RegExp(r'(?:申通|STO)\s*[A-Z]?\d{12,15}', caseSensitive: false),
-      '韵达': RegExp(r'(?:韵达|YUNDA)\s*[A-Z]?\d{13,15}', caseSensitive: false),
-      '顺丰': RegExp(r'(?:顺丰|SF)\s*[A-Z0-9]{12,15}', caseSensitive: false),
-      '极兔': RegExp(r'(?:极兔|JT|J&T)\s*[A-Z]?\d{12,15}', caseSensitive: false),
-    };
-    for (final entry in expressPatterns.entries) {
+    for (final entry in _expressPatterns.entries) {
       for (final m in entry.value.allMatches(clean)) {
         final trackingNo = m.group(0)!.replaceAll(RegExp(r'\s+'), '');
         add(KeyInfo(label: '${entry.key}单号', value: trackingNo, type: KeyType.order));
@@ -532,19 +572,13 @@ class ContentParser {
     }
 
     // 6. 金额（有标签）
-    for (final m in RegExp(
-      r'(金额|消费|支付|收款|转账|退款|支出|收入|到账|费用|合计|共)[：:]?\s*'
-      r'(人民币|美元|港币|欧元)?\s*[¥￥]?\s*'
-      r'(\d{1,3}(?:,\d{3})*(?:\.\d{1,2})?)\s*(元|块|美元|港币|欧元)?',
-    ).allMatches(clean)) {
+    for (final m in _reAmountLabel.allMatches(clean)) {
       var amount = m.group(3)!;
       if (m.group(4)?.isNotEmpty == true) amount += m.group(4)!;
       add(KeyInfo(label: m.group(1)!, value: amount, type: KeyType.amount));
     }
     // 金额（¥ 前缀独立）— 与上一组去重（存储原始数字，不带 ¥，适配 #9 模板）
-    for (final m in RegExp(
-      r'[¥￥]\s*(\d{1,3}(?:,\d{3})*(?:\.\d{1,2})?)\s*(元|块)?',
-    ).allMatches(clean)) {
+    for (final m in _reAmountYuan.allMatches(clean)) {
       var amount = m.group(1)!;
       if (m.group(2)?.isNotEmpty == true) amount += m.group(2)!;
       // 移除无 ¥ 的同数值项，以当前项为准（统一存储原始数字）
@@ -553,9 +587,7 @@ class ContentParser {
     }
 
     // 门店名称 — 在遇到"金额/件数/消费"等关键词前停止，避免吞掉同行其他字段
-    for (final m in RegExp(
-      r'(门店|店铺|餐厅|店)[：:]\s*(.+?)(?=\s+(?:金额|消费|支付|件数|共|订单|总计|合计|备注|说明)|$)',
-    ).allMatches(clean)) {
+    for (final m in _reStore.allMatches(clean)) {
       final value = m.group(2)!.trim();
       if (value.isNotEmpty) {
         add(KeyInfo(label: m.group(1)!, value: value, type: KeyType.location));
@@ -563,23 +595,17 @@ class ContentParser {
     }
 
     // 件数（如 "件数：1杯" "共1件" "1杯"） + 独立数量模式兜底
-    for (final m in RegExp(
-      r'(?:件数|共)\s*[：:]?\s*(\d+)\s*(杯|件|份|单|箱|袋|瓶|盒|个)',
-    ).allMatches(clean)) {
+    for (final m in _reItems.allMatches(clean)) {
       add(KeyInfo(label: '件数', value: '${m.group(1)!}${m.group(2)!}', type: KeyType.general));
     }
     if (!infos.any((i) => i.label == '件数')) {
-      for (final m in RegExp(
-        r'\b(\d+)\s*(杯|件|份|单|箱|袋|瓶|盒|个)\b(?!.*[¥￥])',
-      ).allMatches(clean)) {
+      for (final m in _reItemsStandalone.allMatches(clean)) {
         add(KeyInfo(label: '件数', value: '${m.group(1)!}${m.group(2)!}', type: KeyType.general));
       }
     }
 
     // 7. 手机号（兼容带空格/横杠）
-    for (final m in RegExp(
-      r'(?:[电話电话联系方式][：:]?\s*)?(1[3-9]\d[\s\-]?\d[\s\-]?\d[\s\-]?\d[\s\-]?\d[\s\-]?\d[\s\-]?\d[\s\-]?\d)',
-    ).allMatches(clean)) {
+    for (final m in _rePhone.allMatches(clean)) {
       final phone = m.group(1)!.replaceAll(RegExp(r'[\s\-]'), '');
       if (phone.length == 11) {
         add(KeyInfo(label: '电话', value: phone, type: KeyType.phone));
@@ -587,19 +613,15 @@ class ContentParser {
     }
 
     // 8. 姓名（2-4位中文，上下文匹配）
-    for (final m in RegExp(
-      r'(?:收件人|姓名|联系人|快递员|配送员|收货人)\s*[:：]\s*([^\s,，。]{2,4})',
-    ).allMatches(clean)) {
+    for (final m in _reChineseName.allMatches(clean)) {
       final name = m.group(1)!.trim();
-      if (RegExp(r'^[\u4e00-\u9fa5]{2,4}$').hasMatch(name)) {
+      if (_reIsChineseName.hasMatch(name)) {
         add(KeyInfo(label: '姓名', value: name, type: KeyType.general));
       }
     }
 
     // 9. 地址（省市区街道小区楼栋单元）
-    for (final m in RegExp(
-      r'(?:地址|地点|位置|收货地址|配送地址|取件地址|发货地址)\s*[:：]\s*([^\s,，。]{8,60})',
-    ).allMatches(clean)) {
+    for (final m in _reAddress.allMatches(clean)) {
       final addr = m.group(1)!.trim();
       if (addr.length >= 8) {
         add(KeyInfo(label: '地址', value: addr, type: KeyType.location));
@@ -607,62 +629,39 @@ class ContentParser {
     }
 
     // 10. 链接
-    for (final m in RegExp(
-      r'(https?://[^\s,，；;<>"()（）]{3,150})',
-    ).allMatches(clean)) {
+    for (final m in _reUrl.allMatches(clean)) {
       add(KeyInfo(label: '链接', value: m.group(1)!, type: KeyType.link));
     }
 
     // 11. 邮箱
-    for (final m in RegExp(
-      r'([a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,})',
-    ).allMatches(clean)) {
+    for (final m in _reEmail.allMatches(clean)) {
       add(KeyInfo(label: '邮箱', value: m.group(1)!, type: KeyType.email));
     }
 
     // 12. 车牌号
-    for (final m in RegExp(
-      r'[京津沪渝冀豫云辽黑湘皖鲁新苏浙赣鄂桂甘晋蒙陕吉闽贵粤川青藏琼]'
-      r'[A-Z][A-HJ-NP-Z0-9]{4,5}[A-HJ-NP-Z0-9挂学警港澳]',
-    ).allMatches(clean)) {
+    for (final m in _rePlate.allMatches(clean)) {
       add(KeyInfo(label: '车牌', value: m.group(0)!, type: KeyType.location));
     }
 
     // 13. 航班号
-    for (final m in RegExp(
-      r'\b([A-Z]{2}\d{3,4})\b',
-    ).allMatches(clean)) {
+    for (final m in _reFlight.allMatches(clean)) {
       add(KeyInfo(label: '航班', value: m.group(1)!, type: KeyType.code));
     }
 
     // 9. 火车/高铁车次
-    for (final m in RegExp(
-      r'\b([GDCZ]\d{1,5})\b',
-    ).allMatches(clean)) {
+    for (final m in _reTrain.allMatches(clean)) {
       add(KeyInfo(label: '车次', value: m.group(1)!, type: KeyType.order));
     }
 
     // 10. 日期时间（完整日期+时间）
-    for (final m in RegExp(
-      r'(预计|预计送达|提醒|取件|截止|到期|开始|出发|到达)?'
-      r'\s*[:：]?\s*'
-      r'(\d{4}[-/年]\d{1,2}[-/月]\d{1,2}[日号]?)'
-      r'\s*(\d{1,2}[:：]\d{2}(?:[:：]\d{2})?)?',
-    ).allMatches(clean)) {
+    for (final m in _reDateTime.allMatches(clean)) {
       final full = m.group(0)!.trim();
       if (full.isNotEmpty) {
         add(KeyInfo(label: '时间', value: full, type: KeyType.time));
       }
     }
     // 短时间（HH:mm 范围）- 必须有上下文前缀，排除状态栏独立时间
-    for (final m in RegExp(
-      r'(预计[送达]?|提醒|取件[时间]?|截止|到期|开始|出发|到达|'
-      r'配送[时间]?|送达[时间]?|营业[时间]?|服务[时间]?|'
-      r'约)'
-      r'\s*[:：]?\s*'
-      r'(\d{1,2}[:：]\d{2})'
-      r'\s*(?:[~—\-至到]\s*(\d{1,2}[:：]\d{2}))?',
-    ).allMatches(clean)) {
+    for (final m in _reShortTime.allMatches(clean)) {
       final full = m.group(0)!.trim();
       if (full.isNotEmpty &&
           !full.startsWith('http') &&
@@ -672,14 +671,20 @@ class ContentParser {
     }
 
     // 11. 地址 / 地点 — 在遇到"金额/件数"等关键词前停止，或行尾
-    for (final m in RegExp(
-      r'(地址|地点|位置|定位|上车点|下车点|取件地址|收货地址)[：:]\s*(.+?)(?=\s+(?:金额|消费|件数|共|订单|总计|合计|备注|说明)|$)',
-    ).allMatches(clean)) {
+    for (final m in _reLocation.allMatches(clean)) {
       final addr = m.group(2)!.trim();
       if (addr.isNotEmpty &&
           !RegExp(r'^1[3-9]').hasMatch(addr) &&
           !addr.startsWith('http')) {
         add(KeyInfo(label: m.group(1)!, value: addr, type: KeyType.location));
+      }
+    }
+
+    // 12. 来源平台（如 【智谱AI】、【中国移动】），映射到 location 字段用于展示
+    for (final m in _reSource.allMatches(clean)) {
+      final source = m.group(1)!.trim();
+      if (source.isNotEmpty && !infos.any((i) => i.value == source)) {
+        add(KeyInfo(label: '来源', value: source, type: KeyType.location));
       }
     }
 

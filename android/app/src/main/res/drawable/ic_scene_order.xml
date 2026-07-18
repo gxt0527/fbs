@@ -1,29 +1,27 @@
-<!-- 订单 — 购物袋 -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="24dp"
     android:height="24dp"
-    android:viewportWidth="24"
-    android:viewportHeight="24">
+    android:viewportWidth="1024"
+    android:viewportHeight="1024">
     <path
-        android:strokeColor="#FFFFFF"
-        android:strokeWidth="1.75"
-        android:strokeLineCap="round"
-        android:strokeLineJoin="round"
-        android:pathData="M5,7 l-1,13 c0,1.1 0.9,2 2,2 h12 c1.1,0 2,-0.9 2,-2 L19,7"/>
+        android:fillColor="#FFFFFF"
+        android:pathData="M739.328 1012.736l-593.92 0c-74.752 0-135.168-60.416-135.168-135.168l0-737.28c0-74.752 60.416-135.168 135.168-135.168l607.232 0c74.752 0 135.168 60.416 135.168 135.168l0 416.768c0 11.264-9.216 20.48-20.48 20.48s-20.48-9.216-20.48-20.48L846.848 140.288c0-51.2-41.984-94.208-94.208-94.208l-607.232 0c-51.2 0-94.208 41.984-94.208 94.208l0 737.28c0 51.2 41.984 94.208 94.208 94.208l593.92 0c90.112 0 163.84-73.728 163.84-163.84 0-11.264 9.216-20.48 20.48-20.48s20.48 9.216 20.48 20.48C945.152 920.576 852.992 1012.736 739.328 1012.736z"/>
     <path
-        android:strokeColor="#FFFFFF"
-        android:strokeWidth="1.75"
-        android:strokeLineCap="round"
-        android:strokeLineJoin="round"
-        android:pathData="M8,7 V5 c0,-2 1.5,-3 4,-3 s4,1 4,3 v2"/>
+        android:fillColor="#FFFFFF"
+        android:pathData="M224.256 293.888m-53.248 0a5.2 5.2 0 1 0 106.496 0 5.2 5.2 0 1 0-106.496 0Z"/>
     <path
-        android:strokeColor="#FFFFFF"
-        android:strokeWidth="1.75"
-        android:strokeLineCap="round"
-        android:pathData="M6.5,11 L17.5,11"/>
+        android:fillColor="#FFFFFF"
+        android:pathData="M678.912 314.368 395.264 314.368c-11.264 0-20.48-9.216-20.48-20.48s9.216-20.48 20.48-20.48l283.648 0c11.264 0 20.48 9.216 20.48 20.48S690.176 314.368 678.912 314.368z"/>
     <path
-        android:strokeColor="#FFFFFF"
-        android:strokeWidth="1.75"
-        android:strokeLineCap="round"
-        android:pathData="M6.5,15 L14.5,15"/>
+        android:fillColor="#FFFFFF"
+        android:pathData="M224.256 487.424m-53.248 0a5.2 5.2 0 1 0 106.496 0 5.2 5.2 0 1 0-106.496 0Z"/>
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M678.912 507.904 395.264 507.904c-11.264 0-20.48-9.216-20.48-20.48s9.216-20.48 20.48-20.48l283.648 0c11.264 0 20.48 9.216 20.48 20.48S690.176 507.904 678.912 507.904z"/>
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M224.256 681.984m-53.248 0a5.2 5.2 0 1 0 106.496 0 5.2 5.2 0 1 0-106.496 0Z"/>
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M678.912 702.464 395.264 702.464c-11.264 0-20.48-9.216-20.48-20.48s9.216-20.48 20.48-20.48l283.648 0c11.264 0 20.48 9.216 20.48 20.48S690.176 702.464 678.912 702.464z"/>
 </vector>
